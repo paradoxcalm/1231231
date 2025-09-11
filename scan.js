@@ -166,7 +166,7 @@ async function showReceptionModal(data, qrText) {
         const prefData = await prefRes.json();
         if (prefData.success) {
             preferredType = prefData.payment_type || '';
-            preferredAmount = prefData.payment || '';
+            preferredAmount = prefData.payment ?? '';
         }
     } catch (err) {
         console.warn('Не удалось получить предпочтительный способ оплаты', err);
@@ -249,7 +249,7 @@ async function submitReception(orderId, qrCode, action) {
     formData.append('action', action); // 'confirm' или 'reject'
 
     formData.append('payment_type', document.getElementById('paymentType')?.value || '');
-    formData.append('payment', document.getElementById('paymentAmount')?.value || '');
+    formData.append('payment', document.getElementById('paymentAmount')?.value ?? '');
 
     // Загружаем фотографию (одно изображение)
     const file = document.getElementById('receptionPhoto')?.files?.[0];
