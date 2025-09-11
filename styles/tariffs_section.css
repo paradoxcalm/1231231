@@ -1,0 +1,186 @@
+/* tariffs_section.css – современный стиль раздела "Тарифы" */
+#tariffsSection {
+    max-width: 760px;
+    margin: 32px auto;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 6px 36px rgba(60,80,120,0.13);
+    padding: 32px 18px 24px 18px;
+    position: relative;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+}
+
+#tariffsSection h2 {
+    font-size: 2rem;
+    color: #263044;
+    text-align: center;
+    font-weight: 700;
+    margin-bottom: 22px;
+    letter-spacing: .05em;
+}
+
+/* Вкладки городов */
+#tariffsSection .tariff-tabs {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+}
+#tariffsSection .tariff-tab {
+    font-size: 1.04rem;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 8px;
+    background: #f3f6fa;
+    color: #263044;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: background 0.2s, color 0.2s, box-shadow 0.22s;
+    outline: none;
+}
+#tariffsSection .tariff-tab:hover, 
+#tariffsSection .tariff-tab:focus {
+    background: #e2e9f7;
+    color: #1366d6;
+    box-shadow: 0 3px 12px rgba(60,80,120,0.07);
+}
+#tariffsSection .tariff-tab.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 5px 20px rgba(37,99,235,0.09);
+}
+
+/* Современная таблица */
+#tariffsSection .tariffs-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 1.04rem;
+    background: #f9fbfd;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-top: 0;
+    box-shadow: 0 2px 8px rgba(30,40,90,0.04);
+}
+
+#tariffsSection .tariffs-table th,
+#tariffsSection .tariffs-table td {
+    padding: 14px 10px;
+    text-align: left;
+}
+#tariffsSection .tariffs-table th {
+    background: #e7eefe;
+    color: #0b2447;
+    font-weight: 700;
+    font-size: 1.01em;
+    border-bottom: 2px solid #b5c6e5;
+}
+#tariffsSection .tariffs-table tr:nth-child(even) td {
+    background: #f2f7fd;
+}
+#tariffsSection .tariffs-table tr:nth-child(odd) td {
+    background: #f9fbfd;
+}
+#tariffsSection .tariffs-table td {
+    color: #242b40;
+    font-weight: 500;
+    border-bottom: 1px solid #ecf1f9;
+    transition: background 0.15s;
+}
+#tariffsSection .tariffs-table tr:hover td {
+    background: #e3eafd;
+}
+
+/* Увеличение кликабельности и удобства на мобильных */
+@media (max-width: 700px) {
+    #tariffsSection {
+        padding: 11px 2px 12px 2px;
+    }
+    #tariffsSection h2 {
+        font-size: 1.3rem;
+        margin-bottom: 13px;
+    }
+    #tariffsSection .tariff-tab {
+        font-size: 0.97rem;
+        padding: 7px 13px;
+        margin-bottom: 4px;
+    }
+    #tariffsSection .tariffs-table th, 
+    #tariffsSection .tariffs-table td {
+        padding: 10px 5px;
+        font-size: 0.97rem;
+    }
+    #tariffsSection .tariffs-table {
+        font-size: 0.96rem;
+        border-radius: 10px;
+    }
+    #tariffsSection .tariffs-table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    #tariffsSection .tariffs-table th,
+    #tariffsSection .tariffs-table td {
+        white-space: nowrap;
+    }
+}
+
+
+@media (max-width: 700px) {
+  #tariffsSection {
+    padding: 16px;
+  }
+
+  #tariffsTabs, 
+  .tariffs-table {
+    /*  display: none !important;скрываем вкладки и таблицу */
+  }
+
+  #mobileCitySelect {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 1rem;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    appearance: none;
+    background-color: #f7f7f7;
+  }
+
+  .mobile-tariff-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .tariff-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 14px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+
+  .tariff-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #222;
+  }
+
+  .tariff-card .price-line {
+    font-size: 1rem;
+    margin-bottom: 4px;
+    color: #333;
+  }
+
+  .tariff-card .price-label {
+    font-weight: 500;
+    margin-right: 6px;
+    color: #555;
+  }
+}
+

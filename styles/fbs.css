@@ -1,0 +1,127 @@
+/* ===== Стили для раздела FBS ===== */
+
+/* Оверлей хоста и контейнер: действуют ТОЛЬКО при открытом окне FBS */
+#requestModal.fbs-open {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+#requestModalContent.fbs-host {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border: none !important;
+}
+
+/* ===== FBS MODAL (scoped) ===== */
+#fbs-modal {
+  --fbs-bg: #fff;
+  --fbs-border: #e5e7eb;
+  --fbs-muted: #6b7280;
+  --fbs-text: #111827;
+  --fbs-brand: #22c55e;
+  --fbs-shadow: 0 20px 40px rgba(0,0,0,.18);
+  --fbs-radius: 12px;
+  --hit: 44px; /* минимальный кликабельный размер */
+
+  background: var(--fbs-bg);
+  color: var(--fbs-text);
+  border-radius: var(--fbs-radius);
+  box-shadow: var(--fbs-shadow);
+  width: min(640px, calc(100vw - 32px));
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Шапка (sticky) */
+#fbs-modal .fbs-header {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--fbs-bg);
+  border-bottom: 1px solid var(--fbs-border);
+}
+#fbs-modal .fbs-header h3 { margin: 0; font-size: 20px; font-weight: 700; }
+
+/* Крестик — плоский */
+#fbs-modal .fbs-close {
+  all: unset;
+  width: var(--hit);
+  height: var(--hit);
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  color: #6b7280;
+  border-radius: 8px;
+  cursor: pointer;
+}
+#fbs-modal .fbs-close:hover { background: #f3f4f6; color: #111827; }
+
+/* Тело формы */
+#fbs-modal #fbs-form { flex: 1 1 auto; overflow: auto; padding: 16px 18px 96px; }
+
+/* Сетка */
+#fbs-modal .fbs-grid { display: grid; grid-template-columns: 1fr; gap: 14px 16px; }
+#fbs-modal .fbs-field { display: flex; flex-direction: column; gap: 6px; }
+#fbs-modal .span-2 { grid-column: 1 / -1; }
+@media (min-width: 560px) { #fbs-modal .fbs-grid { grid-template-columns: 1fr 1fr; }}
+
+/* Поля */
+#fbs-modal label { font-size: 13px; color: var(--fbs-muted); }
+#fbs-modal .form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--fbs-border);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+#fbs-modal .form-control:focus {
+  border-color: var(--fbs-brand);
+  box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+}
+
+/* Переключатель (switch) — на базе checkbox */
+#fbs-modal .fbs-switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+#fbs-modal .fbs-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+#fbs-modal .fbs-switch .track {
+  width: 44px; height: 24px; border-radius: 999px; background: #e5e7eb; position: relative; transition: background .2s ease;
+}
+#fbs-modal .fbs-switch .track::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: transform .2s ease;
+}
+#fbs-modal .fbs-switch input:checked + .track { background: var(--fbs-brand); }
+#fbs-modal .fbs-switch input:checked + .track::after { transform: translateX(20px); }
+#fbs-modal .fbs-switch .switch-label { font-weight: 600; color: var(--fbs-text); }
+
+/* Группа радиокнопок статуса оплаты */
+#fbs-modal .fbs-radio-group {
+  display: flex;
+  gap: 16px;
+}
+#fbs-modal .fbs-radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--fbs-text);
+}
+
+/* Нижняя панель действий (sticky) */
+#fbs-modal .fbs-actions {
+  position: sticky; bottom: 0; z-index: 2;
+  background: linear-gradient(to top, rgba(255,255,255,1), rgba(255,255,255,0.92));
+  border-top: 1px solid var(--fbs-border);
+  padding: 12px 18px;
+  display: flex; justify-content: center;
+}
+#fbs-modal .confirm-btn {
+  width: 100%; max-width: 260px;
+  padding: 12px 16px; border: none; border-radius: 10px;
+  background: var(--fbs-brand); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer;
+}
+#fbs-modal .confirm-btn:hover { filter: brightness(.95); }

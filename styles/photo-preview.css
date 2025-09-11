@@ -1,0 +1,117 @@
+/* photo-preview.css — стили только для модалки фото */
+
+/* Плавное появление оверлея (без влияния на display из JS) */
+@keyframes pg-fade {
+  from { opacity: 0; } to { opacity: 1; }
+}
+/* Хак: когда JS ставит display:flex — проигрываем анимацию */
+#photoModal[style*="display: flex"] { animation: pg-fade .15s ease-out; }
+
+/* Фон модалки */
+#photoModal {
+  position: fixed; /* дублируем на случай внешних стилей */
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 10000;
+  display: none;           /* управляет JS */
+  justify-content: center; /* управляет JS */
+  align-items: center;     /* управляет JS */
+  backdrop-filter: blur(2px);
+}
+
+/* Контейнер контента */
+#photoGalleryContent {
+  position: relative;
+  width: 96vw;
+  height: 96vh;
+  max-width: 96vw;
+  max-height: 96vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Само изображение в модалке */
+#photoGalleryImage {
+  max-width: 96vw;
+  max-height: 96vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.45);
+  user-select: none;
+  image-rendering: auto;
+  transition: transform .15s ease-out, box-shadow .2s ease-out;
+  cursor: grab; /* JS переключит на grabbing при перетаскивании */
+}
+
+/* Кнопки навигации (стрелки) */
+#prevPhotoBtn,
+#nextPhotoBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  padding: 6px 12px;
+  font-size: 48px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0,0,0,.45);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s ease-out, transform .1s ease-out;
+}
+#prevPhotoBtn { left: 8px; }
+#nextPhotoBtn { right: 8px; }
+
+#prevPhotoBtn:hover,
+#nextPhotoBtn:hover { background: rgba(0,0,0,.65); }
+#prevPhotoBtn:active,
+#nextPhotoBtn:active { transform: translateY(-50%) scale(.98); }
+
+/* Кнопка закрытия (первая кнопка в контенте). 
+   Если добавите класc на кнопку ('pg-close'), можно заменить селектор. */
+#photoGalleryContent > button:not(#prevPhotoBtn):not(#nextPhotoBtn) {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  border: 0;
+  padding: 6px 12px;
+  font-size: 22px;
+  color: #fff;
+  background: rgba(0,0,0,.45);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .15s ease-out, transform .1s ease-out;
+}
+#photoGalleryContent > button:not(#prevPhotoBtn):not(#nextPhotoBtn):hover {
+  background: rgba(0,0,0,.65);
+}
+#photoGalleryContent > button:not(#prevPhotoBtn):not(#nextPhotoBtn):active {
+  transform: scale(.98);
+}
+
+/* Оверлей для одиночного просмотра (showPhoto) */
+#photoPreview {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.85);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pg-fade .15s ease-out;
+}
+#photoPreview img {
+  max-width: 96vw;
+  max-height: 96vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 18px 40px rgba(0,0,0,.45);
+}
+
+/* Мобильные правки */
+@media (max-width: 480px) {
+  #prevPhotoBtn, #nextPhotoBtn { font-size: 36px; }
+  #photoGalleryContent { width: 98vw; height: 98vh; }
+}

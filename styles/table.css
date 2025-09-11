@@ -1,0 +1,392 @@
+/* === СТАРАЯ ТАБЛИЦА: стиль только для раздела "Таблица отправлений" === */
+#tableContainer {
+  width: 100%;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.11);
+  padding: 18px 10px 18px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin-bottom: 18px;
+  transition: box-shadow 0.3s;
+}
+#tableContainer table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.55rem;
+  background-color: #fff;
+  border: 1px solid #e3e3e3;
+  border-radius: 12px;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.07);
+  font-size: 16px;
+  table-layout: auto;
+  min-width: 780px;
+  overflow: hidden;
+}
+#tableContainer thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background-color: #4CAF50;
+  color: #fff;
+  text-align: left;
+  padding: 0.7rem 1rem;
+  font-weight: bold;
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  letter-spacing: 0.01em;
+  border-bottom: 2px solid #39843b;
+  font-size: 1.01em;
+}
+#tableContainer th, 
+#tableContainer td {
+  padding: 0.55rem 1rem;
+  vertical-align: middle;
+  background-clip: padding-box;
+  border: none;
+}
+#tableContainer tbody tr {
+  transition: background 0.25s;
+}
+#tableContainer tbody tr:nth-child(even) {
+  background-color: #f5f8f7;
+}
+#tableContainer tbody tr:nth-child(odd) {
+  background-color: #fff;
+}
+#tableContainer tbody tr:hover {
+  background-color: rgba(76, 175, 80, 0.13);
+}
+#tableContainer td {
+  font-size: 0.97em;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#tableContainer th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Для мобильной адаптивности */
+@media (max-width: 900px) {
+  #tableContainer table {
+    font-size: 15px;
+    min-width: 600px;
+  }
+  #tableContainer {
+    padding: 9px 3px 13px 3px;
+  }
+}
+@media (max-width: 600px) {
+  #tableContainer table {
+    font-size: 14px;
+    min-width: 420px;
+  }
+  #tableContainer {
+    padding: 5px 1px 8px 1px;
+    border-radius: 7px;
+  }
+  #tableContainer thead th, #tableContainer td, #tableContainer th {
+    padding: 0.44rem 0.6rem;
+  }
+}
+
+/* Сообщение о пустой таблице только для старой таблицы */
+#tableContainer .table-empty-message {
+  text-align: center;
+  font-size: 17px;
+  color: #888;
+  margin: 20px 0;
+}
+
+/* ==== Новая таблица FBS и все современные таблицы (.table-container) ==== */
+.table-container {
+    width: 100%;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    z-index: 999;
+    border: 1px solid #ddd;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-bottom: 16px;
+}
+.table-container table {
+    width: 100%;
+    min-width: 1200px;
+    border-collapse: collapse;
+    background-color: #fff;
+    border-radius: 8px;
+    font-family: 'Roboto', Arial, sans-serif;
+    font-size: 16px;
+    table-layout: fixed;
+}
+.table-container table thead tr {
+    background-color: #4CAF50;
+    color: #fff;
+    font-weight: bold;
+}
+.table-container table th,
+.table-container table td {
+    border: 1px solid #ddd;
+    padding: 12px;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    height: 60px;
+    max-width: 300px;
+}
+.table-container table tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+.table-container table tbody tr:hover {
+    background-color: #e9e9e9;
+    transform: scale(1.01);
+}
+
+/* Пагинация */
+.pagination-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 15px auto;
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    width: 100%;
+    gap: 4px;
+}
+.pagination-container .pagination-button {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    margin: 0 5px;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    font-size: 14px;
+}
+.pagination-container .pagination-button:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+}
+/* --- активная страница пагинации (яркое выделение) --- */
+.pagination-container .pagination-button.active {
+    background-color: #2E7D32;   /* более тёмно‑зелёный, чем обычная кнопка */
+    color: #fff;
+    font-weight: 600;
+    pointer-events: none;        /* не кликается */
+    box-shadow: 0 0 6px rgba(0,0,0,0.25);
+    transform: none;             /* без эффекта scale на наведении */
+}
+.pagination-ellipsis {
+    display: inline-block;
+    padding: 8px 5px;
+    color: #555;
+}
+
+/* Поле фильтрации и панель фильтров */
+.filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    margin-top: 5px;
+    justify-content: flex-start;
+}
+.filter-input {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    width: 220px;
+    margin-bottom: 7px;
+}
+.filter-container select {
+    padding: 10px 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 7px;
+}
+.filter-container label {
+    font-size: 15px;
+    margin-right: 4px;
+    color: #333;
+}
+.primary-button, .filter-container .primary-button {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-bottom: 7px;
+}
+.primary-button:hover, .filter-container .primary-button:hover {
+    background-color: #45a049;
+    transform: scale(1.04);
+}
+
+/* Кнопка выгрузки в Excel */
+.export-button {
+    background-color: #4CAF50;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    margin-top: 5px;
+    margin-bottom: 7px;
+}
+.export-button:hover {
+    background-color: #45a049;
+    transform: scale(1.05);
+}
+
+/* Сообщение о пустой таблице */
+.table-empty-message {
+    text-align: center;
+    font-size: 18px;
+    color: #888;
+    margin: 20px 0;
+}
+
+/* Модальное окно фото (если используется в проекте) */
+.photo-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.photo-modal-content {
+    position: relative;
+    width: 80%;
+    max-width: 800px;
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+}
+.photo-modal-close {
+    position: absolute;
+    top: 10px; right: 15px;
+    font-size: 24px;
+    color: #333;
+    cursor: pointer;
+}
+.photo-gallery img {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* ---- Адаптив ---- */
+@media (max-width: 1300px) {
+    .table-container table {
+        min-width: 900px;
+    }
+}
+@media (max-width: 1000px) {
+    .table-container table {
+        min-width: 650px;
+        font-size: 14px;
+    }
+    .filter-input, .filter-container select {
+        width: 150px;
+        font-size: 14px;
+        padding: 8px 10px;
+    }
+}
+@media (max-width: 650px) {
+    .table-container table {
+        min-width: 420px;
+        font-size: 12px;
+    }
+    .table-container {
+        padding: 5px;
+    }
+    .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-input, .filter-container select {
+        width: 100%;
+        min-width: 0;
+        margin-bottom: 10px;
+    }
+    .primary-button, .export-button {
+        width: 100%;
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+}
+/* ---- для фото ---- */
+
+/* Контейнер модального окна (фон и выравнивание по центру) */
+.modal {
+                 /* по умолчанию скрыто */
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.8); /* полупрозрачный тёмный фон */
+    justify-content: center;
+    align-items: center;
+    
+    transition: opacity 0.3s ease;  /* плавное появление */
+}
+.modal.show {
+    opacity: 1;  /* при добавлении класса .show модалка постепенно проявится */
+}
+
+/* Стиль изображения внутри модалки (увеличенное фото) */
+.modal-image {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+/* Кнопка закрытия модалки (крестик) */
+.close-button {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 32px;
+    color: #fff;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* Миниатюра изображения в таблице (столбец "Фото") */
+.table-thumbnail {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;  /* обрезка изображения по центру, чтобы заполнить квадрат */
+    cursor: pointer;
+}

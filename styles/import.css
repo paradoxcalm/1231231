@@ -1,0 +1,84 @@
+/* Modal overlay (center content via flexbox) */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    /* Center the modal content */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Modal content container */
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    max-height: 90vh;
+    overflow: auto;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    position: relative;
+    width: 90%;
+    max-width: 1000px;
+}
+
+/* Close button (X) */
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #666;
+    cursor: pointer;
+}
+.modal-close:hover { color: #000; }
+
+/* Import table styles */
+.import-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.import-table th, .import-table td {
+    border: 1px solid #ccc;
+    padding: 6px 8px;
+    text-align: left;
+}
+.import-table th {
+    background: #f0f0f0;
+}
+
+/* Row highlighting */
+.valid-row { background-color: #f9fffa; }    /* light green for valid rows */
+.invalid-row { background-color: #fff5f5; }  /* light pink for invalid rows */
+
+/* Table inputs */
+.import-table input {
+    width: 100%;
+    box-sizing: border-box;
+    background: transparent;   /* transparent so row background is visible */
+    border: none;              /* no border by default (use cell border) */
+    outline: none;             /* remove default outline */
+    font: inherit;
+}
+
+/* Input fields that had validation errors */
+.error-field {
+    border: 1px solid red !important;
+    background-color: #ffecec !important;  /* slightly deeper pink for error fields */
+}
+
+/* Focus state for inputs (to indicate editability) */
+.import-table input:focus {
+    border: 1px solid #66aaff;      /* add a blue border on focus */
+    background-color: #f0f8ff;      /* light blue background on focus for clarity */
+    outline: none;                  /* ensure no default outline */
+}
+
+/* (Optional) If you want non-error editable fields to have a special background:
+.editable-cell { background-color: #ffffe0; }  /* light yellow for editable cells * /
+*/

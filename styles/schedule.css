@@ -1,0 +1,913 @@
+/* === schedule.css (окончательная версия, с учётом всех частей) === */
+.modal-close i,
+.modal-close svg {
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+.warehouse-checkboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px 15px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.warehouse-checkbox-item {
+    display: flex;
+    align-items: center;
+    background-color: #f4f4f4;
+    padding: 6px 12px;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    font-size: 14px;
+    transition: background 0.3s;
+}
+
+.warehouse-checkbox-item:hover {
+    background-color: #e0e0e0;
+}
+
+.warehouse-checkbox-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    line-height: 1.4;
+    width: 100%;
+}
+
+.warehouse-checkbox-item input[type="checkbox"] {
+    transform: scale(1.1);
+    cursor: pointer;
+    margin-top: 1px;
+}
+
+.add-warehouse-button {
+    margin-top: 10px;
+    padding: 10px 16px;
+    background-color: #fff;
+    border: 2px solid #333;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: all 0.2s ease-in-out;
+}
+
+.add-warehouse-button:hover {
+    background-color: #f0f0f0;
+    transform: scale(1.02);
+}
+
+/* Общий контейнер всего расписания */
+.schedule-container {
+    border-radius: 8px;
+    margin: 20px auto;
+    max-width: 1200px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* Заголовок (section-title) в расписании */
+.section-title {
+    font-size: 28px;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+/* ========= Блок вкладок (tab-header) ========= */
+.tab-header {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.tab-header .tab-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 6px;
+    background: #e0e0e0;
+    font-weight: bold;
+    font-size: 15px;
+    color: #333;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.tab-header .tab-button:hover {
+    background: #d5d5d5;
+}
+.tab-header .tab-button.active {
+    background: linear-gradient(45deg, #4CAF50, #2ecc71);
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* ========= Кнопки управления расписанием ========= */
+.schedule-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.action-buttons button,
+.navigation-buttons button {
+    padding: 10px 20px;
+    margin-right: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #4CAF50;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.action-buttons button:hover,
+.navigation-buttons button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* ========= Фильтр в разделе Календарь ========= */
+.filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+.filter-group {
+    margin-bottom: 10px;
+    flex: 1 1 200px;
+    padding: 0 10px;
+}
+.filter-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #333;
+}
+.filter-group input,
+.filter-group select {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+}
+.apply-button,
+.reset-button {
+    padding: 10px 15px;
+    background: #4CAF50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.apply-button:hover,
+.reset-button:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* ========= Календарный вид ========= */
+.calendar-view {
+    margin-top: 20px;
+    width: 100%;
+    height: auto;
+}
+.schedule-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: bold;
+}
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.calendar-header div {
+    padding: 5px;
+    background: #f0f0f0;
+    border-radius: 5px;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 60px;
+    gap: 5px;
+    width: 100%;
+    /* 6 недель * 60px + 5px между рядами */
+    height: calc(6 * 60px + 5 * 5px);
+    box-sizing: border-box;
+}
+.calendar-cell {
+    background: #f9f9f9;
+    border-radius: 5px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    padding: 5px;
+    overflow: hidden;
+    height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+.calendar-cell:hover {
+    background: #e9e9e9;
+}
+/* Индикатор точки отправления */
+.calendar-cell .shipment-dot {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    z-index: 2;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #999;
+}
+.cell-date {
+    font-weight: bold;
+    margin-bottom: 3px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+.calendar-cell.today {
+    border: 2px solid #4CAF50;
+    box-shadow: inset 0 0 10px rgba(76,175,80,0.3);
+}
+.shipment-label {
+    font-size: 12px;
+    background: rgba(76,175,80,0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    text-align: center;
+}
+
+/* ========= Ближайшие отправления ========= */
+.upcoming-shipments {
+    background: #f1f1f1;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+.upcoming-shipments h3 {
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #333;
+}
+.upcoming-item {
+    padding: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.upcoming-item:hover {
+    background: #ddd;
+}
+.upcoming-item .shipment-dot {
+    position: static;
+    display: inline-block;
+    margin: 0;
+    vertical-align: middle;
+}
+
+/* ========= Модальное окно общего назначения (если внутри расписания) ========= */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+    overflow: auto; /* Прокрутка при большом контенте */
+}
+.modal-content {
+    background: #ffffff;
+    margin: 5% auto;
+    padding: 25px 30px;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: fadeIn 0.3s ease;
+    font-family: 'Segoe UI', sans-serif; /* или Roboto */
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+    text-align: center;
+}
+.modal-header h2 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: bold;
+    text-transform: uppercase;
+    background: linear-gradient(45deg, #4CAF50, #2ecc71);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+/* Кнопка закрытия (крестик) */
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-size: 24px;
+    color: #333;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+    cursor: pointer;
+    font-weight: normal;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover {
+    color: #000;
+}
+
+/* Тело модалки */
+.modal-body {
+    max-height: none;
+    overflow-y: auto;
+    font-size: 15px;
+    color: #333;
+}
+/* Кнопки действий внизу модалки */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* ========= Таблицы деталей отправления внутри модалки (shipment-table) ========= */
+.shipment-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+.shipment-table th {
+    background-color: #f0f0f0;
+    padding: 10px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #ddd;
+    font-size: 14px;
+}
+.shipment-table td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    font-size: 14px;
+}
+.shipment-table tr:hover {
+    background-color: #f5f5f5;
+}
+.shipment-table td.actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+/* ========= Блочный формат содержимого модалки (секции, строки) ========= */
+.modal-section {
+    background: #fdfdfd;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.modal-section-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+}
+.modal-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 15px;
+}
+.modal-label {
+    font-weight: 500;
+    color: #444;
+}
+.modal-value {
+    color: #555;
+    max-width: 60%;
+    text-align: right;
+}
+
+
+
+/* Кнопки внутри модалки */
+.action-button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    color: #222; /* ✅ Контрастный текст */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.action-button:hover {
+    background: linear-gradient(45deg, #e67e22, #d35400);
+    transform: translateY(-2px);
+}
+
+/* Кнопка редактирования */
+.edit-btn {
+    background: linear-gradient(45deg, #d6eaf8, #aed6f1); /* светло-синий фон */
+    color: #1b2631; /* ✅ тёмно-серый текст */
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    border: 1px solid #85c1e9;
+}
+.edit-btn:hover {
+    background: linear-gradient(45deg, #aed6f1, #85c1e9);
+    transform: translateY(-2px);
+}
+
+/* Кнопка удаления */
+.delete-btn {
+    background: linear-gradient(45deg, #fadbd8, #f5b7b1); /* светло-красный фон */
+    color: #78281f; /* ✅ насыщенный тёмно-красный текст */
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    border: 1px solid #ec7063;
+}
+.delete-btn:hover {
+    background: linear-gradient(45deg, #f5b7b1, #ec7063);
+    transform: translateY(-2px);
+}
+
+/* Кнопка архивирования */
+.archive-btn {
+    background: linear-gradient(45deg, #fdf2e9, #fad7a0);
+    color: #7d6608;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    border: 1px solid #f8c471;
+}
+.archive-btn:hover {
+    background: linear-gradient(45deg, #fad7a0, #f8c471);
+    transform: translateY(-2px);
+}
+
+/* Сообщения массового управления */
+#massManageMessages {
+    margin-top: 10px;
+    font-size: 14px;
+}
+#massManageMessages .success { color: #196f3d; }
+#massManageMessages .warning { color: #7d6608; }
+#massManageMessages .error   { color: #922b21; }
+
+
+
+/* ========= Пример строки-элемента (shipment-row) ========= */
+.shipment-row {
+    display: flex;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px dashed #ccc;
+    align-items: center;
+    font-size: 14px;
+}
+.shipment-row:last-child {
+    border-bottom: none;
+}
+.col {
+    flex: 1;
+    text-align: left;
+}
+.col-action {
+    flex: 0 0 auto;
+}
+
+/* ========= Блок “Ближайшие отправления” в виде карточек (styled-upcoming-item) ========= */
+.styled-upcoming-item {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+.styled-upcoming-item:hover {
+    background: #f0fdf4;
+    transform: translateY(-2px);
+    cursor: pointer;
+}
+.shipment-info {
+    display: flex;
+    flex-direction: column;
+}
+.shipment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: bold;
+    font-size: 15px;
+    color: #2c3e50;
+}
+.shipment-date {
+    font-size: 15px;
+}
+.shipment-status {
+    font-size: 13px;
+    color: #666;
+}
+.shipment-sub {
+    font-size: 13px;
+    color: #777;
+    margin-top: 4px;
+}
+.shipment-sub strong {
+    font-weight: bold;
+    color: #333;
+}
+
+/* ========= Переключатель вкладок для городов (city-tab-header) ========= */
+.city-tab-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.city-tab-header .tab-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    background: #eee;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.city-tab-header .tab-button:hover {
+    background-color: #ddd;
+}
+/* Активная вкладка для городов */
+.city-tab-header .tab-button.active {
+    background: linear-gradient(45deg, #4CAF50, #2ecc71);
+    color: white;
+}
+
+/* Элемент (warehouse/city/...) */
+.shipment-warehouse {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+/* ========= Адаптивность (медиа-запросы) ========= */
+@media (max-width: 768px) {
+    .calendar-cell {
+        height: 80px;
+    }
+    .modal-content {
+        max-width: 90%;
+    }
+    .action-button {
+        padding: 8px 15px;
+        font-size: 12px;
+        min-width: 80px;
+    }
+}
+@media (max-width: 480px) {
+    .calendar-cell {
+        height: 60px;
+    }
+    .modal-content {
+        margin: 20% auto;
+        width: 95%;
+    }
+    .action-button {
+        padding: 6px 10px;
+        font-size: 10px;
+        min-width: 70px;
+    }
+    .shipment-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .col {
+        flex: none;
+        width: 100%;
+    }
+    .col-action {
+        width: 100%;
+        display: flex;
+        gap: 5px;
+        margin-top: 5px;
+    }
+}
+
+/* ========= Вкладки внутри модалки "Создать заявку" ========= */
+.modal-tabs {
+    padding-top: 10px;
+}
+
+.modal-tabs .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-tabs .tab-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    background: #e0e0e0;
+    font-weight: bold;
+    font-size: 15px;
+    color: #333;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.modal-tabs .tab-button.active {
+    background: linear-gradient(45deg, #4CAF50, #2ecc71);
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.modal-tabs .tab-content {
+    padding: 10px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+}
+
+
+/* Патч: отображение модалки при добавлении класса .show */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    overflow: auto;
+}
+
+
+
+.modal-content {
+    background: #ffffff;
+    margin: 5% auto;
+    padding: 25px 30px;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: fadeIn 0.3s ease;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* === schedule.css === */
+/* ✅ Основные стили для раздела расписания */
+
+.schedule-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 15px;
+}
+
+.schedule-table th,
+.schedule-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+
+.schedule-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+/* Таблица в модалке управления расписанием */
+.management-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 15px;
+}
+.management-table th,
+.management-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+}
+.management-table th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+/* ✅ Контейнер, оборачивающий таблицу */
+.schedule-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* 📱 Мобильная адаптация */
+@media screen and (max-width: 768px) {
+    .schedule-table {
+        font-size: 13px;
+        min-width: 600px;
+    }
+
+    .schedule-table th,
+    .schedule-table td {
+        padding: 6px;
+    }
+}
+/* === Исправление для модалки деталей заказа === */
+.modal-body.accordion-view {
+    max-height: none !important;
+    overflow-y: visible !important;
+    display: block !important;
+    padding-bottom: 20px;
+}
+/* 🔄 Плавное появление модалки */
+.modal-content {
+    animation: fadeInScale 0.3s ease forwards;
+    transform-origin: top center;
+    
+    transform: scale(0.95);
+}
+@keyframes fadeInScale {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* 📱 Адаптация для смартфонов */
+@media (max-width: 480px) {
+    .modal-content {
+        padding: 20px 16px;
+    }
+    .modal-header h2 {
+        font-size: 20px;
+    }
+    .modal-section-title {
+        font-size: 15px;
+    }
+    .modal-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    .modal-label {
+        font-size: 14px;
+    }
+    .modal-value {
+        font-size: 14px;
+        text-align: left;
+    }
+    .create-order-btn.big-action {
+    background: linear-gradient(45deg, #2baf61, #6bb23d);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 14px 28px;
+    border-radius: 32px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+.create-order-btn.big-action:hover {
+    background: linear-gradient(45deg, #64dd17, #00c853);
+    transform: scale(1.03);
+}
+
+@media (max-width: 480px) {
+  .action-button:not(.create-order-btn) {
+    padding: 6px 10px;
+    font-size: 10px;
+    min-width: 70px;
+  }
+}
+/* ...весь ваш schedule.css (как выше)... */
+.dropdown-excel {
+  position: relative;
+  display: inline-block;
+}
+
+.excel-button {
+  background: #ebebef;
+  color: #1c1c1e;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 200px;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.excel-button:hover {
+  background: #e0e0e5;
+}
+
+.excel-menu {
+  display: none;
+  position: absolute;
+  top: 105%;
+  left: 0;
+  background: #fff;
+  border: 1px solid #e5e5ea;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 1000;
+  min-width: 280px;
+  padding: 8px 0;
+  font-size: 15px;
+}
+
+.excel-menu.show {
+  display: block;
+}
+
+.excel-menu .excel-item {
+  padding: 12px 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #1c1c1e;
+}
+
+.excel-menu .excel-item:hover {
+  background-color: #f2f2f7;
+}
+
+
