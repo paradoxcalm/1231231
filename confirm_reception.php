@@ -126,6 +126,22 @@ if (!$stmt) {
             $payment = floatval($payment);
         }
 
+        if ($payment === null || $payment <= 0) {
+            $stmtSelect = $conn->prepare("SELECT payment_amount FROM order_reception_confirmations WHERE order_id = ?");
+            if (!$stmtSelect) {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+                exit;
+            }
+
+            $stmtSelect->bind_param("i", $orderId);
+            $stmtSelect->execute();
+            $stmtSelect->bind_result($payment);
+            $stmtSelect->fetch();
+            $stmtSelect->close();
+            $payment = floatval($payment);
+        }
+
         // Обновляем shipments: время приёмки, фото и информацию об оплате
         $stmtUpdate = $conn->prepare("UPDATE shipments SET accept_time = ?, photo_path = ?, payment = ?, payment_type = ? WHERE order_id = ?");
         if (!$stmtUpdate) {
