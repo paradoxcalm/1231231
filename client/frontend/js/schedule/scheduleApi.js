@@ -1,4 +1,4 @@
-const API_BASE = '/backend/schedule';
+const API_BASE = '/client/backend/schedule';
 
 export async function fetchSchedules(params = {}) {
     const query = new URLSearchParams(params).toString();
