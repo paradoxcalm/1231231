@@ -16,7 +16,6 @@ let currentModal = null;
 let activeCityFilter = "";
 let activeWarehouseFilter = "";
 let activeDestinationWarehouseFilter = "";
-let activeStatusFilter = "";
 let archiveView = false;
 let activeMarketplaceFilter = "";
 
@@ -31,7 +30,7 @@ function loadSchedule() {
     if (!dynamicContent) return;
 
     canCreateSchedule = (userRole === "admin" || userRole === "manager");
-    const canViewCalendar = (userRole === "admin");
+    const isAdminOrManager = (userRole === "admin" || userRole === "manager");
 
     const html = `
         <div class="schedule-container">
@@ -39,9 +38,9 @@ function loadSchedule() {
             <div class="tab-header">
                 <button class="tab-button active" id="tab-upcoming" onclick="switchTab('upcoming')">Ближайшие отправления</button>
                 ${
-                    canViewCalendar
+                    isAdminOrManager
                         ? `<button class="tab-button" id="tab-calendar" onclick="switchTab('calendar')">Календарь</button>`
-                        : ""
+                        : `<button class="tab-button disabled-tab" id="tab-calendar" tabindex="-1" type="button" aria-disabled="true" disabled>Календарь</button>`
                 }
             </div>
             <div class="tab-content" id="tabContent-upcoming" style="display: block;">
@@ -54,8 +53,10 @@ function loadSchedule() {
                     <div id="upcomingList" style="margin-top:10px;"></div>
                 </div>
             </div>
-            ${ canViewCalendar ? `
             <div class="tab-content" id="tabContent-calendar" style="display: none;">
+                <div id="calendarNoAccess" style="display: none; color: #b60000; font-size: 1.16em; margin: 30px 0; text-align: center;">
+                    Нет прав для просмотра календаря
+                </div>
                 <div class="schedule-controls" id="calendarControls">
                     <div class="action-buttons">
                         ${ canCreateSchedule ? `
@@ -99,7 +100,6 @@ function loadSchedule() {
                     <div class="calendar-grid" id="calendarGrid"></div>
                 </div>
             </div>
-            ` : "" }
         </div>
     `;
     dynamicContent.innerHTML = html;
@@ -336,6 +336,33 @@ function loadSchedule() {
         }
     }
 
+
+    window.switchTab = function(tab) {
+        document.getElementById('tab-upcoming').classList.remove('active');
+        document.getElementById('tab-calendar').classList.remove('active');
+        document.getElementById('tabContent-upcoming').style.display = 'none';
+        document.getElementById('tabContent-calendar').style.display = 'none';
+
+        if (tab === 'upcoming') {
+            document.getElementById('tab-upcoming').classList.add('active');
+            document.getElementById('tabContent-upcoming').style.display = 'block';
+        } else if (tab === 'calendar') {
+            document.getElementById('tab-calendar').classList.add('active');
+            document.getElementById('tabContent-calendar').style.display = 'block';
+            if (!isAdminOrManager) {
+                // Защита: если всё же как-то вызвал вручную
+                document.getElementById("calendarNoAccess").style.display = "block";
+                document.getElementById("calendarControls").style.display = "none";
+                document.getElementById("calendarFilters").style.display = "none";
+                document.getElementById("calendarView").style.display = "none";
+            } else {
+                document.getElementById("calendarNoAccess").style.display = "none";
+                document.getElementById("calendarControls").style.display = "";
+                document.getElementById("calendarFilters").style.display = "";
+                document.getElementById("calendarView").style.display = "";
+            }
+        }
+    };
 
     if (typeof renderStaticCalendar === 'function') renderStaticCalendar();
     if (typeof fetchDataAndUpdateCalendar === 'function') fetchDataAndUpdateCalendar();
@@ -688,8 +715,7 @@ function reloadShipmentReport() {
 
 
 function switchTab(tabName) {
-    const tabs = ["upcoming"];
-    if (document.getElementById("tab-calendar")) tabs.push("calendar");
+    const tabs = ["upcoming", "calendar"];
     tabs.forEach(tab => {
         const el = document.getElementById(`tabContent-${tab}`);
         const btn = document.getElementById(`tab-${tab}`);
@@ -698,7 +724,7 @@ function switchTab(tabName) {
     });
 
     // ⬇️ ВАЖНО: отрисовать календарь при переходе
-    if (tabName === "calendar" && document.getElementById("tab-calendar")) {
+    if (tabName === "calendar") {
         renderStaticCalendar();
         fetchDataAndUpdateCalendar();
     }
@@ -786,18 +812,9 @@ function isDateToday(dateStr) {
 function fetchDataAndUpdateCalendar() {
     const url = `schedule.php${activeWarehouseFilter ? `?warehouse=${encodeURIComponent(activeWarehouseFilter)}` : ""}`;
     fetch(url)
-        .then(async r => {
+        .then(r => {
             if (!r.ok) throw new Error("Ошибка загрузки расписания: " + r.status);
-            const ct = r.headers.get('Content-Type') || '';
-            if (!ct.includes('application/json')) {
-                const txt = await r.text();
-                throw new Error('Сервер вернул не JSON: ' + txt.slice(0, 200));
-            }
-            try {
-                return await r.json();
-            } catch (e) {
-                throw new Error('Ошибка парсинга JSON: ' + e.message);
-            }
+            return r.json();
         })
         .then(data => {
             let shipmentsByDate = {};
@@ -808,13 +825,7 @@ function fetchDataAndUpdateCalendar() {
             });
             updateCalendarWithData(shipmentsByDate);
         })
-        .catch(err => {
-            alert("Не удалось загрузить расписание. Обратитесь в поддержку.");
-            console.error("Ошибка при fetchDataAndUpdateCalendar:", err.message.slice(0, 200));
-
-            alert(err.message);
-            console.error("Ошибка при fetchDataAndUpdateCalendar:", err);
-        });
+        .catch(err => console.error("Ошибка при fetchDataAndUpdateCalendar:", err));
 }
 function updateCalendarWithData(shipmentsByDate) {
     const cells = document.querySelectorAll(".calendar-cell");
@@ -1025,20 +1036,9 @@ function fetchAndDisplayUpcoming(showArchived = false, statusCategory = 'active'
     }
 
     fetch(url)
-        .then(async r => {
+        .then(r => {
             if (!r.ok) throw new Error("Ошибка загрузки: " + r.status);
-            const ct = r.headers.get('Content-Type') || '';
-            if (!ct.includes('application/json')) {
-                const txt = await r.text();
-                throw new Error('Сервер вернул не JSON: ' + txt.slice(0, 200));
-
-                throw new Error('Сервер вернул не JSON: ' + txt);
-            }
-            try {
-                return await r.json();
-            } catch (e) {
-                throw new Error('Ошибка парсинга JSON: ' + e.message);
-            }
+            return r.json();
         })
         .then(data => {
             const list = Array.isArray(data?.schedules) ? data.schedules : data;
@@ -1065,11 +1065,16 @@ function fetchAndDisplayUpcoming(showArchived = false, statusCategory = 'active'
                 accept.setHours(0, 0, 0, 0);
                 deliver.setHours(0, 0, 0, 0);
 
-                if (accept >= now) {
+                // Актив – приёмка в будущем
+                if (accept > now) {
                     activeList.push(item);
-                } else if (deliver >= now) {
+                }
+                // В пути – приёмка была/сегодня, сдача ещё не прошла
+                else if (accept <= now && deliver >= now) {
                     transitList.push(item);
-                } else {
+                }
+                // Завершён – сдача уже прошла
+                else if (deliver < now) {
                     completedList.push(item);
                 }
             });
@@ -1144,10 +1149,8 @@ function fetchAndDisplayUpcoming(showArchived = false, statusCategory = 'active'
                 });
         })
         .catch(err => {
-            container.innerHTML = "Не удалось загрузить расписание. Обратитесь в поддержку.";
-            console.error("Ошибка fetchAndDisplayUpcoming:", err.message.slice(0, 200));
-            container.innerHTML = `Ошибка: ${err.message}`;
             console.error("Ошибка fetchAndDisplayUpcoming:", err);
+            container.innerHTML = `Ошибка загрузки: ${err.message}`;
         });
 }
 
@@ -2199,12 +2202,11 @@ function createOrder(scheduleId, city, warehouse) {
 }
 
 function openShipmentsForDate(date) {
-    const statusParam = activeStatusFilter ? `&status=${encodeURIComponent(activeStatusFilter)}` : "";
     fetch(`schedule.php?combinedDate=${encodeURIComponent(date)}&archived=${archiveView ? 1 : 0}`
           + (activeMarketplaceFilter ? `&marketplace=${encodeURIComponent(activeMarketplaceFilter)}` : "")
           + (activeCityFilter ? `&city=${encodeURIComponent(activeCityFilter)}` : "")
           + (activeWarehouseFilter ? `&warehouse=${encodeURIComponent(activeWarehouseFilter)}` : "")
-          + statusParam)
+          + (activeStatusFilter ? `&status=${encodeURIComponent(activeStatusFilter)}` : ""))
         .then(response => {
             if (!response.ok) {
                 throw new Error("Ошибка загрузки расписания на дату: " + response.status);

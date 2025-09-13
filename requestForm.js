@@ -1,5 +1,3 @@
-const API_BASE = '/client/backend/schedule';
-
 function openRequestFormModal(scheduleId, city = "", warehouses = "") {
     const modal = document.getElementById("requestModal");
     const content = document.getElementById("requestModalContent");
@@ -11,7 +9,7 @@ function openRequestFormModal(scheduleId, city = "", warehouses = "") {
 
     console.log("📦 Открываем модалку с расписанием ID:", scheduleId);
 
-    fetch(`${API_BASE}/getSchedule.php?id=${scheduleId}`)
+    fetch(`schedule.php?id=${scheduleId}`)
         .then(response => {
             if (!response.ok) throw new Error("Ошибка загрузки расписания");
             return response.json();

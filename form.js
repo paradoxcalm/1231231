@@ -171,7 +171,8 @@ function renderFormHTML(scheduleData = {}) {
   <label for="clientPhone">Номер для связи:</label>
   <input type="tel" id="clientPhone" name="client_phone"
          placeholder="+7 (999) 123-45-67"
-         style="width:100%; margin-bottom:8px;">
+         style="width:100%; margin-bottom:8px;"
+         required>
 
   <!-- Блок ссылки для проверки -->
   <div id="routeBlock" style="display:none; margin-top:10px;">
@@ -738,7 +739,6 @@ function initializeForm() {
     const phoneInput     = document.getElementById('clientPhone');
     const latInput       = document.getElementById('pickupLat');
     const lngInput       = document.getElementById('pickupLng');
-    if (phoneInput) phoneInput.required = pickupCheckbox && pickupCheckbox.checked;
 
     // безопасный сброс полей карты
     const resetMapFields = () => {

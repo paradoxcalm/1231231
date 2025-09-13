@@ -37,17 +37,13 @@ try {
                u.first_name       AS client_first_name,
                u.last_name        AS client_last_name,
                u.phone            AS client_phone,
-               MAX(c.qr_code)          AS qr_code,
-               MAX(pk.requested_at)    AS pickup_requested_at,
-               MAX(sh.accept_time)     AS shipment_accept_time
+               c.qr_code          AS qr_code
         FROM orders o
         LEFT JOIN schedules                s ON o.schedule_id = s.id
         LEFT JOIN order_reception_details  d ON o.order_id   = d.order_id
         LEFT JOIN order_processing_details p ON o.order_id   = p.order_id
         LEFT JOIN usersff                  u ON o.user_id    = u.id
         LEFT JOIN order_reception_confirmations c ON o.order_id = c.order_id
-        LEFT JOIN pickups                  pk ON o.order_id   = pk.order_id
-        LEFT JOIN shipments                sh ON o.order_id   = sh.order_id
     ";
     $params = [];
     $types  = [];
@@ -84,10 +80,6 @@ try {
         }
     }
 
-    // Исключаем удалённые заказы
-    $sql .= (empty($params) ? " WHERE" : " AND") . " o.is_deleted = 0 AND o.status <> 'Удалён клиентом'";
-
-    $sql .= " GROUP BY o.order_id";
     $sql .= " ORDER BY o.order_date DESC";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
@@ -126,8 +118,6 @@ try {
             "source_order_id" => $row['source_order_id'] ?? null,
             "items"         => [],
             "is_rejected"   => false,
-            "requested_at"  => $row['pickup_requested_at'] ?? null,
-            "accept_time"   => $row['shipment_accept_time'] ?? null,
             "client_info"   => [
                 "first_name" => $row['client_first_name'] ?? '',
                 "last_name"  => $row['client_last_name'] ?? '',

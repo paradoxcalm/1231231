@@ -3,39 +3,12 @@ header('Content-Type: application/json; charset=utf-8');
 require_once 'db_connection.php';
 
 $city = trim($_GET['city'] ?? '');
-$paymentType = trim($_GET['payment_type'] ?? '');
 
-if ($city !== '' && $paymentType !== '') {
-    $stmt = $conn->prepare("SELECT * FROM shipments WHERE city = ? AND payment_type = ? ORDER BY id DESC");
-    if (!$stmt) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-        exit;
-    }
-    $stmt->bind_param('ss', $city, $paymentType);
-} elseif ($city !== '') {
+if ($city !== '') {
     $stmt = $conn->prepare("SELECT * FROM shipments WHERE city = ? ORDER BY id DESC");
-    if (!$stmt) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-        exit;
-    }
     $stmt->bind_param('s', $city);
-} elseif ($paymentType !== '') {
-    $stmt = $conn->prepare("SELECT * FROM shipments WHERE payment_type = ? ORDER BY id DESC");
-    if (!$stmt) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-        exit;
-    }
-    $stmt->bind_param('s', $paymentType);
 } else {
     $stmt = $conn->prepare("SELECT * FROM shipments ORDER BY id DESC");
-    if (!$stmt) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-        exit;
-    }
 }
 
 $stmt->execute();

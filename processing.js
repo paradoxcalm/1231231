@@ -210,6 +210,7 @@ function renderPostProcessingReceptionForm(data) {
                 <label>Способ оплаты:</label>
                 <select name="paymentType" required>
                     <option value="Наличные">Наличные</option>
+                    <option value="РС">Р/С</option>
                     <option value="ТБанк">Т-Банк</option>
                     <option value="Долг">Долг</option>
                 </select>

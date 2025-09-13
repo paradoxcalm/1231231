@@ -85,30 +85,7 @@ function loadTable() {
     `;
     fetchDataAndDisplayTable();
 }
-// Выгрузка всех данных таблицы в Excel
-function exportAllDataToExcel() {
-    fetch('export_to_excel.php')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.blob();
-        })
-        .then(blob => {
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = 'exported_data.xls';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        })
-        .catch(error => {
-            console.error('Ошибка при экспорте данных:', error);
-            alert('Не удалось выгрузить данные. Попробуйте позже.');
-        });
-}
+
 
 // Функция для отображения раздела "Расписание"
 function loadChart() {
@@ -216,15 +193,6 @@ function loadOldReception() {
       <input type="hidden" id="dateOfDeliveryInput" name="date_of_delivery">
 
       <div class="form-group">
-        <label for="ipInput">ИП:</label>
-        <input type="text" id="ipInput" name="ip" required>
-      </div>
-      <div class="form-group">
-        <label for="commentInput">Комментарий:</label>
-        <textarea id="commentInput" name="comment" rows="3"></textarea>
-      </div>
-
-      <div class="form-group">
         <label for="senderPhone">Телефон отправителя:</label>
         <input type="tel" id="senderPhone" name="sender" pattern="[0-9]{10,15}" required>
       </div>
@@ -254,7 +222,7 @@ function loadOldReception() {
         <select id="paymentType" name="payment_type" required>
           <option value="">Выберите способ оплаты</option>
           <option value="Наличные">Наличные</option>
-          <option value="ТБанк">Т-Банк</option>
+          <option value="ТБанк">Перевод QR</option>
           <option value="Долг">Долг</option>
         </select>
       </div>
@@ -523,8 +491,6 @@ function loadOldReception() {
     fd.append('boxes',              document.getElementById('boxes').value || '');
     fd.append('payment',            document.getElementById('paymentAmount').value || '');
     fd.append('payment_type',       document.getElementById('paymentType').value || '');
-    fd.append('ip',                 document.getElementById('ipInput').value || '');
-    fd.append('comment',            document.getElementById('commentInput').value || '');
 
     // Файлы: склеиваем галерею и камеру
     const allFiles = [];
@@ -605,3 +571,10 @@ function loadOldReception() {
 }
 
  
+
+
+
+
+
+
+

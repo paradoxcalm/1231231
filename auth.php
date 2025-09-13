@@ -66,8 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Генерация нового ID сессии и сохранение данных авторизации
         session_regenerate_id(true);
         $_SESSION['user_id'] = $user['id'];
-        $role                = $user['role'];
-        $_SESSION['role']    = $role;
+        $_SESSION['role']    = $user['role'];
 
         if ($remember) {
             // Генерация токена для "Запомнить меня" на 60 дней
@@ -91,12 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("UPDATE usersff SET remember_token = NULL, token_expiry = NULL WHERE id = " . (int)$user['id']);
         }
 
-        // Перенаправление на соответствующую главную страницу после успешного входа
-        if ($role === 'client') {
-            header('Location: /client/dashboard.php');
-        } else {
-            header('Location: index.php');
-        }
+        // Перенаправление на главную страницу после успешного входа
+        header('Location: index.php');
         exit();
     } else {
         // Неверные учетные данные

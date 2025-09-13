@@ -112,13 +112,10 @@ function injectTableStyles() {
 
 // Основная функция: запрашивает данные, отображает таблицу и
 // управляет пагинацией. Логика загрузки и структура данных сохранены.
-function fetchDataAndDisplayTable(city = '', paymentType = '') {
+function fetchDataAndDisplayTable(city = '') {
   injectTableStyles();
   let url = 'fetch_data.php';
-  const params = [];
-  if (city) params.push(`city=${encodeURIComponent(city)}`);
-  if (paymentType) params.push(`payment_type=${encodeURIComponent(paymentType)}`);
-  if (params.length) url += `?${params.join('&')}`;
+  if (city) url += `?city=${encodeURIComponent(city)}`;
 
   fetch(url)
     .then(r => r.json())
@@ -146,7 +143,6 @@ function fetchDataAndDisplayTable(city = '', paymentType = '') {
       let sortColumn = null;  // индекс колонки
       let sortDir = 1;        // 1 = asc, -1 = desc
       let currentQuery = '';  // строка поиска (сохраняем между рендерами)
-      let currentPayment = ''; // выбранный фильтр оплаты
 
       // Данные для отображения
       let workingData = data.slice();
@@ -218,29 +214,6 @@ function fetchDataAndDisplayTable(city = '', paymentType = '') {
         return rows;
       }
 
-      function updateWorkingData() {
-        const paymentFilterValue = currentPayment;
-        if (!currentQuery && !paymentFilterValue) {
-          workingData = data.slice();
-        } else {
-          workingData = data.filter(item => {
-            const matchSearch = !currentQuery || (
-              (item.sender && String(item.sender).toLowerCase().includes(currentQuery)) ||
-              (item.direction && String(item.direction).toLowerCase().includes(currentQuery)) ||
-              (item.submission_date && String(item.submission_date).toLowerCase().includes(currentQuery)) ||
-              (item.date_of_delivery && String(item.date_of_delivery).toLowerCase().includes(currentQuery)) ||
-              (item.shipment_type && String(item.shipment_type).toLowerCase().includes(currentQuery)) ||
-              (item.payment_type && String(item.payment_type).toLowerCase().includes(currentQuery)) ||
-              (item.comment && String(item.comment).toLowerCase().includes(currentQuery)) ||
-              (item.payment != null && String(item.payment).toLowerCase().includes(currentQuery)) ||
-              (item.boxes != null && String(item.boxes).toLowerCase().includes(currentQuery))
-            );
-            const matchPayment = !paymentFilterValue || item.payment_type === paymentFilterValue;
-            return matchSearch && matchPayment;
-          });
-        }
-      }
-
       // Перерисовать только тело таблицы и пагинацию (без шапки и инпутов)
       function renderRowsAndPager() {
         // Сортируем перед разрезанием
@@ -266,19 +239,11 @@ function fetchDataAndDisplayTable(city = '', paymentType = '') {
         const start = (page - 1) * perPage;
         const slice = workingData.slice(start, start + perPage);
         const safeQuery = currentQuery.replace(/"/g, '&quot;');
-        const paymentTypes = Array.from(new Set(data.map(d => d.payment_type).filter(Boolean)));
-        const paymentOptions = ['<option value="">Все</option>']
-          .concat(paymentTypes.map(t => `<option value="${t}" ${t === currentPayment ? 'selected' : ''}>${t}</option>`))
-          .join('');
 
         let html = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <input type="text" id="filterInput" placeholder="Поиск..." class="filter-input" style="max-width:200px;" value="${safeQuery}" />
             <div style="display:flex; align-items:center; gap:4px; font-size:0.875rem;">
-              <label for="paymentFilter">Оплата:</label>
-              <select id="paymentFilter" style="padding:0.25rem 0.5rem; border:1px solid #d1d5db; border-radius:4px; font-size:0.875rem;">
-                ${paymentOptions}
-              </select>
               <label for="perPageSelect">На странице:</label>
               <select id="perPageSelect" style="padding:0.25rem 0.5rem; border:1px solid #d1d5db; border-radius:4px; font-size:0.875rem;">
                 ${perPageOptions.map(n => `<option value="${n}" ${n === perPage ? 'selected' : ''}>${n}</option>`).join('')}
@@ -334,7 +299,24 @@ function fetchDataAndDisplayTable(city = '', paymentType = '') {
         const filterInput = document.getElementById('filterInput');
         filterInput.oninput = () => {
           currentQuery = filterInput.value.trim().toLowerCase();
-          updateWorkingData();
+
+          if (!currentQuery) {
+            workingData = data.slice();
+          } else {
+            workingData = data.filter(item => {
+              return (
+                (item.sender && String(item.sender).toLowerCase().includes(currentQuery)) ||
+                (item.direction && String(item.direction).toLowerCase().includes(currentQuery)) ||
+                (item.submission_date && String(item.submission_date).toLowerCase().includes(currentQuery)) ||
+                (item.date_of_delivery && String(item.date_of_delivery).toLowerCase().includes(currentQuery)) ||
+                (item.shipment_type && String(item.shipment_type).toLowerCase().includes(currentQuery)) ||
+                (item.payment_type && String(item.payment_type).toLowerCase().includes(currentQuery)) ||
+                (item.comment && String(item.comment).toLowerCase().includes(currentQuery)) ||
+                (item.payment != null && String(item.payment).toLowerCase().includes(currentQuery)) ||
+                (item.boxes != null && String(item.boxes).toLowerCase().includes(currentQuery))
+              );
+            });
+          }
 
           // Сброс сортировки визуально: убираем стрелки в th без полного рендера
           sortColumn = null;
@@ -347,23 +329,6 @@ function fetchDataAndDisplayTable(city = '', paymentType = '') {
 
           current = 1;
           // Обновляем только тело и пагинацию — фокус в инпуте остаётся
-          renderRowsAndPager();
-        };
-
-        const paymentSelect = document.getElementById('paymentFilter');
-        paymentSelect.onchange = () => {
-          currentPayment = paymentSelect.value;
-          updateWorkingData();
-
-          sortColumn = null;
-          sortDir = 1;
-          const ths = tbl.querySelectorAll('th[data-sort-index]');
-          ths.forEach(th => {
-            const idx = parseInt(th.getAttribute('data-sort-index'), 10);
-            th.innerHTML = HEADERS[idx];
-          });
-
-          current = 1;
           renderRowsAndPager();
         };
 

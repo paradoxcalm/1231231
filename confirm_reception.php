@@ -14,14 +14,6 @@ $userId  = $_SESSION['user_id'];
 $orderId = intval($_POST['order_id'] ?? 0);
 $qrCode  = trim($_POST['qr_code'] ?? '');
 $action  = trim($_POST['action'] ?? '');
-$paymentType = trim($_POST['payment_type'] ?? '');
-$allowedPaymentTypes = ['Наличные', 'ТБанк', 'Долг'];
-if (!in_array($paymentType, $allowedPaymentTypes, true)) {
-    echo json_encode(['success' => false, 'message' => 'Недопустимый способ оплаты']);
-    exit;
-}
-$paymentRaw  = str_replace(',', '.', trim($_POST['payment'] ?? ''));
-$payment = ($paymentRaw === '') ? null : floatval($paymentRaw);
 
 // Валидация входных данных
 if (!$orderId || !in_array($action, ['confirm','approve','reject'])) {
@@ -34,38 +26,26 @@ $conn->begin_transaction();
 try {
     // Находим запись подтверждения по order_id и qr_code (если передан)
     if ($qrCode !== '') {
-        $stmt = $conn->prepare("
+        $stmtSel = $conn->prepare("
             SELECT confirmed_at
             FROM order_reception_confirmations
             WHERE order_id = ? AND qr_code = ?
             FOR UPDATE
         ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-        $stmt->bind_param("is", $orderId, $qrCode);
+        $stmtSel->bind_param("is", $orderId, $qrCode);
     } else {
-        $stmt = $conn->prepare("
+        $stmtSel = $conn->prepare("
             SELECT confirmed_at
             FROM order_reception_confirmations
             WHERE order_id = ?
             FOR UPDATE
         ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-        $stmt->bind_param("i", $orderId);
+        $stmtSel->bind_param("i", $orderId);
     }
-    $stmt->execute();
-    $res  = $stmt->get_result();
+    $stmtSel->execute();
+    $res  = $stmtSel->get_result();
     $conf = $res->fetch_assoc();
-    $stmt->close();
+    $stmtSel->close();
 
     if (!$conf) {
         throw new Exception('Запись подтверждения не найдена');
@@ -74,183 +54,69 @@ if (!$stmt) {
         throw new Exception('Этот QR‑код уже использован');
     }
 
-    // Загрузка фото (одно изображение)
+    // Загрузка фото
     $uploaded = [];
-    if (!empty($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $photo = $_FILES['photo'];
-
-        $uploadErrors = [
-            UPLOAD_ERR_INI_SIZE   => 'Размер файла превышает допустимый лимит',
-            UPLOAD_ERR_FORM_SIZE  => 'Размер файла превышает допустимый лимит формы',
-            UPLOAD_ERR_PARTIAL    => 'Файл был загружен только частично',
-            UPLOAD_ERR_NO_FILE    => 'Файл не был загружен',
-            UPLOAD_ERR_NO_TMP_DIR => 'Отсутствует временная директория',
-            UPLOAD_ERR_CANT_WRITE => 'Не удалось записать файл на диск',
-            UPLOAD_ERR_EXTENSION  => 'Расширение PHP остановило загрузку файла',
-        ];
-        if ($photo['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception($uploadErrors[$photo['error']] ?? 'Ошибка загрузки файла');
-        }
-
-        $maxSize = 5 * 1024 * 1024; // 5 MB
-        if ($photo['size'] > $maxSize) {
-            throw new Exception('Файл превышает допустимый размер 5 МБ');
-        }
-
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime  = $finfo->file($photo['tmp_name']);
-        $allowedTypes = [
-            'image/jpeg' => 'jpg',
-            'image/png'  => 'png',
-        ];
-        if (!isset($allowedTypes[$mime])) {
-            throw new Exception('Недопустимый тип файла');
-        }
-        $ext = $allowedTypes[$mime];
-
+    if (!empty($_FILES['photos']['tmp_name'][0])) {
         $uploadDir = __DIR__ . '/uploads/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-
-        $fname = 'confirm_' . time() . '.' . $ext;
-        $fpath = $uploadDir . $fname;
-        if (!move_uploaded_file($photo['tmp_name'], $fpath)) {
-            throw new Exception('Не удалось сохранить файл');
+        foreach ($_FILES['photos']['tmp_name'] as $i => $tmp) {
+            $fname = 'confirm_' . time() . "_$i.jpg";
+            $fpath = $uploadDir . $fname;
+            if (move_uploaded_file($tmp, $fpath)) {
+                $uploaded[] = 'uploads/' . $fname;
+            }
         }
-
-        $relative = 'uploads/' . $fname;
-        $uploaded[] = $relative;
     }
     $photosJson = json_encode($uploaded, JSON_UNESCAPED_UNICODE);
     $now = date('Y-m-d H:i:s');
 
     if ($action === 'approve') {
         // Обновляем orders: статус "Готов к отправке" по правильному ключу order_id
-        $stmt = $conn->prepare("UPDATE orders SET status = 'Готов к отправке' WHERE order_id = ?");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
+        $stmtOrd = $conn->prepare("UPDATE orders SET status = 'Готов к отправке' WHERE order_id = ?");
+        $stmtOrd->bind_param("i", $orderId);
+        $stmtOrd->execute();
+        $stmtOrd->close();
 
-        $stmt->bind_param("i", $orderId);
-        $stmt->execute();
-        $stmt->close();
-
-        // Получаем сумму из shipments (указана при создании заявки)
-        if ($payment === null) {
-            $stmtSelect = $conn->prepare("SELECT payment FROM shipments WHERE order_id = ?");
-            if (!$stmtSelect) {
-                http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-                exit;
-            }
-
-            $stmtSelect->bind_param("i", $orderId);
-            $stmtSelect->execute();
-            $stmtSelect->bind_result($payment);
-            $stmtSelect->fetch();
-            $stmtSelect->close();
-            $payment = floatval($payment);
-        }
-
-        if ($payment === null || $payment <= 0) {
-            $stmtSelect = $conn->prepare("SELECT payment_amount FROM order_reception_confirmations WHERE order_id = ?");
-            if (!$stmtSelect) {
-                http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-                exit;
-            }
-
-            $stmtSelect->bind_param("i", $orderId);
-            $stmtSelect->execute();
-            $stmtSelect->bind_result($payment);
-            $stmtSelect->fetch();
-            $stmtSelect->close();
-            $payment = floatval($payment);
-        }
-
-        // Обновляем shipments: время приёмки, фото и информацию об оплате
-        $stmtUpdate = $conn->prepare("UPDATE shipments SET accept_time = ?, photo_path = ?, payment = ?, payment_type = ? WHERE order_id = ?");
-        if (!$stmtUpdate) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-            exit;
-        }
-
-        $stmtUpdate->bind_param("ssdsi", $now, $photosJson, $payment, $paymentType, $orderId);
-        $stmtUpdate->execute();
-        $stmtUpdate->close();
-
-        // Сохраняем данные об оплате и фотографии в order_reception_details
-        $stmt = $conn->prepare("INSERT INTO order_reception_details (order_id, payment_type, payment, photo_path) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE payment_type = VALUES(payment_type), payment = VALUES(payment), photo_path = VALUES(photo_path)");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-        $stmt->bind_param("isds", $orderId, $paymentType, $payment, $photosJson);
-        $stmt->execute();
-        $stmt->close();
+        // Обновляем shipments: время приёмки и фото
+        $stmtShip = $conn->prepare("UPDATE shipments SET accept_time = ?, photo_path = ? WHERE order_id = ?");
+        $stmtShip->bind_param("ssi", $now, $photosJson, $orderId);
+        $stmtShip->execute();
+        $stmtShip->close();
 
         // Отмечаем подтверждение в order_reception_confirmations
         if ($qrCode !== '') {
-            $stmt = $conn->prepare("
+            $stmtConf = $conn->prepare("
                 UPDATE order_reception_confirmations
                 SET confirmed_at = ?
                 WHERE order_id = ? AND qr_code = ?
             ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("sis", $now, $orderId, $qrCode);
+            $stmtConf->bind_param("sis", $now, $orderId, $qrCode);
         } else {
-            $stmt = $conn->prepare("
+            $stmtConf = $conn->prepare("
                 UPDATE order_reception_confirmations
                 SET confirmed_at = ?
                 WHERE order_id = ?
             ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("si", $now, $orderId);
+            $stmtConf->bind_param("si", $now, $orderId);
         }
-        $stmt->execute();
-        $stmt->close();
+        $stmtConf->execute();
+        $stmtConf->close();
 
         // Ищем связанное задание в pickups и обновляем его статус
         if ($qrCode !== '') {
-            $stmt = $conn->prepare(
+            $stmtPickupSel = $conn->prepare(
                 "SELECT id, status FROM pickups WHERE order_id = ? OR qr_code = ? FOR UPDATE"
             );
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("is", $orderId, $qrCode);
+            $stmtPickupSel->bind_param("is", $orderId, $qrCode);
         } else {
-            $stmt = $conn->prepare(
+            $stmtPickupSel = $conn->prepare(
                 "SELECT id, status FROM pickups WHERE order_id = ? FOR UPDATE"
             );
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("i", $orderId);
+            $stmtPickupSel->bind_param("i", $orderId);
         }
-        $stmt->execute();
-        $pickupRow = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
+        $stmtPickupSel->execute();
+        $pickupRow = $stmtPickupSel->get_result()->fetch_assoc();
+        $stmtPickupSel->close();
 
         if ($pickupRow) {
             $currentStatus = $pickupRow['status'];
@@ -266,71 +132,47 @@ if (!$stmt) {
             $newStatus  = $allowed[$currentStatus]['status'];
             $timeField  = $allowed[$currentStatus]['time_field'];
             $sqlPickup  = "UPDATE pickups SET status = ?, $timeField = NOW() WHERE id = ?";
-            $stmt = $conn->prepare($sqlPickup);
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("si", $newStatus, $pickupRow['id']);
-            $stmt->execute();
-            $stmt->close();
+            $stmtPickupUpd = $conn->prepare($sqlPickup);
+            $stmtPickupUpd->bind_param("si", $newStatus, $pickupRow['id']);
+            $stmtPickupUpd->execute();
+            $stmtPickupUpd->close();
         }
 
         // Фиксируем транзакцию
         $conn->commit();
-        echo json_encode(['success' => true, 'message' => 'Приёмка подтверждена, данные об оплате сохранены. Статус: «Готов к отправке».']);
+        echo json_encode(['success' => true, 'message' => 'Заявка принята. Статус: «Готов к отправке».']);
     } else {
         // Отказ по приёмке: обновляем orders по order_id
-        $stmt = $conn->prepare("UPDATE orders SET status = 'Отклонён' WHERE order_id = ?");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-        $stmt->bind_param("i", $orderId);
-        $stmt->execute();
-        $stmt->close();
+        $stmtOrd = $conn->prepare("UPDATE orders SET status = 'Отклонён' WHERE order_id = ?");
+        $stmtOrd->bind_param("i", $orderId);
+        $stmtOrd->execute();
+        $stmtOrd->close();
 
         // Записываем дату отказа в order_reception_confirmations
         if ($qrCode !== '') {
-            $stmt = $conn->prepare("
+            $stmtConf = $conn->prepare("
                 UPDATE order_reception_confirmations
                 SET confirmed_at = ?
                 WHERE order_id = ? AND qr_code = ?
             ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("sis", $now, $orderId, $qrCode);
+            $stmtConf->bind_param("sis", $now, $orderId, $qrCode);
         } else {
-            $stmt = $conn->prepare("
+            $stmtConf = $conn->prepare("
                 UPDATE order_reception_confirmations
                 SET confirmed_at = ?
                 WHERE order_id = ?
             ");
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
-            $stmt->bind_param("si", $now, $orderId);
+            $stmtConf->bind_param("si", $now, $orderId);
         }
-        $stmt->execute();
-        $stmt->close();
+        $stmtConf->execute();
+        $stmtConf->close();
 
         $conn->commit();
         echo json_encode(['success' => true, 'message' => 'Приёмка отклонена.']);
     }
 } catch (Exception $e) {
     // Откатываем транзакцию при ошибке
-$conn->rollback();
-echo json_encode(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
+    $conn->rollback();
+    echo json_encode(['success' => false, 'message' => 'Ошибка: ' . $e->getMessage()]);
 }
 $conn->close();
