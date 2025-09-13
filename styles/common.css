@@ -1,0 +1,7 @@
+/* Общие стили: базовые элементы, кнопки, навигация, компоненты и адаптивность */
+@import url('layout.css');
+@import url('base.css');
+@import url('buttons.css');
+@import url('components.css');
+@import url('navbar.css');
+@import url('responsive.css');
