@@ -37,9 +37,9 @@ try {
                u.first_name       AS client_first_name,
                u.last_name        AS client_last_name,
                u.phone            AS client_phone,
-               c.qr_code          AS qr_code,
-               pk.requested_at    AS pickup_requested_at,
-               sh.accept_time     AS shipment_accept_time
+               MAX(c.qr_code)          AS qr_code,
+               MAX(pk.requested_at)    AS pickup_requested_at,
+               MAX(sh.accept_time)     AS shipment_accept_time
         FROM orders o
         LEFT JOIN schedules                s ON o.schedule_id = s.id
         LEFT JOIN order_reception_details  d ON o.order_id   = d.order_id
@@ -87,6 +87,7 @@ try {
     // Исключаем удалённые заказы
     $sql .= (empty($params) ? " WHERE" : " AND") . " o.is_deleted = 0 AND o.status <> 'Удалён клиентом'";
 
+    $sql .= " GROUP BY o.order_id";
     $sql .= " ORDER BY o.order_date DESC";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {
