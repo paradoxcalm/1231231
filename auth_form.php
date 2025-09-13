@@ -49,7 +49,11 @@ if (!isset($_SESSION['role']) && isset($_COOKIE['remember_token'], $_COOKIE['rem
 
 // Авторизованным пользователям – на главную
 if (isset($_SESSION['role'])) {
-    header('Location: index.php');
+    if ($_SESSION['role'] === 'client') {
+        header('Location: client/index.php');
+    } else {
+        header('Location: index.php');
+    }
     exit();
 }
 ?>
