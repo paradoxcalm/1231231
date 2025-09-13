@@ -1,4 +1,13 @@
 <?php
+require_once 'session_init.php';
+session_start();
+
+// Проверяем роль пользователя: доступ только для администраторов и менеджеров
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'manager'])) {
+    header('Location: auth_form.php');
+    exit();
+}
+
 require_once 'db_connection.php';
 require 'vendor/autoload.php';
 
