@@ -13,6 +13,10 @@ function renderOrderCards(orders, userRole) {
     let html = '';
 
     for (const order of orders) {
+        if (order.status === 'Удалён клиентом' || order.is_deleted) {
+            html += `<div class="order-card"><div class="order-info-line">Заказ #${order.order_id} удалён</div></div>`;
+            continue;
+        }
         html += createOrderCardHtml(order, userRole);
     }
 

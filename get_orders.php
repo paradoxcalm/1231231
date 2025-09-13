@@ -80,6 +80,9 @@ try {
         }
     }
 
+    // Исключаем удалённые заказы
+    $sql .= (empty($params) ? " WHERE" : " AND") . " o.is_deleted = 0 AND o.status <> 'Удалён клиентом'";
+
     $sql .= " ORDER BY o.order_date DESC";
     $stmt = $conn->prepare($sql);
     if (!empty($params)) {

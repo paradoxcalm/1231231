@@ -108,8 +108,8 @@ try {
             continue;
         }
 
-        // Получаем статусы заказов
-        $stmt = prepareExecute($conn, "SELECT status FROM orders WHERE schedule_id = ?", "i", [$sid]);
+        // Получаем статусы заказов, исключая удалённые
+        $stmt = prepareExecute($conn, "SELECT status FROM orders WHERE schedule_id = ? AND is_deleted = 0 AND status <> 'Удалён клиентом'", "i", [$sid]);
         $res = $stmt->get_result();
         $statuses = [];
         while ($row = $res->fetch_assoc()) {

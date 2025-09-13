@@ -20,7 +20,7 @@ if (!$orderId || $newStatus === '') {
 $conn->begin_transaction();
 try {
     // Получим старый статус
-    $get = $conn->prepare("SELECT status, user_id FROM orders WHERE order_id = ?");
+$get = $conn->prepare("SELECT status, user_id FROM orders WHERE order_id = ? AND is_deleted = 0 AND status <> 'Удалён клиентом'");
     $get->bind_param("i", $orderId);
     $get->execute();
     $get->bind_result($oldStatus, $clientId);

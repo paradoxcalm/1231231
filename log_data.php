@@ -32,7 +32,8 @@ if ($stmtUser = $conn->prepare("SELECT company_name FROM usersff WHERE id = ? LI
 }
 
 // Читаем данные формы
-$sender         = trim($_POST['sender'] ?? '');
+$senderPhone    = trim($_POST['sender'] ?? '');
+$ip             = trim($_POST['ip'] ?? '');
 $comment        = trim($_POST['comment'] ?? '');
 $city           = trim($_POST['city'] ?? '');
 $warehouses     = trim($_POST['warehouses'] ?? '');
@@ -77,7 +78,12 @@ if ($schedule_id > 0) {
 }
 
 // Проверяем обязательные поля
-if (!$sender || !$city || !$warehouses || !$boxes) {
+if (!$senderPhone || !$ip || !$city || !$warehouses || !$boxes) {
+    echo json_encode(['status' => 'error', 'message' => 'Не все обязательные поля заполнены']);
+    exit;
+}
+
+if (!$senderPhone || !$city || !$warehouses || !$boxes) {
     echo json_encode(['status' => 'error', 'message' => 'Не все обязательные поля заполнены']);
     exit;
 }
@@ -114,12 +120,23 @@ try {
     $status = 'Выгрузите товар';
     $stmtOrd = $conn->prepare("
         INSERT INTO orders (company_name, store_name, shipment_type, comment, status, user_id, packaging_type, marketplace_wildberries, marketplace_ozon, schedule_id)
-        VALUES (?, '', ?, ?, ?, ?, ?, 0, 0, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
     ");
-    $stmtOrd->bind_param("ssssisi", $sender, $shipment_type, $comment, $status, $userId, $packaging_type, $schedule_id);
+    $stmtOrd->bind_param("sssssisi", $ip, $senderPhone, $shipment_type, $comment, $status, $userId, $packaging_type, $schedule_id);
     $stmtOrd->execute();
     $orderId = $stmtOrd->insert_id;
     $stmtOrd->close();
+
+    if (!empty($photoPaths)) {
+        $stmtPhoto = $conn->prepare("INSERT INTO order_photos (order_id, file_path) VALUES (?, ?)");
+        if ($stmtPhoto) {
+            foreach ($photoPaths as $p) {
+                $stmtPhoto->bind_param("is", $orderId, $p);
+                $stmtPhoto->execute();
+            }
+            $stmtPhoto->close();
+        }
+    }
 
     // 2. Записываем нестандартные коробки (если необходимо)
     if ($packaging_type === 'Box' && ($_POST['box_type'] ?? '') === 'custom') {
@@ -157,7 +174,7 @@ try {
         INSERT INTO shipments (order_id, city, sender, direction, date_of_delivery, shipment_type, boxes, payment, payment_type, accept_time, submission_date, comment, warehouses, box_length, box_width, box_height, photo_path)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmtShip->bind_param("isssssidsssssddds", $orderId, $city, $sender, $direction, $date_of_delivery, $shipment_type, $boxes, $payment, $payment_type, $accept_time, $submission_date, $comment, $warehouses, $boxLength, $boxWidth, $boxHeight, $photo_path);
+    $stmtShip->bind_param("isssssidsssssddds", $orderId, $city, $ip, $direction, $date_of_delivery, $shipment_type, $boxes, $payment, $payment_type, $accept_time, $submission_date, $comment, $warehouses, $boxLength, $boxWidth, $boxHeight, $photo_path);
     $stmtShip->execute();
     $stmtShip->close();
 

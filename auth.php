@@ -68,16 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role']    = $user['role'];
 
-        if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'manager') {
-            $redirectUrl = 'index.php';
-        } elseif ($_SESSION['role'] === 'deliverer') {
-            $redirectUrl = '/deliver/index.php';
-        } elseif ($_SESSION['role'] === 'client') {
-            $redirectUrl = '/client/index.php';
-        } else {
-            $redirectUrl = '/client/index.php';
-        }
-
         if ($remember) {
             // Генерация токена для "Запомнить меня" на 60 дней
             $token     = bin2hex(random_bytes(16));
@@ -100,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("UPDATE usersff SET remember_token = NULL, token_expiry = NULL WHERE id = " . (int)$user['id']);
         }
 
-        // Перенаправление после успешного входа
-        header("Location: $redirectUrl");
+        // Перенаправление на главную страницу после успешного входа
+        header('Location: index.php');
         exit();
     } else {
         // Неверные учетные данные
