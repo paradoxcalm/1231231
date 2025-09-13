@@ -17,6 +17,7 @@ $role = $_SESSION['role'];
     <link rel="stylesheet" href="styles/base.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/buttons.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/components.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/tariffs_section.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/form.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/table.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/edit_profile_styles.css?v=<?php echo $version; ?>">
@@ -45,6 +46,7 @@ $role = $_SESSION['role'];
             <button class="icon-button" onclick="loadAllOrders()"><i class="fas fa-list"></i> Все заказы</button>
             <button class="icon-button" onclick="loadTable()"><i class="fas fa-table"></i> Таблица</button>
         <?php endif; ?>
+        <button id="tariffsBtn" class="icon-button"><i class="fas fa-money-bill"></i> Тарифы</button>
         <button class="icon-button" id="btnSchedule"><i class="fas fa-calendar"></i> Расписание</button>
         <?php if ($role === 'admin' || $role === 'manager'): ?>
             <button class="icon-button" onclick="loadStatistics()"><i class="fas fa-chart-pie"></i> Статистика</button>
@@ -79,6 +81,7 @@ $role = $_SESSION['role'];
 <nav class="mobile-tab-bar">
     <button onclick="loadSchedule()" title="Расписание"><i class="fas fa-calendar"></i></button>
     <button onclick="loadNotifications()" title="Уведомления"><i class="fas fa-bell"></i></button>
+    <button id="mobileTariffsBtn" onclick="loadTariffs()" title="Тарифы"><i class="fas fa-money-bill"></i></button>
     <?php if ($role === 'admin' || $role === 'manager'): ?>
         <button onclick="loadAllOrders()" title="Все заказы"><i class="fas fa-list"></i></button>
         <button onclick="loadTable()" title="Таблица"><i class="fas fa-table"></i></button>
@@ -162,6 +165,7 @@ $role = $_SESSION['role'];
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
 <!-- Встроенные шрифты для pdfmake -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+<script src="tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
 
 <script>
 function toggleProfileMenu() {
@@ -237,6 +241,17 @@ window.onload = function () {
         default: loadSchedule(); break;
     }
 };
+
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('tariffsBtn');
+    if (btn && typeof loadTariffs === 'function') {
+        btn.addEventListener('click', loadTariffs);
+    } else if (!btn) {
+        console.error('Кнопка #tariffsBtn не найдена');
+    } else {
+        console.error('Функция loadTariffs не определена');
+    }
+});
 
 // ✅ Обработка формы импорта Excel
 document.getElementById("importScheduleForm").addEventListener("submit", function(e) {
