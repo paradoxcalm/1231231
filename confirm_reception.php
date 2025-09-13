@@ -76,21 +76,54 @@ if (!$stmt) {
 
     // Загрузка фото (одно изображение)
     $uploaded = [];
-    if (isset($_FILES['photo']) && is_uploaded_file($_FILES['photo']['tmp_name'])) {
+    if (!empty($_FILES['photo']) && $_FILES['photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $photo = $_FILES['photo'];
+
+        $uploadErrors = [
+            UPLOAD_ERR_INI_SIZE   => 'Размер файла превышает допустимый лимит',
+            UPLOAD_ERR_FORM_SIZE  => 'Размер файла превышает допустимый лимит формы',
+            UPLOAD_ERR_PARTIAL    => 'Файл был загружен только частично',
+            UPLOAD_ERR_NO_FILE    => 'Файл не был загружен',
+            UPLOAD_ERR_NO_TMP_DIR => 'Отсутствует временная директория',
+            UPLOAD_ERR_CANT_WRITE => 'Не удалось записать файл на диск',
+            UPLOAD_ERR_EXTENSION  => 'Расширение PHP остановило загрузку файла',
+        ];
+        if ($photo['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception($uploadErrors[$photo['error']] ?? 'Ошибка загрузки файла');
+        }
+
+        $maxSize = 5 * 1024 * 1024; // 5 MB
+        if ($photo['size'] > $maxSize) {
+            throw new Exception('Файл превышает допустимый размер 5 МБ');
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime  = $finfo->file($photo['tmp_name']);
+        $allowedTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+        ];
+        if (!isset($allowedTypes[$mime])) {
+            throw new Exception('Недопустимый тип файла');
+        }
+        $ext = $allowedTypes[$mime];
+
         $uploadDir = __DIR__ . '/uploads/';
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-        $fname = 'confirm_' . time() . '.jpg';
+        $fname = 'confirm_' . time() . '.' . $ext;
         $fpath = $uploadDir . $fname;
-        if (move_uploaded_file($_FILES['photo']['tmp_name'], $fpath)) {
-            $relative = 'uploads/' . $fname;
-            $uploaded[] = $relative;
-            $stmtPhoto = $conn->prepare("INSERT INTO order_photos (order_id, file_path) VALUES (?, ?)");
-            if ($stmtPhoto) {
-                $stmtPhoto->bind_param("is", $orderId, $relative);
-                $stmtPhoto->execute();
-                $stmtPhoto->close();
-            }
+        if (!move_uploaded_file($photo['tmp_name'], $fpath)) {
+            throw new Exception('Не удалось сохранить файл');
+        }
+
+        $relative = 'uploads/' . $fname;
+        $uploaded[] = $relative;
+        $stmtPhoto = $conn->prepare("INSERT INTO order_photos (order_id, file_path) VALUES (?, ?)");
+        if ($stmtPhoto) {
+            $stmtPhoto->bind_param("is", $orderId, $relative);
+            $stmtPhoto->execute();
+            $stmtPhoto->close();
         }
     }
     $photosJson = json_encode($uploaded, JSON_UNESCAPED_UNICODE);
