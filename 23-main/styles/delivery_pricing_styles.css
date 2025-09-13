@@ -1,0 +1,56 @@
+
+.pricing-tabs {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.city-tab {
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #f7f7f7;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.city-tab:hover {
+  background-color: #e9e9e9;
+}
+
+.city-tab.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+#pricingContent {
+  margin-top: 20px;
+  border-top: 1px solid #ccc;
+  padding-top: 15px;
+}
+
+#pricingContent label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.price-table th, .price-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.price-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
