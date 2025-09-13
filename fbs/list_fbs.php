@@ -11,13 +11,12 @@ try {
     $perPage     = max((int)($_GET['per_page'] ?? 10), 1);
     $sortField   = $_GET['sort']        ?? 'created_at';
     $sortOrder   = strtolower($_GET['order'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
-    $filterPhone  = trim($_GET['filterPhone'] ?? '');
-    $filterStart  = $_GET['filterStart'] ?? '';
-    $filterEnd    = $_GET['filterEnd']   ?? '';
-    $filterStatus = $_GET['filterStatus'] ?? '';
+    $filterPhone = trim($_GET['filterPhone'] ?? '');
+    $filterStart = $_GET['filterStart'] ?? '';
+    $filterEnd   = $_GET['filterEnd']   ?? '';
 
     // Разрешённые поля сортировки
-    $allowedSorts = ['created_at','company','phone','quantity','amount','comment','payment_status'];
+    $allowedSorts = ['created_at','company','phone','quantity','amount','comment'];
     if (!in_array($sortField, $allowedSorts, true)) {
         $sortField = 'created_at';
     }
@@ -47,11 +46,6 @@ try {
         $types       .= 's';
         $params[]     = $filterEnd . ' 23:59:59';
     }
-    if (in_array($filterStatus, ['paid','debt'], true)) {
-        $conditions[] = 'payment_status = ?';
-        $types       .= 's';
-        $params[]     = $filterStatus;
-    }
 
     $whereSql = '';
     if ($conditions) {
@@ -61,12 +55,6 @@ try {
     // Подсчёт общего количества записей
     $countSql = 'SELECT COUNT(*) AS total FROM fbs' . $whereSql;
     $stmt = $conn->prepare($countSql);
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
     if ($types !== '') {
         $stmt->bind_param($types, ...$params);
     }
@@ -78,15 +66,9 @@ if (!$stmt) {
 
     // Получение записей с учётом пагинации
     $offset = ($page - 1) * $perPage;
-    $dataSql = 'SELECT id, city, company, phone, quantity, amount, comment, payment_status, photo_path, created_at
+    $dataSql = 'SELECT id, city, company, phone, quantity, amount, comment, photo_path, created_at
                 FROM fbs' . $whereSql . " ORDER BY $sortField $sortOrder LIMIT ?, ?";
     $stmt = $conn->prepare($dataSql);
-if (!$stmt) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
-    exit;
-}
-
     $bindTypes  = $types . 'ii';
     $bindParams = $params;
     $bindParams[] = $offset;

@@ -98,19 +98,6 @@
 #fbs-modal .fbs-switch input:checked + .track::after { transform: translateX(20px); }
 #fbs-modal .fbs-switch .switch-label { font-weight: 600; color: var(--fbs-text); }
 
-/* Группа радиокнопок статуса оплаты */
-#fbs-modal .fbs-radio-group {
-  display: flex;
-  gap: 16px;
-}
-#fbs-modal .fbs-radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: var(--fbs-text);
-}
-
 /* Нижняя панель действий (sticky) */
 #fbs-modal .fbs-actions {
   position: sticky; bottom: 0; z-index: 2;
