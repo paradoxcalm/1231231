@@ -1,2 +1,8 @@
-/* Используем общие стили из корневой директории */
-@import url("/styles/horizontal_panel.css");
+/* === horizontal_panel.css === */
+/* Похоже, что всё уже вынесено в navbar.css, 
+   поэтому тут можно оставить либо пустым, 
+   либо с переадресацией.
+*/
+
+@import url('navbar.css'); /* чтобы, если где-то подключается horizontal_panel, оно подтягивало navbar */
+

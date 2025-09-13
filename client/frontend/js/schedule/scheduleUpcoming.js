@@ -57,8 +57,7 @@ export function fetchAndDisplayUpcoming(showArchived = false) {
         })
         .catch(err => {
             console.error('Ошибка fetchAndDisplayUpcoming:', err);
-            const msg = err?.message ? `Ошибка: ${err.message}` : 'Ошибка загрузки.';
-            container.innerHTML = `<p>${msg}</p>`;
+            container.innerHTML = '<p>Ошибка загрузки.</p>';
         });
 }
 

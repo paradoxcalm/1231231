@@ -1,2 +1,243 @@
-/* Используем общие стили из корневой директории */
-@import url("/styles/order_tile_styles.css");
+.order-tile {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background-color: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.order-tile:hover {
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.tile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.tile-id {
+  font-weight: bold;
+  font-size: 17px;
+}
+
+.tile-status {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.tile-status--green { color: green; }
+.tile-status--yellow { color: orange; }
+.tile-status--gray { color: gray; }
+
+.tile-line {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.tile-line strong {
+  display: inline-block;
+  width: 110px;
+  color: #444;
+}
+
+.order-tile .tile-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.order-tile .tile-controls select {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.order-tile .delete-button {
+  background-color: #ff4d4f;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.order-tile .delete-button:hover {
+  background-color: #d9363e;
+}
+
+/* order_cards.css */
+
+/* Контейнер для списка заказов (можете использовать #dynamicContent или другой) */
+#ordersContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px; /* Расстояние между карточками */
+}
+
+/* Базовая стилизация карточки заказа */
+.order-card {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #fff;
+  padding: 12px;
+  transition: box-shadow 0.2s;
+  position: relative; /* чтобы контролировать вложенные элементы */
+}
+
+/* При наведении карточка слегка поднимается */
+.order-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Шапка карточки: номер заказа, статус, действия */
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* Номер заказа */
+.order-id {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Кнопки действий в правой части шапки */
+.order-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-actions button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 16px;
+}
+
+/* Тело карточки: основной контент */
+.order-card-body {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  flex-wrap: wrap; /* чтобы перестраивалось на узких экранах */
+}
+
+/* Блок информации (слева) */
+.order-info-block {
+  flex: 1 1 200px;
+  min-width: 200px;
+  font-size: 14px;
+}
+
+/* Отдельная строка в блоке */
+.order-info-line {
+  margin-bottom: 6px;
+}
+
+/* Блок статуса / управления статусом */
+.order-status-block {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+/* Селект для администратора */
+.order-status-select {
+  padding: 2px 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Кнопки статусов */
+.btn-status {
+  padding: 4px 8px;
+  font-size: 14px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background-color: #eee;
+  cursor: pointer;
+}
+
+/* Блок QR-кода (справа) */
+.order-qr-block {
+  min-width: 80px;
+  max-width: 120px;
+  text-align: center;
+}
+
+/* Сами иконки QR (если используете div для отрисовки через JS) */
+.order-qr {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+
+
+/* Состояние disabled */
+[disabled],
+.btn-status[disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Инлайн-форма редактирования (collapsible) */
+.edit-form-container {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-left: 3px solid #2b7cff;
+  display: none; /* скрываем по умолчанию */
+}
+
+.edit-form-container.active {
+  display: block; /* показываем при редактировании */
+}
+
+/* Простейший респонсив */
+@media (max-width: 600px) {
+  .order-card-body {
+    flex-direction: column;
+  }
+  .order-qr-block {
+    text-align: left;
+    margin-top: 8px;
+  }
+}
+
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 12px;
+  color: white;
+  background-color: gray;
+}
+
+.status-await {
+  background-color: #f9a825; /* жёлтый */
+}
+.status-uploaded {
+  background-color: #4caf50; /* зелёный */
+}
+.status-rejected {
+  background-color: #e53935; /* красный */
+}
+.status-done {
+  background-color: #2196f3; /* синий */
+}

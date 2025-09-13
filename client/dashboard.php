@@ -13,22 +13,22 @@ $role = $_SESSION['role'];
     <title>IDEAL TranSport</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php $version = time(); ?>
-    <link rel="stylesheet" href="../23-main/styles/layout.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/base.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/buttons.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/components.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/form.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/table.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/edit_profile_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/navbar.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/order_tile_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/schedule.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/processing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/profile.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/responsive.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="../23-main/styles/camera.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/layout.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/base.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/buttons.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/components.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/form.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/table.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/edit_profile_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/navbar.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/order_tile_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/schedule.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/processing_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/profile.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/responsive.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/client/styles/camera.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
@@ -97,31 +97,31 @@ $role = $_SESSION['role'];
 </div>
 <!-- ✅ Скрипты -->
 <!-- Личный кабинет: скрипты для раздела заказов пользователя -->
-<script src="../23-main/lk.js?v=<?php echo $version; ?>"></script>
+<script src="/client/lk.js?v=<?php echo $version; ?>"></script>
 <!-- Библиотека jsQR для распознавания QR-кодов -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Сканирование QR через камеру (видео + распознавание QR) -->
-<script src="../23-main/scan.js?v=<?php echo $version; ?>"></script>
+<script src="/client/scan.js?v=<?php echo $version; ?>"></script>
 <!-- Автозаполнение поля "ИП" (название компании) по ФИО -->
-<script src="../23-main/auto_ip_fill.js?v=<?php echo $version; ?>"></script>
+<script src="/client/auto_ip_fill.js?v=<?php echo $version; ?>"></script>
 <!-- Автогенерация названия компании из ФИО (профиль пользователя) -->
-<script src="../23-main/auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
+<script src="/client/auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Обработка": добавление товаров, распределение по складам -->
-<script src="../23-main/processing.js?v=<?php echo $version; ?>"></script>
+<script src="/client/processing.js?v=<?php echo $version; ?>"></script>
 <!-- Основные функции: загрузка разделов "Приёмка", "Таблица" и др. -->
-<script src="../23-main/main.js?v=<?php echo $version; ?>"></script>
+<script src="/client/main.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Таблица": загрузка данных, пагинация, фильтрация -->
-<script src="../23-main/table.js?v=<?php echo $version; ?>"></script>
+<script src="/client/table.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Приёмка": отрисовка и динамика формы приёмки -->
-<script src="../23-main/form.js?v=<?php echo $version; ?>"></script>
+<script src="/client/form.js?v=<?php echo $version; ?>"></script>
 <!-- Автозаполнение данных пользователя (ИП, магазин) в формах -->
-<script src="../23-main/autofill_user_fields.js?v=<?php echo $version; ?>"></script>
+<script src="/client/autofill_user_fields.js?v=<?php echo $version; ?>"></script>
 <!-- Модальное окно заявки: вкладки "Приёмка" и "Обработка" -->
-<script src="../23-main/requestForm.js?v=<?php echo $version; ?>"></script>
+<script src="/client/requestForm.js?v=<?php echo $version; ?>"></script>
 <!-- Предпросмотр фото и галерея изображений -->
-<script src="../23-main/photoPreview.js?v=<?php echo $version; ?>"></script>
+<script src="/client/photoPreview.js?v=<?php echo $version; ?>"></script>
 <!-- Модуль "Расписание": импортирует scheduleMain.js и задаёт loadSchedule() -->
-<script type="module" src="../23-main/schedule.js?v=<?=$version?>"></script>
+<script type="module" src="/client/schedule.js?v=<?=$version?>"></script>
 <!-- Библиотека QRCode.js для генерации QR-кодов -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Библиотека pdfmake для формирования PDF-файлов -->

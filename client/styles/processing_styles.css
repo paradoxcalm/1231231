@@ -1,2 +1,177 @@
-/* Используем общие стили из корневой директории */
-@import url("/styles/processing_styles.css");
+/* === processing_styles.css (исправленный) === */
+.processing-container {
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    font-family: 'Roboto', sans-serif;
+    color: #333;
+}
+/* Заголовок формы */
+.form-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    color: #4CAF50;
+    margin-bottom: 20px;
+}
+/* Поля ввода */
+.input-field {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    transition: 0.3s;
+    background: #f9f9f9;
+    margin-bottom: 10px;
+}
+.input-field:focus {
+    border-color: #4CAF50;
+    outline: none;
+    background: #eef;
+}
+/* Добавление баркода */
+.article-entry {
+    background: #f8f9fa;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+}
+.article-entry input[type="text"],
+.article-entry input[type="number"] {
+    width: calc(50% - 10px);
+    margin-right: 10px;
+    box-sizing: border-box;
+}
+/* Остаток */
+.remaining-qty {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+    margin-top: 10px;
+}
+/* Контейнер для складов */
+.warehouses-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+}
+.warehouse-column {
+    width: calc(50% - 10px);
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    justify-content: space-between;
+    background: #f1f1f1;
+    padding: 5px;
+    border-radius: 5px;
+}
+.warehouse-column label {
+    font-size: 14px;
+    color: #555;
+}
+.warehouse-checkbox {
+    margin-right: 5px;
+    cursor: pointer;
+}
+.warehouse-input {
+    width: 50px;
+    margin-left: 5px;
+    padding: 5px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    display: inline-block;
+}
+.warehouse-input:focus {
+    border-color: #4CAF50;
+}
+/* Кнопки */
+.confirm-button {
+    background: #28a745;
+    color: white;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 16px;
+    margin-top: 10px;
+}
+.confirm-button:hover {
+    background: #218838;
+}
+.remove-button {
+    background: #dc3545;
+    color: white;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 16px;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+.remove-button:hover {
+    background: #c82333;
+}
+/* Кнопка добавления */
+.add-button {
+    width: 100%;
+    padding: 12px;
+    margin-top: 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.add-button:hover {
+    background: #388E3C;
+}
+/* Статус подтверждения */
+.submitted-entry {
+    background: #e9f7ef;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+/* Уведомление */
+.status-message {
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    margin-top: 10px;
+}
+.status-message.success {
+    background: #d4edda;
+    color: #155724;
+}
+.status-message.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+/* Адаптивность */
+@media (max-width: 600px) {
+    .warehouse-column {
+        width: 100%;
+    }
+    .input-field {
+        width: 100%;
+    }
+    .article-entry input[type="text"],
+    .article-entry input[type="number"] {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}

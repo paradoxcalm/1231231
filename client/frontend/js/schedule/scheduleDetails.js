@@ -1,14 +1,6 @@
 import { updateScheduleStatus, deleteSchedule } from './scheduleApi.js';
 import { editSchedule } from './scheduleEditForm.js';
-
-// Функция открытия формы заявки
-export function createOrder(scheduleId, city, warehouse) {
-    if (typeof window.openRequestFormModal === 'function') {
-        window.openRequestFormModal(scheduleId, city, warehouse);
-    }
-}
-// Делаем функцию глобальной для вызова из HTML
-window.createOrder = createOrder;
+import { createOrder } from '../requestForm.js';
 
 export function openSingleShipmentModal(sh) {
     const modalContainer = document.getElementById('modalContainer');
@@ -72,7 +64,7 @@ export function canCreateOrderForSchedule(schedule) {
     return now <= deadlineDate;
 }
 export function openShipmentsForDate(date) {
-    fetch(`/backend/schedule/listSchedules.php?date=${encodeURIComponent(date)}`)
+    fetch(`/client/backend/schedule/listSchedules.php?date=${encodeURIComponent(date)}`)
         .then(r => r.json())
         .then(data => {
             const modalContainer = document.getElementById('modalContainer');
