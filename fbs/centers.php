@@ -18,6 +18,12 @@ try {
                 exit;
             }
             $stmt = $conn->prepare("INSERT INTO sorting_centers (name) VALUES (?)");
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+    exit;
+}
+
             if (!$stmt) {
                 http_response_code(500);
                 echo json_encode(['status' => 'error', 'message' => 'Ошибка подготовки запроса']);
@@ -44,6 +50,12 @@ try {
                 exit;
             }
             $stmt = $conn->prepare("DELETE FROM sorting_centers WHERE id = ?");
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+    exit;
+}
+
             if (!$stmt) {
                 http_response_code(500);
                 echo json_encode(['status' => 'error', 'message' => 'Ошибка подготовки запроса']);

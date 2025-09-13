@@ -113,6 +113,7 @@ function loadCityFBSData(
   filterPhone = '',
   filterStart = '',
   filterEnd   = '',
+  filterStatus = '',
   perPage     = 10
 ) {
   injectFbsStyles();
@@ -133,6 +134,7 @@ function loadCityFBSData(
   if (filterPhone) params.append('filterPhone', filterPhone);
   if (filterStart) params.append('filterStart', filterStart);
   if (filterEnd)   params.append('filterEnd',   filterEnd);
+  if (filterStatus) params.append('filterStatus', filterStatus);
 
   fetch(`fbs/list_fbs.php?${params.toString()}`, { credentials: 'same-origin' })
     .then(res => res.text())
@@ -155,13 +157,14 @@ function loadCityFBSData(
       // сохраняем параметры
       const tabDiv = document.getElementById(`cityTab-${cityId}`);
       if (tabDiv) {
-        tabDiv.dataset.loaded      = 'true';
-        tabDiv.dataset.sortField   = sortField;
-        tabDiv.dataset.sortOrder   = sortOrder;
-        tabDiv.dataset.filterPhone = filterPhone;
-        tabDiv.dataset.filterStart = filterStart;
-        tabDiv.dataset.filterEnd   = filterEnd;
-        tabDiv.dataset.perPage     = perPageRet;
+        tabDiv.dataset.loaded       = 'true';
+        tabDiv.dataset.sortField    = sortField;
+        tabDiv.dataset.sortOrder    = sortOrder;
+        tabDiv.dataset.filterPhone  = filterPhone;
+        tabDiv.dataset.filterStart  = filterStart;
+        tabDiv.dataset.filterEnd    = filterEnd;
+        tabDiv.dataset.filterStatus = filterStatus;
+        tabDiv.dataset.perPage      = perPageRet;
       }
 
       // для стрелок сортировки
@@ -174,6 +177,11 @@ function loadCityFBSData(
       html += `<label>Телефон:</label><input type="text" id="phoneFilter-${cityId}" value="${filterPhone.replace(/"/g, '&quot;')}" />`;
       html += `<label>Дата с:</label><input type="date" id="startDateFilter-${cityId}" value="${filterStart}" />`;
       html += `<label>по:</label><input type="date" id="endDateFilter-${cityId}" value="${filterEnd}" />`;
+      html += `<label>Статус:</label><select id="statusFilter-${cityId}">`
+        + `<option value="" ${filterStatus === '' ? 'selected' : ''}>Все</option>`
+        + `<option value="paid" ${filterStatus === 'paid' ? 'selected' : ''}>Оплачено</option>`
+        + `<option value="debt" ${filterStatus === 'debt' ? 'selected' : ''}>Долг</option>`
+        + `</select>`;
       html += `<button id="applyFilterBtn-${cityId}">Применить</button>`;
       html += `<div style="margin-left:auto;display:flex;align-items:center;gap:4px;">`;
       html += `<label for="perPageSelect-${cityId}">На странице:</label><select id="perPageSelect-${cityId}">`;
@@ -190,7 +198,7 @@ function loadCityFBSData(
       html += `<th data-field="company">ИП${getArrow('company')}</th>`;
       html += `<th data-field="phone">Телефон${getArrow('phone')}</th>`;
       html += `<th data-field="quantity">Кол‑во${getArrow('quantity')}</th>`;
-      html += `<th data-field="amount">Сумма${getArrow('amount')}</th>`;
+      html += `<th data-field="amount">Сумма${getArrow('amount')} / Статус</th>`;
       html += '<th>Фото</th>';
       html += `<th data-field="comment">Комментарий${getArrow('comment')}</th>`;
       html += '</tr></thead><tbody>';
@@ -216,7 +224,7 @@ function loadCityFBSData(
               <td>${record.company || '—'}</td>
               <td>${record.phone || '—'}</td>
               <td>${record.quantity != null ? record.quantity : 0}</td>
-              <td>${record.amount != null ? record.amount : 0}</td>
+              <td>${record.amount != null ? record.amount : 0} — ${record.payment_status === 'debt' ? 'долг' : 'оплачено'}</td>
               <td style="text-align:center;">
                 ${
                   imageSrc
@@ -247,6 +255,7 @@ function loadCityFBSData(
             document.getElementById(`phoneFilter-${cityId}`).value.trim(),
             document.getElementById(`startDateFilter-${cityId}`).value,
             document.getElementById(`endDateFilter-${cityId}`).value,
+            document.getElementById(`statusFilter-${cityId}`).value,
             parseInt(document.getElementById(`perPageSelect-${cityId}`).value,10)
           );
         };
@@ -260,6 +269,7 @@ function loadCityFBSData(
           document.getElementById(`phoneFilter-${cityId}`).value.trim(),
           document.getElementById(`startDateFilter-${cityId}`).value,
           document.getElementById(`endDateFilter-${cityId}`).value,
+          document.getElementById(`statusFilter-${cityId}`).value,
           parseInt(document.getElementById(`perPageSelect-${cityId}`).value,10)
         );
       };
@@ -270,8 +280,9 @@ function loadCityFBSData(
           cityName, cityId, 1,
           sortField, sortOrder,
           document.getElementById(`phoneFilter-${cityId}`).value.trim(),
-          document.getElementById(`startDateFilter-${cityId}`).value,
+      document.getElementById(`startDateFilter-${cityId}`).value,
           document.getElementById(`endDateFilter-${cityId}`).value,
+          document.getElementById(`statusFilter-${cityId}`).value,
           parseInt(e.target.value,10)
         );
       };
@@ -286,7 +297,7 @@ function loadCityFBSData(
         cityName, cityId,
         currentPage, totalPages,
         sortField, sortOrder,
-        filterPhone, filterStart, filterEnd,
+        filterPhone, filterStart, filterEnd, filterStatus,
         perPageRet
       );
     })
@@ -302,7 +313,7 @@ function loadCityFBSData(
  */
 function renderFbsPagination(
   cityName, cityId, currentPage, totalPages,
-  sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage
+  sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage
 ) {
   const pag = document.getElementById(`paginationContainer-${cityId}`);
   if (!pag) return;
@@ -317,21 +328,21 @@ function renderFbsPagination(
     pag.appendChild(btn);
   };
   const m = 2;
-  addBtn('‹', currentPage <= 1, () => loadCityFBSData(cityName, cityId, currentPage - 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage));
+  addBtn('‹', currentPage <= 1, () => loadCityFBSData(cityName, cityId, currentPage - 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage));
   let start = Math.max(1, currentPage - m);
   let end   = Math.min(totalPages, currentPage + m);
   if (start > 1) {
-    addBtn('1', false, () => loadCityFBSData(cityName, cityId, 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage), 1 === currentPage);
+    addBtn('1', false, () => loadCityFBSData(cityName, cityId, 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage), 1 === currentPage);
     if (start > 2) pag.appendChild(Object.assign(document.createElement('span'), {textContent:'…'}));
   }
   for (let i = start; i <= end; i++) {
-    addBtn(String(i), false, () => loadCityFBSData(cityName, cityId, i, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage), i === currentPage);
+    addBtn(String(i), false, () => loadCityFBSData(cityName, cityId, i, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage), i === currentPage);
   }
   if (end < totalPages) {
     if (end < totalPages - 1) pag.appendChild(Object.assign(document.createElement('span'), {textContent:'…'}));
-    addBtn(String(totalPages), false, () => loadCityFBSData(cityName, cityId, totalPages, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage), currentPage === totalPages);
+    addBtn(String(totalPages), false, () => loadCityFBSData(cityName, cityId, totalPages, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage), currentPage === totalPages);
   }
-  addBtn('›', currentPage >= totalPages, () => loadCityFBSData(cityName, cityId, currentPage + 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage));
+  addBtn('›', currentPage >= totalPages, () => loadCityFBSData(cityName, cityId, currentPage + 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage));
 }
 
 // экспортировать глобально (если необходимо)
@@ -455,11 +466,12 @@ function changeSort(cityId, field) {
     }
     // Берём текущие фильтры и пагинацию
     const filterPhone = cityTabDiv.dataset.filterPhone || '';
-    const filterStart = cityTabDiv.dataset.filterStart || '';
-    const filterEnd = cityTabDiv.dataset.filterEnd || '';
-    const perPage = cityTabDiv.dataset.perPage ? parseInt(cityTabDiv.dataset.perPage) : 10;
+    const filterStart   = cityTabDiv.dataset.filterStart || '';
+    const filterEnd     = cityTabDiv.dataset.filterEnd || '';
+    const filterStatus  = cityTabDiv.dataset.filterStatus || '';
+    const perPage       = cityTabDiv.dataset.perPage ? parseInt(cityTabDiv.dataset.perPage) : 10;
     // Сброс на первую страницу при смене сортировки
-    loadCityFBSData(cityName, cityId, 1, newSortField, newSortOrder, filterPhone, filterStart, filterEnd, perPage);
+    loadCityFBSData(cityName, cityId, 1, newSortField, newSortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage);
 }
 
 function applyFilter(cityId) {
@@ -469,7 +481,8 @@ function applyFilter(cityId) {
     // Получаем значения полей фильтра
     const filterPhone = document.getElementById(`filterPhone-${cityId}`).value.trim();
     const filterStart = document.getElementById(`filterStart-${cityId}`).value;
-    const filterEnd = document.getElementById(`filterEnd-${cityId}`).value;
+    const filterEnd    = document.getElementById(`filterEnd-${cityId}`).value;
+    const filterStatus = document.getElementById(`statusFilter-${cityId}`).value;
     // Оставляем текущую сортировку
     const sortField = cityTabDiv.dataset.sortField || 'created_at';
     const sortOrder = cityTabDiv.dataset.sortOrder || 'desc';
@@ -477,7 +490,7 @@ function applyFilter(cityId) {
     const perPageSelect = document.getElementById(`perPageSelect-${cityId}`);
     const perPage = perPageSelect ? parseInt(perPageSelect.value) : 10;
     // Загружаем заново данные с применением фильтров (сброс на первую страницу)
-    loadCityFBSData(cityName, cityId, 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage);
+    loadCityFBSData(cityName, cityId, 1, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage);
 }
 
 function changePage(cityId, page) {
@@ -489,10 +502,11 @@ function changePage(cityId, page) {
     const sortOrder = cityTabDiv.dataset.sortOrder || 'desc';
     const filterPhone = cityTabDiv.dataset.filterPhone || '';
     const filterStart = cityTabDiv.dataset.filterStart || '';
-    const filterEnd = cityTabDiv.dataset.filterEnd || '';
+    const filterEnd    = cityTabDiv.dataset.filterEnd || '';
+    const filterStatus = cityTabDiv.dataset.filterStatus || '';
     const perPage = cityTabDiv.dataset.perPage ? parseInt(cityTabDiv.dataset.perPage) : 10;
     // Загружаем указанную страницу с текущими параметрами
-    loadCityFBSData(cityName, cityId, page, sortField, sortOrder, filterPhone, filterStart, filterEnd, perPage);
+    loadCityFBSData(cityName, cityId, page, sortField, sortOrder, filterPhone, filterStart, filterEnd, filterStatus, perPage);
 }
 
 function refreshCityTable(cityName) {
@@ -548,11 +562,11 @@ function openAddFBSModal(cityName) {
           </div>
 
           <div class="fbs-field span-2">
-            <label class="fbs-switch">
-              <input type="checkbox" id="cashPaymentInput" aria-label="Оплата наличными">
-              <span class="track" aria-hidden="true"></span>
-              <span class="switch-label">Оплата наличными</span>
-            </label>
+            <label>Статус оплаты</label>
+            <div class="fbs-radio-group">
+              <label><input type="radio" name="payment_status" value="paid" checked> Оплачено</label>
+              <label><input type="radio" name="payment_status" value="debt"> Долг</label>
+            </div>
           </div>
 
           <div class="fbs-field span-2">
@@ -616,7 +630,7 @@ function saveFBSRecord() {
     const amount   = parseFloat(document.getElementById('amountInput').value);
     const comment  = document.getElementById('commentInput').value.trim();
     const photoInput = document.getElementById('photoInput');
-    const cashPaid = document.getElementById('cashPaymentInput').checked ? 1 : 0;
+    const paymentStatus = document.querySelector('input[name="payment_status"]:checked').value;
 
     // Проверяем обязательные поля
     if (!company || !phone || isNaN(quantity) || quantity <= 0 || isNaN(amount) || amount < 0) {
@@ -632,7 +646,7 @@ function saveFBSRecord() {
     formData.append('quantity', quantity);
     formData.append('amount', amount.toFixed(2));
     formData.append('comment', comment);
-    formData.append('cash_paid', cashPaid);
+    formData.append('payment_status', paymentStatus);
     if (photoInput && photoInput.files.length > 0) {
         formData.append('photo', photoInput.files[0]);
     }
@@ -682,7 +696,7 @@ function saveFBSRecord() {
                 quantity: quantity,
                 amount: amount.toFixed(2),
                 comment: comment,
-                cash_paid: cashPaid
+                payment_status: paymentStatus
             };
         } else {
             alert('Ошибка: ' + (result.message || 'Не удалось сохранить'));
@@ -767,11 +781,12 @@ function exportToExcel(cityId) {
     const cityName = window.cityIdMap[cityId];
     if (!cityName) return;
     // Собираем текущие параметры фильтров и сортировки
-    const sortField = cityTabDiv.dataset.sortField || 'created_at';
-    const sortOrder = cityTabDiv.dataset.sortOrder || 'desc';
-    const filterPhone = cityTabDiv.dataset.filterPhone || '';
-    const filterStart = cityTabDiv.dataset.filterStart || '';
-    const filterEnd = cityTabDiv.dataset.filterEnd || '';
+    const sortField    = cityTabDiv.dataset.sortField || 'created_at';
+    const sortOrder    = cityTabDiv.dataset.sortOrder || 'desc';
+    const filterPhone  = cityTabDiv.dataset.filterPhone || '';
+    const filterStart  = cityTabDiv.dataset.filterStart || '';
+    const filterEnd    = cityTabDiv.dataset.filterEnd || '';
+    const filterStatus = cityTabDiv.dataset.filterStatus || '';
     // Формируем URL для экспорта
     const params = new URLSearchParams({
         city: cityName,
@@ -781,6 +796,7 @@ function exportToExcel(cityId) {
     });
     if (filterStart) params.append('filterStart', filterStart);
     if (filterEnd) params.append('filterEnd', filterEnd);
+    if (filterStatus) params.append('filterStatus', filterStatus);
     const url = `fbs/export_fbs.php?${params.toString()}`;
     // Открываем в новом окне
     window.open(url, '_blank');

@@ -10,14 +10,15 @@ if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'manager') {
 }
 
 $city = trim($_GET['city'] ?? '');
-$filterPhone = trim($_GET['filterPhone'] ?? '');
-$filterStart = trim($_GET['filterStart'] ?? '');
-$filterEnd   = trim($_GET['filterEnd'] ?? '');
-$sort = $_GET['sort'] ?? 'created_at';
-$order = $_GET['order'] ?? 'desc';
+$filterPhone   = trim($_GET['filterPhone'] ?? '');
+$filterStart   = trim($_GET['filterStart'] ?? '');
+$filterEnd     = trim($_GET['filterEnd'] ?? '');
+$filterStatus  = $_GET['filterStatus'] ?? '';
+$sort          = $_GET['sort'] ?? 'created_at';
+$order         = $_GET['order'] ?? 'desc';
 
 // Валидируем поле сортировки
-$allowedSortFields = ['created_at','company','phone','quantity','amount','comment'];
+$allowedSortFields = ['created_at','company','phone','quantity','amount','comment','payment_status'];
 if (!in_array($sort, $allowedSortFields)) {
     $sort = 'created_at';
 }
@@ -30,7 +31,7 @@ echo "\xEF\xBB\xBF";
 
 // Запишем заголовки колонок (на русском)
 $output = fopen('php://output', 'w');
-fputcsv($output, ['Дата создания', 'ИП', 'Телефон', 'Количество', 'Сумма', 'Комментарий'], ';');
+fputcsv($output, ['Дата создания', 'ИП', 'Телефон', 'Количество', 'Сумма', 'Комментарий', 'Статус оплаты'], ';');
 
 // Формируем SQL с фильтрами (без лимита, чтобы выгрузить все подходящие записи)
 $conditions = ["city = ?"];
@@ -51,11 +52,22 @@ if ($filterEnd !== '') {
     $params[] = $filterEnd . " 23:59:59";
     $types .= "s";
 }
+if (in_array($filterStatus, ['paid','debt'], true)) {
+    $conditions[] = "payment_status = ?";
+    $params[] = $filterStatus;
+    $types .= "s";
+}
 $whereSql = implode(' AND ', $conditions);
-$query = "SELECT created_at, company, phone, quantity, amount, comment FROM fbs 
-          WHERE $whereSql 
+$query = "SELECT created_at, company, phone, quantity, amount, comment, payment_status FROM fbs
+          WHERE $whereSql
           ORDER BY $sort $order";
 $stmt = $conn->prepare($query);
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+    exit;
+}
+
 if ($params) {
     $a_params = array_merge([$types], $params);
     foreach ($a_params as $key => $value) { $a_params[$key] = &$a_params[$key]; }
@@ -68,13 +80,15 @@ while ($row = $result->fetch_assoc()) {
     // Преобразуем дату в формат ДД.ММ.ГГГГ чч:мм
     $date = date('d.m.Y H:i', strtotime($row['created_at']));
     // Формируем строку CSV (учитываем, что поля могут содержать разделители или переносы)
+    $status = $row['payment_status'] === 'debt' ? 'Долг' : 'Оплачено';
     $line = [
         $date,
         $row['company'],
         $row['phone'],
         $row['quantity'],
         $row['amount'],
-        $row['comment']
+        $row['comment'],
+        $status
     ];
     // Пишем строку в CSV (используем точку с запятой в качестве разделителя)
     fputcsv($output, $line, ';');

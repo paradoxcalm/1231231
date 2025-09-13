@@ -8,6 +8,9 @@
  * и вспомогательные функции вывода сообщений.
  */
 
+
+const { parseJSONResponse, handleError } = window.scheduleUtils;
+
 // Открывает модальное окно управления расписаниями и загружает данные.
 function openScheduleManagementModal() {
     const modal = document.getElementById("scheduleManagementModal");
@@ -55,7 +58,7 @@ function loadManagementSchedules() {
 
     // Загружаем списки для фильтров
     fetch("filter_options.php?action=marketplaces")
-        .then(r => r.json())
+        .then(parseJSONResponse)
         .then(data => {
             const sel = document.getElementById("mgmtFilterMarketplace");
             if (sel) {
@@ -65,7 +68,7 @@ function loadManagementSchedules() {
         });
 
     fetch("filter_options.php?action=all_cities")
-        .then(r => r.json())
+        .then(parseJSONResponse)
         .then(data => {
             const sel = document.getElementById("mgmtFilterCity");
             if (sel) {
@@ -75,7 +78,7 @@ function loadManagementSchedules() {
         });
 
     fetch("filter_options.php?action=all_warehouses")
-        .then(r => r.json())
+        .then(parseJSONResponse)
         .then(data => {
             const sel = document.getElementById("mgmtFilterWarehouse");
             if (sel) {
@@ -116,7 +119,7 @@ function reloadManagementSchedules() {
     tableBlock.innerHTML = "Загрузка…";
 
     fetch(url)
-        .then(r => r.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (!Array.isArray(data)) {
                 tableBlock.innerHTML = "Ошибка загрузки расписаний";
@@ -185,7 +188,7 @@ function reloadManagementSchedules() {
             }
         })
         .catch(err => {
-            console.error("Ошибка reloadManagementSchedules:", err);
+            handleError(err, "Ошибка reloadManagementSchedules");
             tableBlock.innerHTML = "Ошибка загрузки расписаний";
         });
 }
@@ -202,7 +205,7 @@ function updateStatus(id, status) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "update_status", id, status })
     })
-    .then(r => r.json())
+    .then(parseJSONResponse)
     .then(d => {
         if (d.status === "success") {
             // Обновляем списки
@@ -212,7 +215,7 @@ function updateStatus(id, status) {
             alert("Ошибка: " + d.message);
         }
     })
-    .catch(err => console.error("Ошибка updateStatus:", err));
+    .catch(err => handleError(err, "Ошибка updateStatus"));
 }
 
 // Помечает расписание как завершённое.
@@ -244,7 +247,7 @@ function exportSchedule() {
         a.click();
         window.URL.revokeObjectURL(url);
     })
-    .catch(err => console.error("Ошибка exportSchedule:", err));
+    .catch(err => handleError(err, "Ошибка exportSchedule"));
 }
 
 // Загружает склады в фильтр. Используется в некоторых местах интерфейса.
@@ -255,10 +258,10 @@ function loadWarehousesForFilter() {
         return;
     }
     fetch("warehouse_filter.php", { cache: "no-store" })
-        .then(r => r.json())
+        .then(parseJSONResponse)
         .then(data => {
             if (!Array.isArray(data)) {
-                console.error("warehouse_filter.php вернул некорректный формат:", data);
+                handleError(new Error("warehouse_filter.php вернул некорректный формат"), "Ошибка загрузки складов");
                 return;
             }
             select.innerHTML = '<option value="">Все склады</option>';
@@ -271,7 +274,7 @@ function loadWarehousesForFilter() {
                 }
             });
         })
-        .catch(err => console.error("Ошибка загрузки складов:", err));
+        .catch(err => handleError(err, "Ошибка загрузки складов"));
 }
 
 // Добавляет новый склад и обновляет списки складов.
@@ -283,13 +286,13 @@ function addNewWarehouse(formId) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "add", name: name.trim() })
     })
-    .then(r => r.json())
+    .then(parseJSONResponse)
     .then(d => {
         if (d.status === "success") {
             loadWarehousesForFilter();
             // Обновляем чекбоксы складов в форме редактирования, если нужно
             fetch("warehouses.php")
-                .then(r2 => r2.json())
+                .then(parseJSONResponse)
                 .then(warehouses => {
                     const container = document.querySelector(`#${formId} .warehouse-checkboxes`);
                     if (container) {
@@ -303,12 +306,12 @@ function addNewWarehouse(formId) {
                         }).join("");
                     }
                 })
-                .catch(err2 => console.error("Ошибка обновления списков складов:", err2));
+                .catch(err2 => handleError(err2, "Ошибка обновления списков складов"));
         } else {
             alert("Ошибка: " + d.message);
         }
     })
-    .catch(err => console.error("Ошибка addNewWarehouse:", err));
+    .catch(err => handleError(err, "Ошибка addNewWarehouse"));
 }
 
 // Загружает данные расписания (заглушка, можно расширить при необходимости).
@@ -346,12 +349,7 @@ function massManageSchedules(action) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`Сервер вернул ${response.status}: ${response.statusText}`);
-        }
-        return response.json();
-    })
+    .then(parseJSONResponse)
     .then(data => {
         if (!data.success) {
             showMassManageMessage('error', `Ошибка: ${data.message || 'Неизвестная ошибка'}`);
@@ -387,6 +385,7 @@ function massManageSchedules(action) {
         if (typeof fetchDataAndUpdateCalendar === 'function') fetchDataAndUpdateCalendar();
     })
     .catch(err => {
+        handleError(err, "Ошибка massManageSchedules");
         showMassManageMessage('error', `Ошибка запроса: ${err.message}`);
     })
     .finally(() => {

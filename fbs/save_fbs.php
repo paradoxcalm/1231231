@@ -18,7 +18,15 @@ try {
     $quantity  = isset($_POST['quantity']) ? intval($_POST['quantity']) : 1;
     $amount    = isset($_POST['amount']) ? floatval($_POST['amount']) : 0.0;
     $comment   = trim($_POST['comment'] ?? '');
-    $cashPaid  = isset($_POST['cash_paid']) ? intval($_POST['cash_paid']) : 0;
+    $cashPaid       = isset($_POST['cash_paid']) ? intval($_POST['cash_paid']) : 0;
+    $paymentStatus  = trim($_POST['payment_status'] ?? '');
+
+    // Проверяем корректность статуса оплаты
+    if (!in_array($paymentStatus, ['paid', 'debt'], true)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Некорректный статус оплаты']);
+        exit;
+    }
 
     // Простая валидация
     if ($city === '' || $company === '' || $phone === '' || $quantity <= 0 || $amount < 0) {
@@ -29,9 +37,15 @@ try {
 
     // Подготовка запроса вставки
     $stmt = $conn->prepare(
-        "INSERT INTO fbs (city, company, phone, quantity, amount, comment, cash_paid, photo_path, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        "INSERT INTO fbs (city, company, phone, quantity, amount, comment, payment_status, cash_paid, photo_path, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
     );
+if (!$stmt) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+    exit;
+}
+
     if (!$stmt) {
         throw new Exception('Ошибка подготовки запроса: ' . $conn->error);
     }
@@ -54,13 +68,14 @@ try {
 
     // Привязка параметров и выполнение запроса
     $stmt->bind_param(
-        "sssidsis",
+        "sssidssis",
         $city,
         $company,
         $phone,
         $quantity,
         $amount,
         $comment,
+        $paymentStatus,
         $cashPaid,
         $photoPath
     );
