@@ -44,7 +44,6 @@ if ($role !== 'admin' && $role !== 'manager') {
     <link rel="stylesheet" href="styles/styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/fbs.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/import.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/auth_form.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/order_tile_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/schedule.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/processing_styles.css?v=<?php echo $version; ?>">
