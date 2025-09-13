@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array($_SESSION['role'], ['admin', 'manager'])) {
             $redirectUrl = 'index.php';
         } else {
-            $redirectUrl = '/client/dashboard.php';
+            $redirectUrl = '/client/index.php';
         }
 
         if ($remember) {
