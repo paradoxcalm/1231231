@@ -9,7 +9,7 @@ function openRequestFormModal(scheduleId, city = "", warehouses = "") {
 
     console.log("📦 Открываем модалку с расписанием ID:", scheduleId);
 
-    fetch(`schedule.php?id=${scheduleId}`)
+    fetch(`/backend/schedule/getSchedule.php?id=${scheduleId}`)
         .then(response => {
             if (!response.ok) throw new Error("Ошибка загрузки расписания");
             return response.json();

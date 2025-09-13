@@ -9,6 +9,7 @@ $filters = [
     'city'        => $_GET['city']        ?? '',
     'warehouse'   => $_GET['warehouse']   ?? '',
     'date'        => $_GET['date']        ?? '',
+    'delivery_date' => $_GET['delivery_date'] ?? '',
     'status'      => $_GET['status']      ?? '',
     'id'          => $_GET['id']          ?? '',
     'marketplace' => $_GET['marketplace'] ?? ''
