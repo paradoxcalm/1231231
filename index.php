@@ -13,6 +13,12 @@ if ($role === 'deliverer') {
     exit();
 }
 
+// Если пользователь не админ и не менеджер, отправляем его в личный кабинет клиента
+if ($role !== 'admin' && $role !== 'manager') {
+    header('Location: /client/dashboard.php');
+    exit();
+}
+
 
 ?>
 
