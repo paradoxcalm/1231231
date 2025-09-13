@@ -7,9 +7,21 @@ if (!isset($_SESSION['role'])) {
 }
 $role = $_SESSION['role'];
 
+// Защитный редирект для роли "client"
+if ($role === 'client') {
+    header('Location: /client/index.php');
+    exit();
+}
+
 // Если у пользователя роль "deliverer", отправляем его на страницу курьера
 if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
+    exit();
+}
+
+// Допуск только для админа и менеджера
+if ($role !== 'admin' && $role !== 'manager') {
+    header('Location: auth_form.php');
     exit();
 }
 
