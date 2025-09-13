@@ -68,8 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role']    = $user['role'];
 
-        if (in_array($_SESSION['role'], ['admin', 'manager'])) {
+        if ($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'manager') {
             $redirectUrl = 'index.php';
+        } elseif ($_SESSION['role'] === 'deliverer') {
+            $redirectUrl = '/deliver/index.php';
+        } elseif ($_SESSION['role'] === 'client') {
+            $redirectUrl = '/client/index.php';
         } else {
             $redirectUrl = '/client/index.php';
         }

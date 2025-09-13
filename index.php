@@ -7,14 +7,13 @@ if (!isset($_SESSION['role'])) {
 }
 $role = $_SESSION['role'];
 
-// Если у пользователя роль "deliverer", отправляем его на страницу курьера
 if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
     exit();
-}
-
-// Если пользователь не админ и не менеджер, отправляем его в личный кабинет клиента
-if ($role !== 'admin' && $role !== 'manager') {
+} elseif ($role === 'client') {
+    header('Location: /client/index.php');
+    exit();
+} elseif ($role !== 'admin' && $role !== 'manager') {
     header('Location: /client/index.php');
     exit();
 }
