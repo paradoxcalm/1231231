@@ -11,6 +11,9 @@ $role = $_SESSION['role'];
 if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
     exit();
+} elseif ($role === 'client') {
+    header('Location: /client/index.php');
+    exit();
 }
 
 
