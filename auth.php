@@ -68,6 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role']    = $user['role'];
 
+        if (in_array($_SESSION['role'], ['admin', 'manager'])) {
+            $redirectUrl = 'index.php';
+        } else {
+            $redirectUrl = '/client/dashboard.php';
+        }
+
         if ($remember) {
             // Генерация токена для "Запомнить меня" на 60 дней
             $token     = bin2hex(random_bytes(16));
@@ -90,8 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("UPDATE usersff SET remember_token = NULL, token_expiry = NULL WHERE id = " . (int)$user['id']);
         }
 
-        // Перенаправление на главную страницу после успешного входа
-        header('Location: index.php');
+        // Перенаправление после успешного входа
+        header("Location: $redirectUrl");
         exit();
     } else {
         // Неверные учетные данные
