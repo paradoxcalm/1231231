@@ -1,6 +1,14 @@
 import { updateScheduleStatus, deleteSchedule } from './scheduleApi.js';
 import { editSchedule } from './scheduleEditForm.js';
-import { createOrder } from '../requestForm.js';
+
+// Функция открытия формы заявки
+export function createOrder(scheduleId, city, warehouse) {
+    if (typeof window.openRequestFormModal === 'function') {
+        window.openRequestFormModal(scheduleId, city, warehouse);
+    }
+}
+// Делаем функцию глобальной для вызова из HTML
+window.createOrder = createOrder;
 
 export function openSingleShipmentModal(sh) {
     const modalContainer = document.getElementById('modalContainer');

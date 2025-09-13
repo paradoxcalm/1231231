@@ -436,17 +436,53 @@ function initializeForm() {
     form.addEventListener('submit', async e => {
         e.preventDefault();
         const btn = form.querySelector('button[type="submit"]');
-        if (!document.getElementById('sender').value.trim()) {
-            return alert("⚠️ заполните ИП перед созданием заявки");
+        const status = document.getElementById('status');
+        const company = document.getElementById('sender').value.trim();
+        const rawItems = typeof submittedArticles !== 'undefined' ? submittedArticles : [];
+        const items = rawItems.map(it => {
+            const w = it.warehouses || {};
+            return {
+                barcode: it.barcode || '',
+                total_qty: it.totalQty || 0,
+                koledino_qty: w.koledino || 0,
+                elektrostal_qty: w.elektrostal || 0,
+                tula_qty: w.tula || 0,
+                kazan_qty: w.kazan || 0,
+                ryazan_qty: w.ryazan || 0,
+                kotovsk_qty: w.kotovsk || 0,
+                krasnodar_qty: w.krasnodar || 0,
+                nevinnomyssk_qty: w.nevinnomyssk || 0
+            };
+        });
+
+        if (!company || items.length === 0) {
+            status.textContent = '⚠️ Заполните ИП и добавьте товары';
+            status.style.color = 'red';
+            return;
         }
+
         btn.disabled = true;
         btn.textContent = 'Отправка...';
-        const status = document.getElementById('status');
+
+        const payload = {
+            schedule_id: document.getElementById('formScheduleId').value,
+            company_name: company,
+            packaging_type: document.querySelector('input[name="packaging_type"]:checked').value,
+            boxes: parseInt(document.getElementById('boxes').value) || 0,
+            comment: document.getElementById('comment').value.trim(),
+            items
+        };
+
         try {
-            const res = await fetch('log_data.php', { method: 'POST', body: new FormData(form) });
+            const res = await fetch('create_order.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
             const result = await res.json();
-            if (result.status === 'success') {
-                showSuccessModal(result.qr_code, document.getElementById('payment').value);
+            if (result.success) {
+                status.textContent = 'Заявка успешно создана';
+                status.style.color = 'green';
             } else {
                 status.textContent = `⚠️ Ошибка: ${result.message}`;
                 status.style.color = 'red';
