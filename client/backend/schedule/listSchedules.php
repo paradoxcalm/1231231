@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once __DIR__ . '/../../db_connection.php';
+require_once __DIR__ . '/../db_connection.php';
 require_once __DIR__ . '/../helpers.php';
 require_once __DIR__ . '/../models/ScheduleModel.php';
 
@@ -9,7 +9,6 @@ $filters = [
     'city'        => $_GET['city']        ?? '',
     'warehouse'   => $_GET['warehouse']   ?? '',
     'date'        => $_GET['date']        ?? '',
-    'delivery_date' => $_GET['delivery_date'] ?? '',
     'status'      => $_GET['status']      ?? '',
     'id'          => $_GET['id']          ?? '',
     'marketplace' => $_GET['marketplace'] ?? ''

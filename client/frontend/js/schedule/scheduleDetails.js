@@ -1,6 +1,6 @@
-import { updateScheduleStatus, deleteSchedule, API_BASE } from './scheduleApi.js';
+import { updateScheduleStatus, deleteSchedule } from './scheduleApi.js';
 import { editSchedule } from './scheduleEditForm.js';
-import { createOrder } from '/client/requestForm.js';
+import { createOrder } from '../requestForm.js';
 
 export function openSingleShipmentModal(sh) {
     const modalContainer = document.getElementById('modalContainer');
@@ -64,7 +64,7 @@ export function canCreateOrderForSchedule(schedule) {
     return now <= deadlineDate;
 }
 export function openShipmentsForDate(date) {
-    fetch(`${API_BASE}/listSchedules.php?date=${encodeURIComponent(date)}`)
+    fetch(`/backend/schedule/listSchedules.php?date=${encodeURIComponent(date)}`)
         .then(r => r.json())
         .then(data => {
             const modalContainer = document.getElementById('modalContainer');

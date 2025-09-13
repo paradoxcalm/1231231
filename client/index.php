@@ -13,17 +13,22 @@ $role = $_SESSION['role'];
     <title>IDEAL TranSport</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php $version = time(); ?>
-    <link rel="stylesheet" href="/styles/common.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/form.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/table.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/edit_profile_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/order_tile_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/schedule.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/processing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/profile.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/camera.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/layout.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/base.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/buttons.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/components.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/form.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/table.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/edit_profile_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/navbar.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/order_tile_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/schedule.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/processing_styles.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/profile.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/responsive.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/camera.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
 </head>
@@ -126,31 +131,31 @@ $role = $_SESSION['role'];
 </div>
 <!-- ✅ Скрипты -->
 <!-- Личный кабинет: скрипты для раздела заказов пользователя -->
-<script src="/client/lk.js?v=<?php echo $version; ?>"></script>
+<script src="lk.js?v=<?php echo $version; ?>"></script>
 <!-- Библиотека jsQR для распознавания QR-кодов -->
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <!-- Сканирование QR через камеру (видео + распознавание QR) -->
-<script src="/client/scan.js?v=<?php echo $version; ?>"></script>
+<script src="scan.js?v=<?php echo $version; ?>"></script>
 <!-- Автозаполнение поля "ИП" (название компании) по ФИО -->
-<script src="/client/auto_ip_fill.js?v=<?php echo $version; ?>"></script>
+<script src="auto_ip_fill.js?v=<?php echo $version; ?>"></script>
 <!-- Автогенерация названия компании из ФИО (профиль пользователя) -->
-<script src="/client/auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
+<script src="auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Обработка": добавление товаров, распределение по складам -->
-<script src="/client/processing.js?v=<?php echo $version; ?>"></script>
+<script src="processing.js?v=<?php echo $version; ?>"></script>
 <!-- Основные функции: загрузка разделов "Приёмка", "Таблица" и др. -->
-<script src="/client/main.js?v=<?php echo $version; ?>"></script>
+<script src="main.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Таблица": загрузка данных, пагинация, фильтрация -->
-<script src="/client/table.js?v=<?php echo $version; ?>"></script>
+<script src="table.js?v=<?php echo $version; ?>"></script>
 <!-- Раздел "Приёмка": отрисовка и динамика формы приёмки -->
-<script src="/client/form.js?v=<?php echo $version; ?>"></script>
+<script src="form.js?v=<?php echo $version; ?>"></script>
 <!-- Автозаполнение данных пользователя (ИП, магазин) в формах -->
-<script src="/client/autofill_user_fields.js?v=<?php echo $version; ?>"></script>
+<script src="autofill_user_fields.js?v=<?php echo $version; ?>"></script>
 <!-- Модальное окно заявки: вкладки "Приёмка" и "Обработка" -->
-<script src="/client/requestForm.js?v=<?php echo $version; ?>"></script>
+<script src="requestForm.js?v=<?php echo $version; ?>"></script>
 <!-- Предпросмотр фото и галерея изображений -->
-<script src="/client/photoPreview.js?v=<?php echo $version; ?>"></script>
+<script src="photoPreview.js?v=<?php echo $version; ?>"></script>
 <!-- Модуль "Расписание": импортирует scheduleMain.js и задаёт loadSchedule() -->
-<script type="module" src="/client/schedule.js?v=<?=$version?>" defer></script>
+<script type="module" src="schedule.js?v=<?=$version?>"></script>
 <!-- Библиотека QRCode.js для генерации QR-кодов -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Библиотека pdfmake для формирования PDF-файлов -->
@@ -222,10 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById("notificationsBtn");
     if (bell) {
         bell.addEventListener("click", loadNotifications);
-    }
-    const scheduleBtn = document.getElementById('btnSchedule');
-    if (scheduleBtn) {
-        scheduleBtn.addEventListener('click', loadSchedule);
     }
 });
 setInterval(fetchLiveNotifications, 30000);
