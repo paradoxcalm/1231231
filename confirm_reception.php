@@ -119,12 +119,6 @@ if (!$stmt) {
 
         $relative = 'uploads/' . $fname;
         $uploaded[] = $relative;
-        $stmtPhoto = $conn->prepare("INSERT INTO order_photos (order_id, file_path) VALUES (?, ?)");
-        if ($stmtPhoto) {
-            $stmtPhoto->bind_param("is", $orderId, $relative);
-            $stmtPhoto->execute();
-            $stmtPhoto->close();
-        }
     }
     $photosJson = json_encode($uploaded, JSON_UNESCAPED_UNICODE);
     $now = date('Y-m-d H:i:s');
@@ -187,15 +181,15 @@ if (!$stmt) {
         $stmtUpdate->execute();
         $stmtUpdate->close();
 
-        // Сохраняем данные об оплате в order_reception_details
-        $stmt = $conn->prepare("INSERT INTO order_reception_details (order_id, payment_type, payment) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE payment_type = VALUES(payment_type), payment = VALUES(payment)");
+        // Сохраняем данные об оплате и фотографии в order_reception_details
+        $stmt = $conn->prepare("INSERT INTO order_reception_details (order_id, payment_type, payment, photo_path) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE payment_type = VALUES(payment_type), payment = VALUES(payment), photo_path = VALUES(photo_path)");
 if (!$stmt) {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
     exit;
 }
 
-        $stmt->bind_param("isd", $orderId, $paymentType, $payment);
+        $stmt->bind_param("isds", $orderId, $paymentType, $payment, $photosJson);
         $stmt->execute();
         $stmt->close();
 
