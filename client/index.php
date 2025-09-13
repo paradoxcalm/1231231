@@ -223,6 +223,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bell) {
         bell.addEventListener("click", loadNotifications);
     }
+    const scheduleBtn = document.getElementById('btnSchedule');
+    if (scheduleBtn) {
+        scheduleBtn.addEventListener('click', loadSchedule);
+    }
 });
 setInterval(fetchLiveNotifications, 30000);
 window.onload = function () {
