@@ -60,7 +60,14 @@ export function fetchDataAndUpdateCalendar() {
             });
             updateCalendarWithData(shipmentsByDate);
         })
-        .catch(err => console.error('Ошибка при fetchDataAndUpdateCalendar:', err));
+        .catch(err => {
+            console.error('Ошибка при fetchDataAndUpdateCalendar:', err);
+            const grid = document.getElementById('calendarGrid');
+            if (grid) {
+                const msg = err?.message ? `Ошибка: ${err.message}` : 'Ошибка загрузки.';
+                grid.innerHTML = `<p>${msg}</p>`;
+            }
+        });
 }
 
 function updateCalendarWithData(shipmentsByDate) {
