@@ -23,7 +23,6 @@ class ScheduleModel {
         $city        = $filters['city']        ?? '';
         $warehouse   = $filters['warehouse']   ?? '';
         $date        = $filters['date']        ?? '';
-        $deliveryDate= $filters['delivery_date'] ?? '';
         $status      = $filters['status']      ?? '';
         $idParam     = $filters['id']          ?? '';
         $marketplace = $filters['marketplace'] ?? '';
@@ -47,18 +46,10 @@ class ScheduleModel {
             $params[]  = $date;
             $types    .= 's';
         }
-        if ($deliveryDate) {
-            $query    .= " AND delivery_date = ?";
-            $params[]  = $deliveryDate;
-            $types    .= 's';
-        }
         if ($status) {
             $query    .= " AND status = ?";
             $params[]  = $status;
             $types    .= 's';
-        } else {
-            // по умолчанию исключаем завершённые отправления
-            $query    .= " AND status <> 'Завершено'";
         }
         if ($idParam !== '') {
             $query    .= " AND id = ?";

@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        header("Location: dashboard.php");
+        header("Location: index.php");
         exit();
     } else {
         header('Location: auth_form.php?error=Неправильный Email, номер телефона или пароль');
