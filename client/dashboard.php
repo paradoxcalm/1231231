@@ -121,7 +121,7 @@ $role = $_SESSION['role'];
 <!-- Предпросмотр фото и галерея изображений -->
 <script src="/client/photoPreview.js?v=<?php echo $version; ?>"></script>
 <!-- Модуль "Расписание": импортирует scheduleMain.js и задаёт loadSchedule() -->
-<script type="module" src="/client/schedule.js?v=<?=$version?>"></script>
+<script type="module" src="/client/schedule.js?v=<?=$version?>" defer></script>
 <!-- Библиотека QRCode.js для генерации QR-кодов -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Библиотека pdfmake для формирования PDF-файлов -->
