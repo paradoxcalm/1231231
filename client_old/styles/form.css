@@ -1,0 +1,202 @@
+/* === form.css (исправленный) === */
+
+/* Заголовок формы */
+form h1 {
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: #333;
+}
+input[type="file"][multiple] {
+    display: block;
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 16px;
+}
+.dropzone {
+    border: 2px dashed #4CAF50;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    padding: 20px;
+    text-align: center;
+}
+.dropzone .dz-message {
+    font-size: 16px;
+    color: #333;
+}
+/* form-group */
+.form-group {
+    margin-bottom: 15px;
+}
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #434141;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background-color: #fff;
+}
+.form-group input:focus,
+.form-group select:focus {
+    border-color: #4CAF50;
+    outline: none;
+    background-color: #f9f9f9;
+}
+/* Кнопка submit */
+button[type="submit"] {
+    width: 100%;
+    padding: 15px;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.3s ease;
+}
+button[type="submit"]:hover {
+    background-color: #45a049;
+}
+/* Статус формы */
+#status {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 18px;
+    color: #333;
+}
+/* QR-код */
+#qrImage {
+    display: none;
+    margin-top: 20px;
+    text-align: center;
+}
+#qrImage img {
+    max-width: 100%;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Мобильная адаптация формы */
+@media (max-width: 480px) {
+  .form-container {
+    padding: 16px;
+    font-size: 16px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+
+  .form-group label {
+    margin-bottom: 4px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    font-size: 16px;
+    padding: 10px;
+  }
+
+  .submit-button {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    z-index: 1000;
+    padding: 14px;
+    font-size: 18px;
+    background-color: #007BFF;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+  }
+}
+/* === form.css === */
+/* ✅ Стили формы создания заявки */
+
+.section-container {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+    max-width: 900px;
+    margin: auto;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+/* ✅ Кнопка отправки */
+.section-container button[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 14px 24px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.section-container button[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+/* 📱 Мобильная адаптация */
+@media screen and (max-width: 768px) {
+    .section-container {
+        padding: 16px;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    .form-group label {
+        font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        font-size: 16px;
+        padding: 12px;
+    }
+
+    .section-container button[type="submit"] {
+        font-size: 18px;
+        padding: 16px;
+    }
+}
