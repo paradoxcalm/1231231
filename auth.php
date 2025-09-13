@@ -93,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Перенаправление на соответствующую главную страницу после успешного входа
         if ($role === 'client') {
-            header('Location: /client/index.php');
+            header('Location: /client/dashboard.php');
         } else {
             header('Location: index.php');
         }
