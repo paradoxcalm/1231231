@@ -6,8 +6,28 @@ $version = time();
 <head>
     <meta charset="UTF-8">
     <title>Личный кабинет клиента</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/styles/layout.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/base.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/buttons.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/components.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/tariffs_section.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/form.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/table.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/edit_profile_styles.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/delivery_pricing_styles.css?v=<?= $version ?>">
     <link rel="stylesheet" href="/styles/navbar.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/styles.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/fbs.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/import.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/order_tile_styles.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/schedule.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/processing_styles.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/profile.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/responsive.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/camera.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/clients.css?v=<?= $version ?>">
+    <link rel="stylesheet" href="/styles/photo-preview.css?v=<?= $version ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
