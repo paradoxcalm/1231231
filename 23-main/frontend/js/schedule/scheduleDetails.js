@@ -1,6 +1,6 @@
 import { updateScheduleStatus, deleteSchedule } from './scheduleApi.js';
 import { editSchedule } from './scheduleEditForm.js';
-import { createOrder } from '/client/requestForm.js';
+import { createOrder } from '../requestForm.js';
 
 export function openSingleShipmentModal(sh) {
     const modalContainer = document.getElementById('modalContainer');
