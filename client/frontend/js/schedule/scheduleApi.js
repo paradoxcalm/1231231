@@ -3,11 +3,17 @@ const API_BASE = '/client/backend/schedule';
 export async function fetchSchedules(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`${API_BASE}/listSchedules.php?${query}`);
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 
 export async function getSchedule(id) {
     const res = await fetch(`${API_BASE}/getSchedule.php?id=${id}`);
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 
@@ -16,6 +22,9 @@ export async function createSchedule(data) {
         method: 'POST',
         body: data
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 
@@ -26,6 +35,9 @@ export async function editSchedule(id, data) {
         method: 'POST',
         body: fd
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 
@@ -36,6 +48,9 @@ export async function deleteSchedule(id) {
         method: 'POST',
         body: fd
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 export async function updateScheduleStatus(id, status) {
@@ -46,6 +61,9 @@ export async function updateScheduleStatus(id, status) {
         method: 'POST',
         body: fd
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
 
@@ -53,6 +71,9 @@ export async function exportSchedules() {
     const res = await fetch(`${API_BASE}/exportSchedules.php`, {
         method: 'POST'
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.blob();
 }
 export async function bulkUpdate(ids, action) {
@@ -63,5 +84,8 @@ export async function bulkUpdate(ids, action) {
         method: 'POST',
         body: fd
     });
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return await res.json();
 }
