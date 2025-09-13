@@ -37,16 +37,12 @@ if ($role !== 'admin' && $role !== 'manager') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
     <?php $version = time(); ?>
-    <link rel="stylesheet" href="styles/layout.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/base.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/buttons.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/components.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="styles/common.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/tariffs_section.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/form.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/table.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/edit_profile_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/navbar.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/fbs.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/import.css?v=<?php echo $version; ?>">
@@ -55,7 +51,6 @@ if ($role !== 'admin' && $role !== 'manager') {
     <link rel="stylesheet" href="styles/schedule.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/processing_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/profile.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="styles/responsive.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/camera.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/clients.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="styles/photo-preview.css?v=<?php echo $version; ?>">

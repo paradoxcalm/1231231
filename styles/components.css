@@ -771,3 +771,8 @@
     color: #888 !important;
     box-shadow: none !important;
 }
+
+#requestModal .modal-content {
+    padding: 20px;
+    box-sizing: border-box;
+}

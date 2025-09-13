@@ -13,21 +13,16 @@ $role = $_SESSION['role'];
     <title>IDEAL TranSport</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php $version = time(); ?>
-    <link rel="stylesheet" href="/client/styles/layout.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/base.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/buttons.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/components.css?v=<?php echo $version; ?>">
+    <link rel="stylesheet" href="/styles/common.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/form.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/table.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/edit_profile_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/delivery_pricing_styles.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/navbar.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/order_tile_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/schedule.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/processing_styles.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/profile.css?v=<?php echo $version; ?>">
-    <link rel="stylesheet" href="/client/styles/responsive.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="/client/styles/camera.css?v=<?php echo $version; ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
