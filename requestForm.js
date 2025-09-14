@@ -35,17 +35,29 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
 
     try {
         const tmplResp = await fetch('/client/templates/orderModal.html');
+        if (!tmplResp.ok) {
+            if (tmplResp.status === 404) {
+                throw new Error('Шаблон формы заявки не найден');
+            }
+            throw new Error('Ошибка загрузки шаблона формы заявки');
+        }
         const tmplHtml = await tmplResp.text();
         const wrap = document.createElement('div');
         wrap.innerHTML = tmplHtml.trim();
         const modal = wrap.firstElementChild;
+        if (!modal) {
+            throw new Error('Шаблон формы заявки не содержит модальное окно');
+        }
         document.body.appendChild(modal);
 
         const closeBtn = modal.querySelector('#closeOrderModal');
-        closeBtn.addEventListener('click', () => modal.remove());
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => modal.remove());
+        }
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
-        modal.querySelector('#orderScheduleId').value = schedule.id || '';
+        const scheduleIdInput = modal.querySelector('#orderScheduleId');
+        if (scheduleIdInput) scheduleIdInput.value = schedule.id || '';
         const cityInput = modal.querySelector('#orderCity');
         const whInput = modal.querySelector('#orderWarehouse');
         if (cityInput) cityInput.value = schedule.city || '';
@@ -58,10 +70,14 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         }
 
         const form = modal.querySelector('#createOrderForm');
-        form.addEventListener('submit', submitOrderForm);
+        if (form) {
+            form.addEventListener('submit', submitOrderForm);
+        } else {
+            console.error('Форма создания заказа не найдена в шаблоне');
+        }
     } catch (err) {
         console.error('Ошибка открытия формы заявки:', err);
-        alert('Не удалось открыть форму заявки');
+        alert(err.message || 'Не удалось открыть форму заявки');
     }
 }
 
