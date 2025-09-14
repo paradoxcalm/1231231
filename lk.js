@@ -994,12 +994,13 @@ function loadNotifications() {
     const container = document.getElementById('dynamicContent');
     container.innerHTML = '<p>Загрузка уведомлений…</p>';
 
-    fetch('fetch_notifications.php')
+    fetch('fetch_notifications.php?mark_as_read=1', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';
             if (!Array.isArray(data) || data.length === 0) {
                 container.innerHTML = '<p>Нет уведомлений.</p>';
+                updateNotificationBadge(0);
                 return;
             }
 
@@ -1079,6 +1080,8 @@ function loadNotifications() {
                 controls.appendChild(btnClear);
             }
             if (controls.childNodes.length > 0) container.appendChild(controls);
+
+            updateNotificationBadge(unread.length);
         })
         .catch(err => {
             console.error('Ошибка при загрузке уведомлений:', err);
