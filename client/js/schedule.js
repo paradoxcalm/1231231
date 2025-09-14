@@ -517,40 +517,14 @@ class ScheduleManager {
         const schedule = this.schedules.find(s => s.id === scheduleId);
         if (!schedule) return;
 
-        // Закрываем модальное окно деталей, если открыто
         const detailsModal = document.getElementById('scheduleDetailsModal');
         if (detailsModal) {
             window.app.closeModal(detailsModal);
         }
 
-        // Предзаполняем данные в форме создания заказа
-        const form = document.getElementById('createOrderForm');
-        if (form) {
-            // Здесь можно предзаполнить поля формы данными из расписания
-            const costInput = form.querySelector('input[name="cost"]');
-            if (costInput) {
-                // Рассчитываем стоимость на основе тарифов
-                this.calculateCost(schedule).then(cost => {
-                    costInput.value = window.utils.formatCurrency(cost);
-                });
-            }
+        if (typeof window.openRequestFormModal === 'function') {
+            window.openRequestFormModal(schedule.id, schedule.city, schedule.warehouses);
         }
-
-        // Открываем модальное окно создания заказа
-        const orderModal = document.getElementById('orderModal');
-        window.app.openModal(orderModal);
-    }
-
-    async calculateCost(schedule) {
-        // Симуляция расчета стоимости
-        const baseCost = 650;
-        const multipliers = {
-            'Wildberries': 1.0,
-            'Ozon': 1.1,
-            'YandexMarket': 1.05
-        };
-        
-        return baseCost * (multipliers[schedule.marketplace] || 1.0);
     }
 }
 

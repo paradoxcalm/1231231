@@ -1,95 +1,69 @@
-function openRequestFormModal(scheduleId, city = "", warehouses = "") {
-    const modal = document.getElementById("requestModal");
-    const content = document.getElementById("requestModalContent");
+async function openRequestFormModal(scheduleId, city = "", warehouse = "") {
+    try {
+        const tmplResp = await fetch('client/templates/orderModal.html');
+        const tmplHtml = await tmplResp.text();
+        const wrap = document.createElement('div');
+        wrap.innerHTML = tmplHtml.trim();
+        const modal = wrap.firstElementChild;
+        document.body.appendChild(modal);
 
-    if (!modal || !content) {
-        console.error("❌ Модальное окно или его содержимое не найдены в DOM");
-        return;
+        const closeBtn = modal.querySelector('#closeOrderModal');
+        closeBtn.addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        modal.querySelector('#orderScheduleId').value = scheduleId || '';
+        const cityInput = modal.querySelector('#orderCity');
+        const whInput = modal.querySelector('#orderWarehouse');
+        if (cityInput) cityInput.value = city;
+        if (whInput) whInput.value = warehouse;
+
+        const costInput = modal.querySelector('#orderCost');
+        if (city && warehouse && costInput) {
+            fetch(`get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(warehouse)}`)
+                .then(r => r.json())
+                .then(data => { if (data.success) costInput.value = data.base_price; });
+        }
+
+        const form = modal.querySelector('#createOrderForm');
+        form.addEventListener('submit', submitOrderForm);
+    } catch (err) {
+        console.error('Ошибка открытия формы заявки:', err);
+        alert('Не удалось открыть форму заявки');
     }
+}
 
-    console.log("📦 Открываем модалку с расписанием ID:", scheduleId);
-
-    fetch(`schedule.php?id=${scheduleId}`)
-        .then(response => {
-            if (!response.ok) throw new Error("Ошибка загрузки расписания");
-            return response.json();
-        })
+function submitOrderForm(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const payload = {};
+    for (let [key, value] of formData.entries()) {
+        if (payload[key]) {
+            if (Array.isArray(payload[key])) payload[key].push(value);
+            else payload[key] = [payload[key], value];
+        } else {
+            payload[key] = value;
+        }
+    }
+    fetch('create_order.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include'
+    })
+        .then(r => r.json())
         .then(data => {
-            if (!data.success || !data.schedule) {
-                throw new Error("Расписание не найдено");
-            }
-
-            const scheduleData = data.schedule;
-            console.log("📋 Получено расписание:", scheduleData);
-
-            modal.classList.add("show");
-            modal.style.display = "block";
-
-            content.innerHTML = `
-                <div class="modal-tabs">
-                    <div class="modal-header-with-close">
-                        <div class="tabs">
-                            <button class="tab-button active" onclick="switchModalTab('formTab')">Приёмка</button>
-                            <button class="tab-button" id="processingTabBtn">Обработка</button>
-                        </div>
-                        <span class="modal-close-btn" onclick="closeRequestModal()">×</span>
-                    </div>
-                    <div id="formTab" class="tab-content active">${renderFormHTML(scheduleData)}</div>
-                    <div id="processingTab" class="tab-content" style="display:none;">${renderProcessingHTML(scheduleId)}</div>
-                </div>
-            `;
-
-            // 🔒 Если клиент — блокируем вкладку "Обработка"
-            if (userRole === 'client') {
-                const procBtn = document.getElementById("processingTabBtn");
-                if (procBtn) {
-                    procBtn.classList.add("disabled");
-                    procBtn.onclick = () => alert("Функция в доработке. Скоро будет доступна.");
-                }
+            if (data.success) {
+                alert('Заказ успешно создан!');
+                const modal = form.closest('.modal');
+                if (modal) modal.remove();
             } else {
-                const procBtn = document.getElementById("processingTabBtn");
-                if (procBtn) {
-                    procBtn.setAttribute("onclick", "switchModalTab('processingTab')");
-                }
+                alert(data.message || 'Ошибка создания заказа');
             }
-
-            // Установка ID и инициализация формы
-            setTimeout(() => {
-                const hiddenInput = document.querySelector("#formTab #formScheduleId");
-                if (hiddenInput) {
-                    hiddenInput.value = scheduleId;
-                    console.log("✅ Установлен formScheduleId =", scheduleId);
-                } else {
-                    console.warn("⚠️ Не найден input #formScheduleId для вставки ID");
-                }
-
-                console.log("⚙️ Запускаем initializeForm()...");
-                initializeForm();
-            }, 50);
-
-            initializeProcessingModal(scheduleId);
         })
-        .catch(error => {
-            console.error("❌ Ошибка получения расписания:", error);
-            alert("Ошибка загрузки расписания");
+        .catch(err => {
+            alert('Ошибка сети: ' + err.message);
         });
 }
 
-function switchModalTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(div => div.style.display = 'none');
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(tabName).style.display = 'block';
-    document.querySelector(`.tab-button[onclick*="${tabName}"]`).classList.add('active');
-}
-
-function closeRequestModal() {
-    const modal = document.getElementById("requestModal");
-    const content = document.getElementById("requestModalContent");
-    if (modal) {
-        modal.classList.remove("show");
-        modal.style.display = "none";
-    }
-    if (content) {
-        content.innerHTML = "";
-    }
-}
+window.openRequestFormModal = openRequestFormModal;
