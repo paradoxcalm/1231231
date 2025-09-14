@@ -68,6 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role']    = $user['role'];
 
+        if ($user['role'] === 'client') {
+            header('Location: /client/index.html');
+            exit();
+        }
+
         if ($remember) {
             // Генерация токена для "Запомнить меня" на 60 дней
             $token     = bin2hex(random_bytes(16));
