@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Package, Truck, Calculator, Info } from 'lucide-react';
+import { Package, Truck, Calculator, Info } from 'lucide-react';
 
 interface TariffData {
   [city: string]: {
@@ -51,7 +51,6 @@ const Tariffs: React.FC = () => {
   }, []);
 
   const cities = Object.keys(tariffs);
-  const warehouses = selectedCity ? Object.keys(tariffs[selectedCity] || {}) : [];
 
   const calculateCost = () => {
     if (!calculation.city || !calculation.warehouse) {

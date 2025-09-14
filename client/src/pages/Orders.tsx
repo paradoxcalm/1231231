@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Search, Filter, Eye, Calendar, MapPin, QrCode, Download } from 'lucide-react';
+import { Package, Search, Filter, Eye, QrCode } from 'lucide-react';
 
 interface Order {
   id: number;
