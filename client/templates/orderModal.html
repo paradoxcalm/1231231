@@ -1,0 +1,69 @@
+<div class="modal" id="orderModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Создание заказа</h3>
+      <button class="modal-close" id="closeOrderModal">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="createOrderForm">
+        <input type="hidden" name="schedule_id" id="orderScheduleId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Город</label>
+            <input type="text" name="city" id="orderCity" readonly>
+          </div>
+          <div class="form-group">
+            <label>Склад</label>
+            <input type="text" name="warehouse" id="orderWarehouse" readonly>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Тип упаковки</label>
+          <div class="radio-group">
+            <label class="radio-item">
+              <input type="radio" name="packaging" value="box" checked>
+              <span>Коробка</span>
+            </label>
+            <label class="radio-item">
+              <input type="radio" name="packaging" value="pallet">
+              <span>Паллета</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Количество</label>
+            <input type="number" name="quantity" min="1" value="1" required>
+          </div>
+          <div class="form-group">
+            <label>Расчетная стоимость</label>
+            <input type="text" name="cost" id="orderCost" readonly>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Маркетплейсы</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" name="marketplaces" value="wildberries" checked>
+              <span>Wildberries</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="marketplaces" value="ozon">
+              <span>Ozon</span>
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Комментарий</label>
+          <textarea name="comment" rows="3" placeholder="Дополнительные пожелания по заказу"></textarea>
+        </div>
+        <button type="submit" class="submit-btn">
+          <i class="fas fa-check"></i>
+          Создать заказ
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
