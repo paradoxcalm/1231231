@@ -44,7 +44,7 @@ $stmt = $conn->prepare("
     LEFT JOIN schedules s ON o.schedule_id = s.id
     LEFT JOIN usersff u ON o.user_id = u.id
     LEFT JOIN order_reception_details d ON o.order_id = d.order_id
-    WHERE o.order_id = ? AND o.is_deleted = 0 AND o.status <> 'Удалён клиентом'
+    WHERE o.order_id = ?
     LIMIT 1
 ");
 $stmt->bind_param("i", $orderId);

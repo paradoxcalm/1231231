@@ -35,7 +35,7 @@ function startScanner() {
     if (typeof initScanner === 'function') {
         initScanner();
     } else {
-        console.error("❌ initScanner() не найден — проверь подключение scan/js/scan.js");
+        console.error("❌ initScanner() не найден — проверь подключение scan.js");
     }
 }
 
@@ -45,7 +45,7 @@ function stopScanner() {
         stopScan();
         console.log("⛔ Сканер остановлен вручную");
     } else {
-        console.error("❌ stopScan() не найден — проверь подключение scan/js/scan.js");
+        console.error("❌ stopScan() не найден — проверь подключение scan.js");
     }
 }
 
@@ -65,7 +65,7 @@ function switchReceptionTab(tabId) {
         if (typeof initScanner === 'function') {
             initScanner();
         } else {
-            console.error("❌ initScanner() не найден — проверь подключение scan/js/scan.js");
+            console.error("❌ initScanner() не найден — проверь подключение scan.js");
         }
     }
 }

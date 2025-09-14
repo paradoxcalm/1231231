@@ -16,7 +16,7 @@ if (!$orderId) {
 }
 
 // Проверяем, существует ли заказ и его статус
-$stmt = $conn->prepare("SELECT user_id, status FROM orders WHERE order_id = ? AND is_deleted = 0 AND status <> 'Удалён клиентом'");
+$stmt = $conn->prepare("SELECT user_id, status FROM orders WHERE order_id = ?");
 $stmt->bind_param("i", $orderId);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -50,12 +50,35 @@ $hist->bind_param("iss", $orderId, $histText, $role);
 $hist->execute();
 $hist->close();
 
-// Помечаем заказ как удалён вместо физического удаления
-$updOrder = $conn->prepare("UPDATE orders SET status='Удалён клиентом', is_deleted=1 WHERE order_id = ?");
-$updOrder->bind_param("i", $orderId);
-$updOrder->execute();
-$success = $updOrder->affected_rows > 0;
-$updOrder->close();
+// Удаление из зависимых таблиц
+$tables = [
+    'order_history',
+    'order_items',
+    'order_reception_details',
+    'order_processing_details',
+    'order_reception_confirmations'
+];
+foreach ($tables as $t) {
+    $del = $conn->prepare("DELETE FROM `$t` WHERE order_id = ?");
+    $del->bind_param("i", $orderId);
+    $del->execute();
+    $del->close();
+}
+
+// Удаление из основной таблицы
+$delOrder = $conn->prepare("DELETE FROM orders WHERE order_id = ?");
+$delOrder->bind_param("i", $orderId);
+$delOrder->execute();
+$success = $delOrder->affected_rows > 0;
+$delOrder->close();
+
+// Удаление из pickups
+if ($success) {
+    $delPickup = $conn->prepare("DELETE FROM pickups WHERE order_id = ?");
+    $delPickup->bind_param("i", $orderId);
+    $success = $delPickup->execute();
+    $delPickup->close();
+}
 
 // Фиксируем транзакцию
 if ($success) {

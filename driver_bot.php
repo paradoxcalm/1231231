@@ -468,7 +468,7 @@ if (!empty($update['callback_query'])) {
             $conn->query("UPDATE schedules SET status='В пути' WHERE id IN ({$idList})");
             // Log event in order history for each order of these schedules
             foreach ($ids as $sid) {
-                $ordersRes = $conn->query("SELECT order_id FROM orders WHERE schedule_id={$sid} AND is_deleted=0 AND status<>'Удалён клиентом'");
+                $ordersRes = $conn->query("SELECT order_id FROM orders WHERE schedule_id={$sid}");
                 while ($ord = $ordersRes->fetch_assoc()) {
                     $oid = (int)$ord['order_id'];
                     $msg = "Отправка началась. Ваш заказ в пути.";

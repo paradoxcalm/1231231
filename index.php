@@ -11,9 +11,6 @@ $role = $_SESSION['role'];
 if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
     exit();
-} elseif ($role === 'client') {
-    header('Location: /client/dist/index.html');
-    exit();
 }
 
 
@@ -78,7 +75,6 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
             </button>
 
         <button class="icon-button" onclick="loadSchedule()"><i class="fas fa-calendar"></i> Расписание</button>
-        <button class="icon-button" onclick="window.location.href='/client/'"><i class="fas fa-user"></i> Клиентский раздел</button>
 
         <?php if ($role === 'admin' || $role === 'manager'): ?>
             <button class="icon-button" onclick="loadStatistics()"><i class="fas fa-chart-pie"></i> Статистика</button>
@@ -106,9 +102,6 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
                     <?php if ($role === 'admin'): ?>
                         <li onclick="loadChangeHistory()">История изменений</li>
                         <li onclick="loadScheduleSettings()">Настройки расписания</li>
-                    <?php endif; ?>
-                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-                      <li><a href="/admin/schedule_board.php">Админ</a></li>
                     <?php endif; ?>
                     <li onclick="loadEditData()">Редактирование данных</li>
                     <li onclick="loadSettings()">Настройки</li>
@@ -232,7 +225,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <!-- ✅ Скрипты -->
 <script src="lk.js?v=<?php echo $version; ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <script src="scan/js/scan.js?v=<?php echo $version; ?>"></script>
+<script src="scan.js?v=<?php echo $version; ?>"></script>
 <script src="reception_pdf.js"></script>
 <script src="auto_ip_fill.js?v=<?php echo $version; ?>"></script>
 <script src="auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
@@ -243,7 +236,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <script src="clients.js?v=<?php echo $version; ?>"></script>
 <script src="tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
 <script src="autofill_user_fields.js?v=<?php echo $version; ?>"></script>
-<script type="module" src="schedules/index.js?v=<?php echo $version; ?>"></script>
+<script src="schedule.js?v=<?php echo $version; ?>"></script>
 <script src="fbs/fbs.js?v=<?php echo $version; ?>"></script>
 <script src="fbs/fbs_pdf.js?v=<?php echo $version; ?>"></script>
 <script src="requestForm.js?v=<?php echo $version; ?>"></script>

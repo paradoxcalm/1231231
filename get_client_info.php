@@ -97,7 +97,7 @@ clog("Найден клиент id={$u['id']} email={$u['email']}");
 /* ---------- 2. Сводная статистика заказов ---------- */
 $sql2 = "SELECT COUNT(*) AS cnt, COALESCE(SUM(payment),0) AS sum_pay,
          MAX(order_date) AS last_ord
-         FROM orders WHERE user_id = ? AND is_deleted = 0 AND status <> 'Удалён клиентом'";
+         FROM orders WHERE user_id = ?";
 $stmt = $conn->prepare($sql2);
 if (!$stmt) { clog("SQL‑2 prepare: " . $conn->error); echo json_encode(['success'=>false,'message'=>'DB error']); exit; }
 $stmt->bind_param('i', $userId);
@@ -106,7 +106,7 @@ $stat = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 /* ---------- 3. Статусы ---------- */
-$stmt=$conn->prepare("SELECT status, COUNT(*) AS c FROM orders WHERE user_id=? AND is_deleted = 0 AND status <> 'Удалён клиентом' GROUP BY status");
+$stmt=$conn->prepare("SELECT status, COUNT(*) AS c FROM orders WHERE user_id=? GROUP BY status");
 if(!$stmt){ clog("SQL‑3 prepare: ".$conn->error); echo json_encode(['success'=>false,'message'=>'DB error']); exit; }
 $stmt->bind_param('i',$userId);
 if(!$stmt->execute()){ clog("SQL‑3 exec: ".$stmt->error); echo json_encode(['success'=>false,'message'=>'DB error']); exit; }

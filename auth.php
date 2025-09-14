@@ -90,12 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $conn->query("UPDATE usersff SET remember_token = NULL, token_expiry = NULL WHERE id = " . (int)$user['id']);
         }
 
-        // Перенаправление после успешного входа
-        if ($_SESSION['role'] === 'client') {
-            header('Location: client/');
-        } else {
-            header('Location: index.php');
-        }
+        // Перенаправление на главную страницу после успешного входа
+        header('Location: index.php');
         exit();
     } else {
         // Неверные учетные данные

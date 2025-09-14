@@ -11,10 +11,9 @@ $conn = new mysqli($host, $username, $password, $dbname);
 
 // Проверяем соединение
 if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'DB connection failed']);
-    exit;
+    die("Ошибка подключения: " . $conn->connect_error);
 }
 
 // Устанавливаем кодировку
 $conn->set_charset("utf8mb4");
+?>

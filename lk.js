@@ -52,6 +52,8 @@ function renderOrderCards(orders, userRole) {
     const warehouse = schedule.warehouses || '—';
     const deadline = schedule.accept_deadline || order.order_date || '—';
     const delivery = schedule.delivery_date || '—';
+    const requestedAt = order.requested_at || '—';
+    const acceptTime = order.accept_time || '—';
     const company = order.company_name || '—';
     // Определяем тип упаковки и переводим на русский (если применимо)
     let type = order.packaging_type || '—';
@@ -86,6 +88,8 @@ function renderOrderCards(orders, userRole) {
           <div class="order-info-line"><strong>Приёмка до:</strong> ${deadline}</div>
           <div class="order-info-line"><strong>Склад:</strong> ${warehouse}</div>
           <div class="order-info-line"><strong>Сдача:</strong> ${delivery}</div>
+          <div class="order-info-line"><strong>Запрос:</strong> ${requestedAt}</div>
+          <div class="order-info-line"><strong>Приёмка:</strong> ${acceptTime}</div>
           <div class="order-status-block">${statusControlHtml}</div>
         </div>
         ${hasPhotos ? `
@@ -714,6 +718,8 @@ function showOrderDetails(orderId) {
         <div><strong>Дата:</strong> ${order.order_date || '—'}</div>
         <div><strong>Статус:</strong> ${order.status || '—'}</div>
         <div><strong>Комментарий:</strong> ${order.comment || '—'}</div>
+        <div><strong>Запрос:</strong> ${order.requested_at || '—'}</div>
+        <div><strong>Приёмка:</strong> ${order.accept_time || '—'}</div>
       </div>
     </details>
     <details>
@@ -1506,4 +1512,3 @@ function fetchLogsInto(container) {
             container.innerHTML = "<div class='logs-container'>" + html + "</div>";
         });
 }
-

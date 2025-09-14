@@ -147,15 +147,31 @@ async function fetchReceptionInfo(qrText) {
             alert(result.message || "Ошибка QR");
             return;
         }
-        showReceptionModal(result.data, qrText);
+        await showReceptionModal(result.data, qrText);
     } catch (e) {
         console.error("❌ Ошибка fetchReceptionInfo:", e);
         logQrEvent('FETCH_RECEPTION_ERROR', { error: e.message });
         alert("Ошибка при подключении");
     }
 }
+async function showReceptionModal(data, qrText) {
+    let preferredType = '';
+    let preferredAmount = '';
+    try {
+        const prefRes = await fetch('get_preferred_payment.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: data.order_id })
+        });
+        const prefData = await prefRes.json();
+        if (prefData.success) {
+            preferredType = prefData.payment_type || '';
+            preferredAmount = prefData.payment ?? '';
+        }
+    } catch (err) {
+        console.warn('Не удалось получить предпочтительный способ оплаты', err);
+    }
 
-function showReceptionModal(data, qrText) {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay active';
     overlay.innerHTML = `
@@ -174,8 +190,21 @@ function showReceptionModal(data, qrText) {
                     <p><strong>Авто:</strong> ${data.car_brand || '—'} ${data.car_number || ''}</p>
                 </div>
                 <div class="form-section">
+                    <h3>Оплата</h3>
+                    <label for="paymentType">Способ оплаты:</label>
+                    <select id="paymentType">
+                        <option value="">Выберите способ оплаты</option>
+                        <option value="Наличные" ${preferredType === 'Наличные' ? 'selected' : ''}>Наличные</option>
+                        <option value="ТБанк" ${preferredType === 'ТБанк' ? 'selected' : ''}>Т-Банк</option>
+                        <option value="Долг" ${preferredType === 'Долг' ? 'selected' : ''}>Долг</option>
+                    </select>
+                    <label>Сумма (₽):</label>
+                    <div id="paymentAmountDisplay">${preferredAmount}</div>
+                    <input type="hidden" id="paymentAmount" value="${preferredAmount}">
+                </div>
+                <div class="form-section">
                     <h3>Фото</h3>
-                    <input type="file" id="receptionPhotos" accept="image/*" multiple>
+                    <input type="file" id="receptionPhoto" accept="image/*">
                 </div>
             </div>
             <div class="modal-actions">
@@ -219,10 +248,13 @@ async function submitReception(orderId, qrCode, action) {
     formData.append('qr_code', qrCode);
     formData.append('action', action); // 'confirm' или 'reject'
 
-    // Загружаем фотографии
-    const files = document.getElementById('receptionPhotos')?.files || [];
-    for (let i = 0; i < files.length; i++) {
-        formData.append('photos[]', files[i]);
+    formData.append('payment_type', document.getElementById('paymentType')?.value || '');
+    formData.append('payment', document.getElementById('paymentAmount')?.value ?? '');
+
+    // Загружаем фотографию (одно изображение)
+    const file = document.getElementById('receptionPhoto')?.files?.[0];
+    if (file) {
+        formData.append('photo', file);
     }
 
     try {
@@ -230,6 +262,12 @@ async function submitReception(orderId, qrCode, action) {
             method: 'POST',
             body: formData
         });
+        if (!response.ok) {
+            const errorText = await response.text();
+            alert(`Ошибка ${response.status}: ${errorText}`);
+            return;
+        }
+
         const result = await response.json();
         if (result.success) {
             alert(result.message || 'Приёмка завершена.');

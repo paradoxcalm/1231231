@@ -1,14 +1,5 @@
 <?php
 header('Content-Type: application/json');
-require_once 'session_init.php';
-session_start();
-
-// Проверяем роль: только админ или менеджер могут создавать заявки вручную
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['admin', 'manager'])) {
-    http_response_code(403);
-    echo json_encode(['status' => 'error', 'message' => 'Доступ запрещён']);
-    exit();
-}
 
 // Подключаемся к базе (поменяйте на своё подключение)
 require_once 'config.php';

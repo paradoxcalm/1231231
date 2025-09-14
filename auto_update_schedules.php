@@ -39,7 +39,7 @@ $update = $conn->query("
 
 // Шаг 3: Для каждого расписания — найти заказы, добавить уведомления
 foreach ($scheduleIds as $sid) {
-    $orders = $conn->prepare("SELECT order_id FROM orders WHERE schedule_id = ? AND is_deleted = 0 AND status <> 'Удалён клиентом'");
+    $orders = $conn->prepare("SELECT order_id FROM orders WHERE schedule_id = ?");
     $orders->bind_param("i", $sid);
     $orders->execute();
     $res2 = $orders->get_result();
