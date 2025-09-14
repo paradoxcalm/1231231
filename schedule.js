@@ -937,7 +937,7 @@ function openSingleShipmentModal(sh) {
 
         <div class="modal-actions">
             ${canCreateOrderForSchedule(sh) ? `
-                <button class="create-order-btn big-action" onclick="createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}')">
+                <button class="create-order-btn big-action" onclick="createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}', '${sh.marketplace}')">
                     <i class="fas fa-plus-circle"></i> Создать заявку
                 </button>
             ` : `<span class="closed-message">Приём заявок закрыт</span>`}
@@ -1124,7 +1124,7 @@ function fetchAndDisplayUpcoming(showArchived = false, statusCategory = 'active'
                         div.className = "upcoming-item styled-upcoming-item";
                         if (canOrder) {
                             div.classList.add("card-clickable");
-                            div.addEventListener("click", () => openRequestFormModal(sh.id));
+                            div.addEventListener("click", () => openRequestFormModal(sh));
                         }
 
                         div.innerHTML = `
@@ -2191,11 +2191,11 @@ function fetchScheduleData() {
  * Главное изменение: мы не переходим на "processing.html",
  * а просто закрываем модалку (или можем открыть нужный раздел).
  */
-function createOrder(scheduleId, city, warehouse) {
+function createOrder(scheduleId, city, warehouse, marketplace) {
     // Вместо перехода на processing.html,
     // вызываем нашу функцию из requestForm.js
     closeScheduleModal(); // если было открыто окно расписания
-    openRequestFormModal(scheduleId, city, warehouse);
+    openRequestFormModal({ id: scheduleId, city, warehouses: warehouse, marketplace });
 }
 
 function openShipmentsForDate(date) {
