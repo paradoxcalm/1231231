@@ -49,8 +49,10 @@ switch ($filter) {
 
 // Составляем запрос. Выводим координаты, чтобы строить маршруты.
 $query = "SELECT p.id, p.order_id, p.address, p.contact_name, p.contact_phone, "
-        . "p.goods_list, p.latitude, p.longitude, p.status, p.assigned_to, p.task_number, p.accepted_at "
+        . "p.goods_list, p.latitude, p.longitude, p.status, p.assigned_to, p.task_number, p.accepted_at, "
+        . "p.requested_at, s.accept_time "
         . "FROM pickups p "
+        . "LEFT JOIN shipments s ON s.order_id = p.order_id "
         . ( $where ? "WHERE " . $where . " " : "" )
         . "ORDER BY p.status ASC, p.accepted_at ASC, p.requested_at ASC";
 
@@ -268,6 +270,8 @@ if (!$result) {
 
       $contactPhone = trim((string)($row['contact_phone'] ?? ''));
       $acceptedAt   = $row['accepted_at'] ?? '';
+      $requestedAt  = $row['requested_at'] ?? '';
+      $acceptTime   = $row['accept_time'] ?? '';
       $lat = $row['latitude']  ?? null;
       $lng = $row['longitude'] ?? null;
 
@@ -283,10 +287,12 @@ if (!$result) {
                 . '&travelmode=driving';
       }
     ?>
-    <article id="pickup_<?= $taskId ?>" class="<?= $cardClass ?>" data-order-id="<?= (int)$row['order_id'] ?>" data-goods-list="<?= htmlspecialchars($row['goods_list'] ?? '', ENT_QUOTES) ?>">
+    <article id="pickup_<?= $taskId ?>" class="<?= $cardClass ?>" data-order-id="<?= (int)$row['order_id'] ?>" data-goods-list="<?= htmlspecialchars($row['goods_list'] ?? '', ENT_QUOTES) ?>" data-requested-at="<?= htmlspecialchars($requestedAt) ?>" data-accept-time="<?= htmlspecialchars($acceptTime) ?>">
       <h2><?= htmlspecialchars($title) ?></h2>
 
       <div class="info"><strong>Контакт:</strong> <?= htmlspecialchars($contactPhone ?: '—') ?></div>
+      <div class="info"><strong>Запрос:</strong> <?= htmlspecialchars($requestedAt ?: '—') ?></div>
+      <div class="info"><strong>Приёмка:</strong> <?= htmlspecialchars($acceptTime ?: '—') ?></div>
 
       <?php if ($isOwn && !empty($acceptedAt)): ?>
         <div class="info"><strong>Принято:</strong> <?= htmlspecialchars($acceptedAt) ?></div>
@@ -335,11 +341,13 @@ document.querySelectorAll('.card').forEach(card => {
         if (e.target.closest('.btn')) return;
         const orderId = card.dataset.orderId;
         const goods = card.dataset.goodsList || '';
-        openOrderModal(orderId, goods);
+        const requestedAt = card.dataset.requestedAt || '';
+        const acceptTime = card.dataset.acceptTime || '';
+        openOrderModal(orderId, goods, requestedAt, acceptTime);
     });
 });
 
-function openOrderModal(orderId, goodsList) {
+function openOrderModal(orderId, goodsList, requestedAt, acceptTime) {
     fetch(`../get_orders.php?order_id=${orderId}&all=1`)
         .then(r => r.json())
         .then(data => {
@@ -362,6 +370,8 @@ function openOrderModal(orderId, goodsList) {
                     <div><strong>Список товаров:</strong> ${goodsList || order.goods_list || '—'}</div>
                     <div><strong>Упаковка:</strong> ${rec.packaging_type || order.packaging_type || '—'}</div>
                     <div><strong>Размеры:</strong> ${boxHtml}</div>
+                    <div><strong>Запрос:</strong> ${requestedAt || '—'}</div>
+                    <div><strong>Приёмка:</strong> ${acceptTime || '—'}</div>
                     <div><strong>QR‑код:</strong></div>
                     <div id="qrContainer"></div>
                 </div>`;
