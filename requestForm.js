@@ -106,12 +106,11 @@ function submitOrderForm(e) {
     const form = e.target;
 
     const packagingMap = { box: 'Box', pallet: 'Pallet' };
-    const packagingValue = form.elements.packaging?.value || 'box';
+    const packagingValue = form.elements.packaging_type?.value || 'box';
     const packaging_type = packagingMap[packagingValue] || packagingValue;
 
-    const marketplaces = Array.from(form.elements.marketplaces || [])
-        .filter(el => el.checked)
-        .map(el => el.value);
+    const marketplace_wildberries = form.elements.marketplace_wildberries?.checked ? 1 : 0;
+    const marketplace_ozon = form.elements.marketplace_ozon?.checked ? 1 : 0;
 
     const items = [];
     form.querySelectorAll('#itemsContainer .item-row').forEach(row => {
@@ -128,8 +127,8 @@ function submitOrderForm(e) {
         store_name: form.elements.store_name?.value.trim() || '',
         comment: form.elements.comment?.value.trim() || '',
         packaging_type,
-        marketplace_wildberries: marketplaces.includes('wildberries') ? 1 : 0,
-        marketplace_ozon: marketplaces.includes('ozon') ? 1 : 0,
+        marketplace_wildberries,
+        marketplace_ozon,
         items
     };
 
