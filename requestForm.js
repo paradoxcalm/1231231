@@ -1,4 +1,38 @@
-async function openRequestFormModal(scheduleId, city = "", warehouse = "") {
+/**
+ * Рассчитывает стоимость заявки на основе данных расписания и тарифов.
+ * @param {Object} schedule - объект расписания с городом, складом и маркетплейсом
+ * @returns {Promise<number>} рассчитанная стоимость
+ */
+async function calculateCost(schedule) {
+    if (!schedule || !schedule.city || !schedule.warehouses) return 0;
+
+    try {
+        const resp = await fetch(
+            `get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(schedule.warehouses)}`
+        );
+        const data = await resp.json();
+        if (!data.success) return 0;
+
+        const basePrice = parseFloat(data.base_price) || 0;
+        const multipliers = {
+            'Wildberries': 1.0,
+            'Ozon': 1.1,
+            'YandexMarket': 1.05
+        };
+
+        return basePrice * (multipliers[schedule.marketplace] || 1.0);
+    } catch (err) {
+        console.error('Ошибка расчёта стоимости:', err);
+        return 0;
+    }
+}
+
+async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", marketplace = "") {
+    const schedule =
+        typeof scheduleOrId === 'object'
+            ? scheduleOrId
+            : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
+
     try {
         const tmplResp = await fetch('client/templates/orderModal.html');
         const tmplHtml = await tmplResp.text();
@@ -11,17 +45,16 @@ async function openRequestFormModal(scheduleId, city = "", warehouse = "") {
         closeBtn.addEventListener('click', () => modal.remove());
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
-        modal.querySelector('#orderScheduleId').value = scheduleId || '';
+        modal.querySelector('#orderScheduleId').value = schedule.id || '';
         const cityInput = modal.querySelector('#orderCity');
         const whInput = modal.querySelector('#orderWarehouse');
-        if (cityInput) cityInput.value = city;
-        if (whInput) whInput.value = warehouse;
+        if (cityInput) cityInput.value = schedule.city || '';
+        if (whInput) whInput.value = schedule.warehouses || schedule.warehouse || '';
 
         const costInput = modal.querySelector('#orderCost');
-        if (city && warehouse && costInput) {
-            fetch(`get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(warehouse)}`)
-                .then(r => r.json())
-                .then(data => { if (data.success) costInput.value = data.base_price; });
+        if (costInput && schedule.city && schedule.warehouses) {
+            const cost = await calculateCost(schedule);
+            costInput.value = cost ? window.utils.formatCurrency(cost) : '';
         }
 
         const form = modal.querySelector('#createOrderForm');

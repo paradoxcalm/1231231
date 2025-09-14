@@ -523,7 +523,7 @@ class ScheduleManager {
         }
 
         if (typeof window.openRequestFormModal === 'function') {
-            window.openRequestFormModal(schedule.id, schedule.city, schedule.warehouses);
+            window.openRequestFormModal(schedule);
         }
     }
 }

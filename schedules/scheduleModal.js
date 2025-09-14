@@ -61,7 +61,7 @@ function openSingleShipmentModal(sh) {
 
         ${
             canOrder
-                ? `<button onclick="createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}')">Создать заявку</button>`
+                ? `<button onclick="createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}', '${sh.marketplace}')">Создать заявку</button>`
                 : `<p>Приём заявок закрыт</p>`
         }
 
@@ -363,10 +363,10 @@ function archiveSchedule(id) {
 }
 
 // Создаёт заявку на отправление. Закрывает текущую модалку и открывает форму заявки.
-function createOrder(scheduleId, city, warehouse) {
+function createOrder(scheduleId, city, warehouse, marketplace) {
     closeScheduleModal(); // закрываем окно расписания
     if (typeof openRequestFormModal === 'function') {
-        openRequestFormModal(scheduleId, city, warehouse);
+        openRequestFormModal({ id: scheduleId, city, warehouses: warehouse, marketplace });
     }
 }
 
