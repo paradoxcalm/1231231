@@ -64,7 +64,7 @@ export function canCreateOrderForSchedule(schedule) {
     return now <= deadlineDate;
 }
 export function openShipmentsForDate(date) {
-    fetch(`/backend/schedule/listSchedules.php?date=${encodeURIComponent(date)}`)
+    fetch(`backend/schedule/listSchedules.php?date=${encodeURIComponent(date)}`)
         .then(r => r.json())
         .then(data => {
             const modalContainer = document.getElementById('modalContainer');
