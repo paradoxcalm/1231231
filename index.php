@@ -12,7 +12,7 @@ if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
     exit();
 } elseif ($role === 'client') {
-    header('Location: /client/index.php');
+    header('Location: /client/');
     exit();
 }
 
@@ -78,7 +78,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
             </button>
 
         <button class="icon-button" onclick="loadSchedule()"><i class="fas fa-calendar"></i> Расписание</button>
-        <button class="icon-button" onclick="window.location.href='/client/index.php'"><i class="fas fa-user"></i> Клиентский раздел</button>
+        <button class="icon-button" onclick="window.location.href='/client/'"><i class="fas fa-user"></i> Клиентский раздел</button>
 
         <?php if ($role === 'admin' || $role === 'manager'): ?>
             <button class="icon-button" onclick="loadStatistics()"><i class="fas fa-chart-pie"></i> Статистика</button>
