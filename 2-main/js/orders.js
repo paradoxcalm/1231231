@@ -33,65 +33,9 @@ class OrdersManager {
 
     async loadOrders() {
         try {
-            // Симуляция загрузки заказов
-            const mockOrders = [
-                {
-                    id: 1234,
-                    date: '2025-01-10',
-                    companyName: 'ИП Иванов А.П.',
-                    storeName: 'АлексМаркет',
-                    status: 'В обработке',
-                    packaging: 'Коробка',
-                    quantity: 5,
-                    cost: 3250,
-                    city: 'Махачкала',
-                    warehouse: 'Коледино',
-                    acceptDate: '2025-01-15',
-                    deliveryDate: '2025-01-18',
-                    marketplaces: ['Wildberries'],
-                    comment: 'Хрупкий товар, аккуратно',
-                    qrCode: 'ORDER_1234_abc123',
-                    trackingNumber: 'TR1234567890'
-                },
-                {
-                    id: 1233,
-                    date: '2025-01-08',
-                    companyName: 'ИП Иванов А.П.',
-                    storeName: 'АлексМаркет',
-                    status: 'Доставлен',
-                    packaging: 'Паллета',
-                    quantity: 2,
-                    cost: 14000,
-                    city: 'Хасавюрт',
-                    warehouse: 'Невинномысск',
-                    acceptDate: '2025-01-12',
-                    deliveryDate: '2025-01-15',
-                    marketplaces: ['Ozon'],
-                    comment: '',
-                    qrCode: 'ORDER_1233_def456',
-                    trackingNumber: 'TR0987654321'
-                },
-                {
-                    id: 1232,
-                    date: '2025-01-06',
-                    companyName: 'ИП Иванов А.П.',
-                    storeName: 'АлексМаркет',
-                    status: 'Ожидает выгрузки',
-                    packaging: 'Коробка',
-                    quantity: 8,
-                    cost: 5200,
-                    city: 'Каспийск',
-                    warehouse: 'Коледино',
-                    acceptDate: '2025-01-14',
-                    deliveryDate: '2025-01-17',
-                    marketplaces: ['Wildberries', 'Ozon'],
-                    comment: 'Срочная доставка',
-                    qrCode: 'ORDER_1232_ghi789',
-                    trackingNumber: 'TR1122334455'
-                }
-            ];
-
-            this.orders = mockOrders;
+            const response = await fetch('get_orders.php', { credentials: 'include' });
+            const data = await response.json();
+            this.orders = data.orders || [];
             this.filterOrders();
             this.renderOrders();
         } catch (error) {
@@ -128,38 +72,43 @@ class OrdersManager {
 
         grid.innerHTML = this.filteredOrders.map(order => {
             const statusClass = this.getStatusClass(order.status);
-            
+            const marketplaces = [];
+            if (order.marketplace_wildberries) marketplaces.push('Wildberries');
+            if (order.marketplace_ozon) marketplaces.push('Ozon');
+            const routeCity = order.schedule?.city || '—';
+            const routeWarehouse = order.schedule?.warehouses || '—';
+
             return `
-                <div class="order-card" data-id="${order.id}">
+                <div class="order-card" data-id="${order.order_id}">
                     <div class="order-header">
-                        <div class="order-id">Заказ #${order.id}</div>
+                        <div class="order-id">Заказ #${order.order_id}</div>
                         <div class="order-status ${statusClass}">${order.status}</div>
                     </div>
 
                     <div class="order-info">
                         <div class="info-item">
                             <div class="info-label">Дата создания</div>
-                            <div class="info-value">${window.utils.formatDate(order.date)}</div>
+                            <div class="info-value">${window.utils.formatDate(order.order_date)}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Упаковка</div>
-                            <div class="info-value">${order.packaging}</div>
+                            <div class="info-value">${order.packaging_type || '—'}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Количество</div>
-                            <div class="info-value">${order.quantity} шт.</div>
+                            <div class="info-value">${order.reception?.boxes ?? 0} шт.</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Стоимость</div>
-                            <div class="info-value">${window.utils.formatCurrency(order.cost)}</div>
+                            <div class="info-value">${window.utils.formatCurrency(order.reception?.payment ?? 0)}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Маршрут</div>
-                            <div class="info-value">${order.city} → ${order.warehouse}</div>
+                            <div class="info-value">${routeCity} → ${routeWarehouse}</div>
                         </div>
                         <div class="info-item">
                             <div class="info-label">Маркетплейсы</div>
-                            <div class="info-value">${order.marketplaces.join(', ')}</div>
+                            <div class="info-value">${marketplaces.join(', ')}</div>
                         </div>
                     </div>
 
@@ -225,7 +174,7 @@ class OrdersManager {
         // QR код для активных заказов
         if (!['Доставлен', 'Отменен'].includes(order.status)) {
             actions.push(`
-                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.showQR('${order.qrCode}', ${order.id})">
+                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.showQR('${order.qr_code}', ${order.order_id})">
                     <i class="fas fa-qrcode"></i>
                     QR-код
                 </button>
@@ -233,9 +182,9 @@ class OrdersManager {
         }
 
         // Отслеживание
-        if (order.trackingNumber) {
+        if (order.tracking_number) {
             actions.push(`
-                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.trackOrder('${order.trackingNumber}')">
+                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.trackOrder('${order.tracking_number}')">
                     <i class="fas fa-map-marker-alt"></i>
                     Отследить
                 </button>
@@ -245,7 +194,7 @@ class OrdersManager {
         // Отмена для заказов в начальной стадии
         if (order.status === 'Ожидает выгрузки') {
             actions.push(`
-                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.cancelOrder(${order.id})">
+                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.cancelOrder(${order.order_id})">
                     <i class="fas fa-times"></i>
                     Отменить
                 </button>
@@ -260,18 +209,22 @@ class OrdersManager {
     }
 
     showOrderDetails(orderId) {
-        const order = this.orders.find(o => o.id === orderId);
+        const order = this.orders.find(o => o.order_id === orderId);
         if (!order) return;
+
+        const marketplaces = [];
+        if (order.marketplace_wildberries) marketplaces.push('Wildberries');
+        if (order.marketplace_ozon) marketplaces.push('Ozon');
 
         const modal = document.getElementById('orderDetailsModal');
         const content = document.getElementById('orderDetailsContent');
-        
+
         if (!content) return;
 
         content.innerHTML = `
             <div class="order-details">
                 <div class="details-header">
-                    <h4>Заказ #${order.id}</h4>
+                    <h4>Заказ #${order.order_id}</h4>
                     <span class="order-status ${this.getStatusClass(order.status)}">${order.status}</span>
                 </div>
 
@@ -281,27 +234,27 @@ class OrdersManager {
                         <div class="details-grid">
                             <div class="detail-item">
                                 <span class="detail-label">Дата создания:</span>
-                                <span class="detail-value">${window.utils.formatDate(order.date)}</span>
+                                <span class="detail-value">${window.utils.formatDate(order.order_date)}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Компания:</span>
-                                <span class="detail-value">${order.companyName}</span>
+                                <span class="detail-value">${order.company_name}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Магазин:</span>
-                                <span class="detail-value">${order.storeName}</span>
+                                <span class="detail-value">${order.store_name}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Тип упаковки:</span>
-                                <span class="detail-value">${order.packaging}</span>
+                                <span class="detail-value">${order.packaging_type || '—'}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Количество:</span>
-                                <span class="detail-value">${order.quantity} шт.</span>
+                                <span class="detail-value">${order.reception?.boxes ?? 0} шт.</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Стоимость:</span>
-                                <span class="detail-value">${window.utils.formatCurrency(order.cost)}</span>
+                                <span class="detail-value">${window.utils.formatCurrency(order.reception?.payment ?? 0)}</span>
                             </div>
                         </div>
                     </div>
@@ -311,24 +264,24 @@ class OrdersManager {
                         <div class="details-grid">
                             <div class="detail-item">
                                 <span class="detail-label">Маршрут:</span>
-                                <span class="detail-value">${order.city} → ${order.warehouse}</span>
+                                <span class="detail-value">${order.schedule?.city || '—'} → ${order.schedule?.warehouses || '—'}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Дата приёмки:</span>
-                                <span class="detail-value">${window.utils.formatDate(order.acceptDate)}</span>
+                                <span class="detail-value">${window.utils.formatDate(order.schedule?.accept_date)}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Дата сдачи:</span>
-                                <span class="detail-value">${window.utils.formatDate(order.deliveryDate)}</span>
+                                <span class="detail-value">${window.utils.formatDate(order.schedule?.delivery_date)}</span>
                             </div>
                             <div class="detail-item">
                                 <span class="detail-label">Маркетплейсы:</span>
-                                <span class="detail-value">${order.marketplaces.join(', ')}</span>
+                                <span class="detail-value">${marketplaces.join(', ')}</span>
                             </div>
-                            ${order.trackingNumber ? `
+                            ${order.tracking_number ? `
                                 <div class="detail-item">
                                     <span class="detail-label">Трек-номер:</span>
-                                    <span class="detail-value">${order.trackingNumber}</span>
+                                    <span class="detail-value">${order.tracking_number}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -345,7 +298,7 @@ class OrdersManager {
                         <div class="details-section">
                             <h5>QR-код для приёмки</h5>
                             <div class="qr-container" id="orderQR">
-                                <div class="qr-code" id="qrCode_${order.id}"></div>
+                                <div class="qr-code" id="qrCode_${order.order_id}"></div>
                                 <div class="qr-instructions">
                                     Покажите этот QR-код менеджеру при сдаче товара
                                 </div>
@@ -363,10 +316,10 @@ class OrdersManager {
         // Генерируем QR-код если нужно
         if (!['Доставлен', 'Отменен'].includes(order.status)) {
             setTimeout(() => {
-                const qrContainer = document.getElementById(`qrCode_${order.id}`);
+                const qrContainer = document.getElementById(`qrCode_${order.order_id}`);
                 if (qrContainer && window.QRCode) {
                     new QRCode(qrContainer, {
-                        text: order.qrCode,
+                        text: order.qr_code,
                         width: 200,
                         height: 200,
                         colorDark: '#000000',
@@ -434,9 +387,9 @@ class OrdersManager {
     renderDetailActions(order) {
         const actions = [];
 
-        if (order.trackingNumber) {
+        if (order.tracking_number) {
             actions.push(`
-                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.trackOrder('${order.trackingNumber}')">
+                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.trackOrder('${order.tracking_number}')">
                     <i class="fas fa-map-marker-alt"></i>
                     Отследить
                 </button>
@@ -445,7 +398,7 @@ class OrdersManager {
 
         if (order.status === 'Ожидает выгрузки') {
             actions.push(`
-                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.cancelOrder(${order.id})">
+                <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.cancelOrder(${order.order_id})">
                     <i class="fas fa-times"></i>
                     Отменить заказ
                 </button>
@@ -677,7 +630,7 @@ class OrdersManager {
 
         try {
             // Симуляция отмены заказа
-            const order = this.orders.find(o => o.id === orderId);
+            const order = this.orders.find(o => o.order_id === orderId);
             if (order) {
                 order.status = 'Отменен';
                 this.filterOrders();
