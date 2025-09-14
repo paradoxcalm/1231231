@@ -1,4 +1,4 @@
 <?php
-header('Location: /client/index.html');
+header('Location: /client/dist/index.html');
 exit();
 ?>
