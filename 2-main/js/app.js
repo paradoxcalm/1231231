@@ -212,11 +212,6 @@ class App {
                 this.showSuccess('Заказ успешно создан!');
                 this.closeModal(document.getElementById('orderModal'));
                 form.reset();
-                
-                // Обновляем список заказов
-                if (window.OrdersManager) {
-                    window.OrdersManager.loadOrders();
-                }
             } else {
                 this.showError(result.message || 'Ошибка создания заказа');
             }
@@ -224,16 +219,41 @@ class App {
     }
 
     async createOrder(orderData) {
-        // Симуляция API запроса
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve({
-                    success: true,
-                    orderId: Date.now(),
-                    message: 'Заказ создан успешно'
-                });
-            }, 1000);
-        });
+        const payload = {
+            company_name: orderData.company_name,
+            store_name: orderData.store_name,
+            shipment_type: orderData.shipment_type,
+            comment: orderData.comment,
+            packaging_type: orderData.packaging_type,
+            marketplace_wildberries: orderData.marketplace_wildberries,
+            marketplace_ozon: orderData.marketplace_ozon,
+            items: orderData.items,
+            schedule_id: orderData.schedule_id
+        };
+
+        try {
+            const response = await fetch('create_order.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                if (window.OrdersManager) {
+                    window.OrdersManager.loadOrders();
+                }
+                return { success: true, ...data };
+            }
+
+            return { success: false, message: data.message || 'Ошибка создания заказа' };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
     }
 
     loadNotifications() {
