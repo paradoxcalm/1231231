@@ -12,7 +12,7 @@ if ($role === 'deliverer') {
     header('Location: /deliver/index.php');
     exit();
 } elseif ($role === 'client') {
-    header('Location: /client/');
+    header('Location: /client/dist/index.html');
     exit();
 }
 
