@@ -10,45 +10,51 @@ class TariffsManager {
         this.loadTariffs();
     }
 
-    async loadTariffs() {
+    async loadTariffs(city, warehouse) {
         try {
-            // Симуляция загрузки тарифов
-            const mockTariffs = {
-                'Махачкала': {
-                    'Коледино': { box: 650, pallet: 7000 },
-                    'Невинномысск': { box: 580, pallet: 6500 },
-                    'Тула': { box: 720, pallet: 7500 },
-                    'Казань': { box: 690, pallet: 7200 },
-                    'Рязань': { box: 670, pallet: 7100 }
-                },
-                'Хасавюрт': {
-                    'Коледино': { box: 680, pallet: 7200 },
-                    'Невинномысск': { box: 600, pallet: 6700 },
-                    'Тула': { box: 750, pallet: 7700 },
-                    'Казань': { box: 720, pallet: 7400 },
-                    'Рязань': { box: 700, pallet: 7300 }
-                },
-                'Каспийск': {
-                    'Коледино': { box: 660, pallet: 7100 },
-                    'Невинномысск': { box: 590, pallet: 6600 },
-                    'Тула': { box: 730, pallet: 7600 },
-                    'Казань': { box: 710, pallet: 7300 },
-                    'Рязань': { box: 690, pallet: 7200 }
-                },
-                'Дербент': {
-                    'Коледино': { box: 670, pallet: 7150 },
-                    'Невинномысск': { box: 595, pallet: 6650 },
-                    'Тула': { box: 740, pallet: 7650 },
-                    'Казань': { box: 715, pallet: 7350 },
-                    'Рязань': { box: 695, pallet: 7250 }
-                }
-            };
+            // Определяем, какой эндпоинт использовать
+            const url = (city && warehouse)
+                ? `get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(warehouse)}`
+                : 'tariffs/fetch_tariffs.php';
 
-            this.tariffs = mockTariffs;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Сервер вернул ошибку');
+            }
+
+            // Формируем структуру тарифов
+            if (city && warehouse) {
+                this.tariffs = {
+                    [city]: {
+                        [warehouse]: {
+                            box: data.base_price,
+                            pallet: data.pallet_price
+                        }
+                    }
+                };
+            } else {
+                const tariffs = {};
+                for (const [cityName, warehouses] of Object.entries(data.data)) {
+                    tariffs[cityName] = {};
+                    for (const [whName, prices] of Object.entries(warehouses)) {
+                        tariffs[cityName][whName] = {
+                            box: prices.box_price,
+                            pallet: prices.pallet_price
+                        };
+                    }
+                }
+                this.tariffs = tariffs;
+            }
+
+            // Отрисовываем таблицу тарифов
             this.renderTariffs();
         } catch (error) {
             console.error('Ошибка загрузки тарифов:', error);
-            window.app.showError('Не удалось загрузить тарифы');
+            if (window.app && typeof window.app.showError === 'function') {
+                window.app.showError('Не удалось загрузить тарифы');
+            }
         }
     }
 
