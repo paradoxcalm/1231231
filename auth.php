@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Перенаправление после успешного входа
         if ($_SESSION['role'] === 'client') {
-            header('Location: client/index.php');
+            header('Location: client/');
         } else {
             header('Location: index.php');
         }
