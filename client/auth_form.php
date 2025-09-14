@@ -258,9 +258,9 @@ body {
       <?php if (isset($_GET['error'])): ?>
           <p style="color: #ff8a80; text-align: center;"><?php echo htmlspecialchars($_GET['error']); ?></p>
       <?php endif; ?>
-      <form action="../auth.php" method="post" onsubmit="formatPhone('loginPhone')">
+      <form action="auth.php" method="post" onsubmit="formatPhone('loginPhone')">
         <div class="field"><i class="fas fa-user"></i>
-          <input type="tel" name="phone" id="loginPhone" value="+7" placeholder="Телефон" pattern="^\+7\d{10}$" required>
+          <input type="text" name="email_or_phone" id="loginPhone" placeholder="Email или Телефон" required>
         </div>
         <div class="field"><i class="fas fa-lock"></i>
           <input type="password" name="password" id="loginPassword" placeholder="Пароль" required autocomplete="off">
