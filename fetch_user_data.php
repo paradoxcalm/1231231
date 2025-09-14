@@ -15,14 +15,15 @@ if (!$userId) {
 }
 
 $stmt = $conn->prepare("
-    SELECT 
-        phone, 
-        first_name, 
-        last_name, 
-        middle_name, 
-        company_name, 
-        store_name 
-    FROM usersff 
+    SELECT
+        phone,
+        email,
+        first_name,
+        last_name,
+        middle_name,
+        company_name,
+        store_name
+    FROM usersff
     WHERE id = ?
 ");
 if (!$stmt) {

@@ -5,10 +5,32 @@ class ProfileManager {
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.fetchUserData();
         this.setupForm();
         this.loadProfile();
         this.loadStats();
+    }
+
+    async fetchUserData() {
+        try {
+            const response = await fetch('fetch_user_data.php', { credentials: 'include' });
+            const data = await response.json();
+            if (data.success && data.data) {
+                const u = data.data;
+                window.app.currentUser = {
+                    lastName: u.last_name || '',
+                    firstName: u.first_name || '',
+                    middleName: u.middle_name || '',
+                    phone: u.phone || '',
+                    email: u.email || '',
+                    companyName: u.company_name || '',
+                    storeName: u.store_name || ''
+                };
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки данных пользователя:', error);
+        }
     }
 
     setupForm() {
@@ -78,15 +100,15 @@ class ProfileManager {
 
     async loadStats() {
         try {
-            // Симуляция загрузки статистики
-            const mockStats = {
-                totalOrders: 12,
-                completedOrders: 8,
-                totalAmount: 24500,
-                successRate: 95
-            };
+            const response = await fetch('get_orders.php', { credentials: 'include' });
+            const data = await response.json();
+            const orders = data.orders || [];
+            const totalOrders = orders.length;
+            const completedOrders = orders.filter(o => o.status === 'Доставлен').length;
+            const totalAmount = orders.reduce((sum, o) => sum + (o.reception?.payment ?? 0), 0);
+            const successRate = totalOrders ? Math.round((completedOrders / totalOrders) * 100) : 0;
 
-            this.userStats = mockStats;
+            this.userStats = { totalOrders, completedOrders, totalAmount, successRate };
             this.renderStats();
         } catch (error) {
             console.error('Ошибка загрузки статистики:', error);
@@ -107,34 +129,34 @@ class ProfileManager {
     async saveProfile(form) {
         const submitBtn = form.querySelector('.save-btn');
         const originalText = submitBtn.innerHTML;
-        
-        // Показываем состояние загрузки
+
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Сохранение...';
         submitBtn.disabled = true;
 
         try {
             const formData = new FormData(form);
-            const profileData = {};
-            
-            for (let [key, value] of formData.entries()) {
-                profileData[key] = value;
+            const response = await fetch('update_user_data.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.message || 'Ошибка сохранения');
             }
 
-            // Симуляция сохранения
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const u = data.data || {};
+            window.app.currentUser = {
+                lastName: u.last_name || '',
+                firstName: u.first_name || '',
+                middleName: u.middle_name || '',
+                phone: u.phone || '',
+                email: u.email || '',
+                companyName: u.company_name || '',
+                storeName: u.store_name || ''
+            };
 
-            // Обновляем данные пользователя
-            Object.assign(window.app.currentUser, {
-                lastName: profileData.lastName,
-                firstName: profileData.firstName,
-                middleName: profileData.middleName,
-                phone: profileData.phone,
-                email: profileData.email,
-                companyName: profileData.companyName,
-                storeName: profileData.storeName
-            });
-
-            this.updateProfileDisplay(window.app.currentUser);
+            this.loadProfile();
             window.app.showSuccess('Профиль успешно сохранен');
 
         } catch (error) {
