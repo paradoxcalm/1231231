@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Clock, Filter, Truck, Package } from 'lucide-react';
+import { Calendar, MapPin, Filter, Truck, Package } from 'lucide-react';
 
 interface Shipment {
   id: number;

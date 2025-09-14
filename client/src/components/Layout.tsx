@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Bell, Calendar, CreditCard, Package, User, Menu, X } from 'lucide-react';
+import { Bell, Calendar, CreditCard, Package, User, Menu, X, Home } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const navigation = [
+    { name: 'Главная', href: '/client', icon: Home },
     { name: 'Расписание', href: '/schedule', icon: Calendar },
     { name: 'Тарифы', href: '/tariffs', icon: CreditCard },
     { name: 'Мои заказы', href: '/orders', icon: Package },
