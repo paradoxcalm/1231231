@@ -34,7 +34,7 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
             : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
 
     try {
-        const tmplResp = await fetch('client/templates/orderModal.html');
+        const tmplResp = await fetch('/client/templates/orderModal.html');
         const tmplHtml = await tmplResp.text();
         const wrap = document.createElement('div');
         wrap.innerHTML = tmplHtml.trim();
