@@ -10,7 +10,7 @@ if (!$userId) {
     exit;
 }
 
-$data = json_decode(file_get_contents('php://input'), true);
+$data = $_POST;
 if (!$data) {
     echo json_encode(['success' => false, 'message' => 'Нет данных']);
     exit;
@@ -22,12 +22,24 @@ $middle_name = $data['middle_name'] ?? '';
 $company_name = $data['company_name'] ?? '';
 $store_name = $data['store_name'] ?? '';
 $phone = $data['phone'] ?? '';
+$email = $data['email'] ?? '';
 
-$stmt = $conn->prepare("UPDATE usersff SET phone=?, first_name=?, last_name=?, middle_name=?, company_name=?, store_name=? WHERE id=?");
-$stmt->bind_param("ssssssi", $phone, $first_name, $last_name, $middle_name, $company_name, $store_name, $userId);
+$stmt = $conn->prepare("UPDATE usersff SET phone=?, email=?, first_name=?, last_name=?, middle_name=?, company_name=?, store_name=? WHERE id=?");
+$stmt->bind_param("sssssssi", $phone, $email, $first_name, $last_name, $middle_name, $company_name, $store_name, $userId);
 
 if ($stmt->execute()) {
-    echo json_encode(['success' => true]);
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'phone' => $phone,
+            'email' => $email,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'middle_name' => $middle_name,
+            'company_name' => $company_name,
+            'store_name' => $store_name
+        ]
+    ]);
 } else {
     echo json_encode(['success' => false, 'message' => 'Ошибка при обновлении: ' . $stmt->error]);
 }
