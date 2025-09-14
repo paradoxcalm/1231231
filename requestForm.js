@@ -106,12 +106,12 @@ function submitOrderForm(e) {
     const form = e.target;
 
     const packagingMap = { box: 'Box', pallet: 'Pallet' };
-    const packagingValue = form.querySelector('input[name="packaging"]:checked')?.value || 'box';
+    const packagingValue = form.elements.packaging?.value || 'box';
     const packaging_type = packagingMap[packagingValue] || packagingValue;
 
-    const marketplaces = Array.from(
-        form.querySelectorAll('input[name="marketplaces"]:checked')
-    ).map(el => el.value);
+    const marketplaces = Array.from(form.elements.marketplaces || [])
+        .filter(el => el.checked)
+        .map(el => el.value);
 
     const items = [];
     form.querySelectorAll('#itemsContainer .item-row').forEach(row => {
@@ -123,10 +123,10 @@ function submitOrderForm(e) {
     });
 
     const payload = {
-        schedule_id: form.querySelector('#orderScheduleId')?.value || '',
-        company_name: form.querySelector('input[name="company_name"]')?.value.trim() || '',
-        store_name: form.querySelector('input[name="store_name"]')?.value.trim() || '',
-        comment: form.querySelector('textarea[name="comment"]')?.value.trim() || '',
+        schedule_id: form.elements.schedule_id?.value || '',
+        company_name: form.elements.company_name?.value.trim() || '',
+        store_name: form.elements.store_name?.value.trim() || '',
+        comment: form.elements.comment?.value.trim() || '',
         packaging_type,
         marketplace_wildberries: marketplaces.includes('wildberries') ? 1 : 0,
         marketplace_ozon: marketplaces.includes('ozon') ? 1 : 0,
