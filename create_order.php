@@ -30,7 +30,7 @@ $marketplace_ozon = !empty($data['marketplace_ozon']) ? 1 : 0;
 $items = $data['items'] ?? [];
 $schedule_id = isset($data['schedule_id']) ? (int)$data['schedule_id'] : 0;
 
-if (empty($company_name) || empty($items)) {
+if ($company_name === '' || !is_array($items) || count($items) === 0) {
     echo json_encode(["success" => false, "message" => "Заполните ИП и добавьте товары"]);
     exit;
 }
@@ -43,8 +43,11 @@ if ($userId === 0) {
 
 $translations = [
     "Box" => "Коробка",
+    "box" => "Коробка",
     "Envelope" => "Конверт",
-    "Pallet" => "Паллета"
+    "envelope" => "Конверт",
+    "Pallet" => "Паллета",
+    "pallet" => "Паллета"
 ];
 $packaging_type = $translations[$packaging_raw] ?? $packaging_raw;
 

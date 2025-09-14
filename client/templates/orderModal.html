@@ -19,6 +19,16 @@
             <input type="text" name="warehouse" id="orderWarehouse" readonly>
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>ИП/Компания</label>
+            <input type="text" name="company_name" id="orderCompanyName" required>
+          </div>
+          <div class="form-group">
+            <label>Магазин</label>
+            <input type="text" name="store_name" id="orderStoreName" required>
+          </div>
+        </div>
         <div class="form-group">
           <label>Тип упаковки</label>
           <div class="radio-group">
@@ -31,6 +41,17 @@
               <span>Паллета</span>
             </label>
           </div>
+        </div>
+        <div class="form-group">
+          <label>Товары</label>
+          <div id="itemsContainer">
+            <div class="item-row">
+              <input type="text" class="item-barcode" placeholder="Штрихкод" required>
+              <input type="number" class="item-qty" min="1" value="1" required>
+              <button type="button" class="remove-item">&times;</button>
+            </div>
+          </div>
+          <button type="button" id="addItemBtn">Добавить товар</button>
         </div>
         <div class="form-row">
           <div class="form-group">
