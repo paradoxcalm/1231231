@@ -1,19 +1,42 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, CreditCard, Package, TrendingUp, MapPin, Truck } from 'lucide-react';
+import { Calendar, CreditCard, Package, TrendingUp, Truck } from 'lucide-react';
+import { useClientInfo, useOrders } from '../api';
 
 const ClientDashboard: React.FC = () => {
-  const stats = [
-    { name: 'Активные заказы', value: '12', icon: Package, color: 'bg-blue-500' },
-    { name: 'Ближайшие отправления', value: '3', icon: Truck, color: 'bg-green-500' },
-    { name: 'В пути', value: '7', icon: MapPin, color: 'bg-orange-500' },
-    { name: 'Завершено за месяц', value: '45', icon: TrendingUp, color: 'bg-purple-500' },
-  ];
+  const userId = 1; // временно захардкожен для демонстрации
+  const { data: clientInfo } = useClientInfo(userId);
+  const { data: orders } = useOrders(userId);
 
-  const upcomingShipments = [
-    { id: 1, route: 'Хасавюрт → Коледино', date: 'Завтра, 15:00', marketplace: 'Wildberries' },
-    { id: 2, route: 'Хасавюрт → Электросталь', date: '25.01, 10:00', marketplace: 'Ozon' },
-  ];
+  const stats = useMemo(() => {
+    if (!clientInfo) {
+      return [];
+    }
+    const statuses = clientInfo.statuses || {};
+    return [
+      {
+        name: 'Активные заказы',
+        value: String(statuses['Активные'] ?? 0),
+        icon: Package,
+        color: 'bg-blue-500',
+      },
+      {
+        name: 'Завершено за месяц',
+        value: String(statuses['Завершено'] ?? 0),
+        icon: TrendingUp,
+        color: 'bg-purple-500',
+      },
+    ];
+  }, [clientInfo]);
+
+  const upcomingShipments = useMemo(() => {
+    return orders.slice(0, 2).map((o) => ({
+      id: o.id,
+      route: o.route,
+      date: o.order_date,
+      marketplace: o.marketplace,
+    }));
+  }, [orders]);
 
   return (
     <div className="space-y-8">
