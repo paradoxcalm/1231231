@@ -69,6 +69,26 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
             costInput.value = cost ? window.utils.formatCurrency(cost) : '';
         }
 
+        const itemsContainer = modal.querySelector('#itemsContainer');
+        const addItemBtn = modal.querySelector('#addItemBtn');
+        if (itemsContainer && addItemBtn) {
+            addItemBtn.addEventListener('click', () => {
+                const row = document.createElement('div');
+                row.className = 'item-row';
+                row.innerHTML = `
+              <input type="text" class="item-barcode" placeholder="Штрихкод" required>
+              <input type="number" class="item-qty" min="1" value="1" required>
+              <button type="button" class="remove-item">&times;</button>`;
+                itemsContainer.appendChild(row);
+            });
+            itemsContainer.addEventListener('click', (ev) => {
+                if (ev.target.classList.contains('remove-item')) {
+                    const row = ev.target.closest('.item-row');
+                    if (row) row.remove();
+                }
+            });
+        }
+
         const form = modal.querySelector('#createOrderForm');
         if (form) {
             form.addEventListener('submit', submitOrderForm);
@@ -84,16 +104,35 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
 function submitOrderForm(e) {
     e.preventDefault();
     const form = e.target;
-    const formData = new FormData(form);
-    const payload = {};
-    for (let [key, value] of formData.entries()) {
-        if (payload[key]) {
-            if (Array.isArray(payload[key])) payload[key].push(value);
-            else payload[key] = [payload[key], value];
-        } else {
-            payload[key] = value;
+
+    const packagingMap = { box: 'Box', pallet: 'Pallet' };
+    const packagingValue = form.querySelector('input[name="packaging"]:checked')?.value || 'box';
+    const packaging_type = packagingMap[packagingValue] || packagingValue;
+
+    const marketplaces = Array.from(
+        form.querySelectorAll('input[name="marketplaces"]:checked')
+    ).map(el => el.value);
+
+    const items = [];
+    form.querySelectorAll('#itemsContainer .item-row').forEach(row => {
+        const barcode = row.querySelector('.item-barcode')?.value.trim();
+        const qty = parseInt(row.querySelector('.item-qty')?.value, 10) || 0;
+        if (barcode && qty > 0) {
+            items.push({ barcode, total_qty: qty });
         }
-    }
+    });
+
+    const payload = {
+        schedule_id: form.querySelector('#orderScheduleId')?.value || '',
+        company_name: form.querySelector('input[name="company_name"]')?.value.trim() || '',
+        store_name: form.querySelector('input[name="store_name"]')?.value.trim() || '',
+        comment: form.querySelector('textarea[name="comment"]')?.value.trim() || '',
+        packaging_type,
+        marketplace_wildberries: marketplaces.includes('wildberries') ? 1 : 0,
+        marketplace_ozon: marketplaces.includes('ozon') ? 1 : 0,
+        items
+    };
+
     fetch('create_order.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
