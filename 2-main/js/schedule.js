@@ -88,53 +88,31 @@ class ScheduleManager {
 
     async loadSchedules() {
         try {
-            // Симуляция загрузки данных
-            const mockSchedules = [
-                {
-                    id: 1,
-                    city: 'Махачкала',
-                    warehouse: 'Коледино',
-                    acceptDate: '2025-01-15',
-                    deliveryDate: '2025-01-18',
-                    marketplace: 'Wildberries',
-                    status: 'Приём заявок',
-                    driverName: 'Петров И.И.',
-                    driverPhone: '+7 999 111 22 33',
-                    carBrand: 'Газель',
-                    carNumber: 'А123БВ05',
-                    ordersCount: 12
-                },
-                {
-                    id: 2,
-                    city: 'Хасавюрт',
-                    warehouse: 'Невинномысск',
-                    acceptDate: '2025-01-16',
-                    deliveryDate: '2025-01-19',
-                    marketplace: 'Ozon',
-                    status: 'Ожидает отправки',
-                    driverName: 'Сидоров П.П.',
-                    driverPhone: '+7 999 222 33 44',
-                    carBrand: 'Mercedes',
-                    carNumber: 'В456ГД05',
-                    ordersCount: 8
-                },
-                {
-                    id: 3,
-                    city: 'Каспийск',
-                    warehouse: 'Коледино',
-                    acceptDate: '2025-01-17',
-                    deliveryDate: '2025-01-20',
-                    marketplace: 'YandexMarket',
-                    status: 'Приём заявок',
-                    driverName: 'Иванов А.А.',
-                    driverPhone: '+7 999 333 44 55',
-                    carBrand: 'Ford',
-                    carNumber: 'Г789ДЕ05',
-                    ordersCount: 5
-                }
-            ];
+            const response = await fetch('fetch_schedule.php', {
+                credentials: 'include'
+            });
 
-            this.schedules = mockSchedules;
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            this.schedules = data.map(({
+                accept_date,
+                delivery_date,
+                city,
+                warehouses,
+                status,
+                ...rest
+            }) => ({
+                ...rest,
+                acceptDate: accept_date,
+                deliveryDate: delivery_date,
+                city,
+                warehouse: warehouses,
+                status
+            }));
+
             this.applyFilters();
         } catch (error) {
             console.error('Ошибка загрузки расписания:', error);
