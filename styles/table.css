@@ -349,17 +349,19 @@
 
 /* Контейнер модального окна (фон и выравнивание по центру) */
 .modal {
-                 /* по умолчанию скрыто */
+    display: none;         /* по умолчанию скрыто */
+    opacity: 0;
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.8); /* полупрозрачный тёмный фон */
     justify-content: center;
     align-items: center;
-    
+
     transition: opacity 0.3s ease;  /* плавное появление */
 }
 .modal.show {
+    display: flex;
     opacity: 1;  /* при добавлении класса .show модалка постепенно проявится */
 }
 
