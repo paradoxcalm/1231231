@@ -25,6 +25,18 @@ window.activeDestinationWarehouseFilter = "";
 window.archiveView = false;
 window.activeMarketplaceFilter = "";
 
+let lastRenderedSchedules = [];
+
+function escapeHtmlAttribute(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+}
+
 /**
  * Основная функция для загрузки страницы расписания. Она формирует
  * разметку вкладок, фильтров и запускает начальную загрузку
@@ -531,6 +543,8 @@ function renderScheduleResults(schedules) {
     const resultsContainer = document.getElementById('scheduleResults');
     if (!resultsContainer) return;
 
+    lastRenderedSchedules = [];
+
     if (!Array.isArray(schedules) || schedules.length === 0) {
         resultsContainer.innerHTML = `
             <div class="empty-state">
@@ -558,6 +572,8 @@ function renderScheduleResults(schedules) {
         `;
         return;
     }
+
+    lastRenderedSchedules = filteredSchedules;
 
     const cardsHtml = filteredSchedules
         .map(renderScheduleResultCard)
@@ -588,9 +604,10 @@ function renderScheduleResultCard(schedule) {
     const statusClass = typeof getStatusClass === 'function'
         ? getStatusClass(schedule.status)
         : '';
+    const scheduleIdAttr = escapeHtmlAttribute(schedule?.id ?? '');
 
     return `
-        <div class="schedule-card ${canOrder ? 'can-order' : 'cannot-order'}" data-schedule-id="${schedule.id || ''}">
+        <div class="schedule-card ${canOrder ? 'can-order' : 'cannot-order'}" data-schedule-id="${scheduleIdAttr}" onclick="openScheduleDetails(this.dataset.scheduleId)">
             <div class="schedule-header">
                 <div class="schedule-route">
                     <i class="fas fa-route"></i>
@@ -638,6 +655,34 @@ function formatScheduleDateTime(dateStr, timeStr = '') {
     const year = parsed.getFullYear();
 
     return [`${day}.${month}.${year}`, timeStr].filter(Boolean).join(' ');
+}
+
+function openScheduleDetails(scheduleId) {
+    if (!scheduleId) {
+        console.warn('Не удалось открыть отправление: не передан идентификатор.');
+        return;
+    }
+
+    const normalizedId = String(scheduleId);
+    const schedule = lastRenderedSchedules.find(item => String(item?.id ?? '') === normalizedId);
+
+    if (!schedule) {
+        console.warn('Не удалось найти отправление с идентификатором', normalizedId);
+        return;
+    }
+
+    const modalOpener = (window.schedule && typeof window.schedule.openSingleShipmentModal === 'function')
+        ? window.schedule.openSingleShipmentModal
+        : (typeof window.openSingleShipmentModal === 'function'
+            ? window.openSingleShipmentModal
+            : null);
+
+    if (!modalOpener) {
+        console.error('Функция открытия модального окна отправления недоступна.');
+        return;
+    }
+
+    modalOpener(schedule);
 }
 
 function fetchAndDisplayUpcoming(showArchived = false, statusCategory = 'active') {
@@ -1148,3 +1193,4 @@ window.enterWarehouseEditMode = enterWarehouseEditMode;
 window.cancelWarehouseEdits = cancelWarehouseEdits;
 window.saveWarehouseEdits = saveWarehouseEdits;
 window.confirmWarehouseDelete = confirmWarehouseDelete;
+window.openScheduleDetails = openScheduleDetails;
