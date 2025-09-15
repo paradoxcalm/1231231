@@ -128,6 +128,22 @@ class App {
             });
         });
 
+        const createOrderBtn = document.getElementById('createOrderBtn');
+        if (createOrderBtn) {
+            createOrderBtn.addEventListener('click', () => {
+                if (typeof window.openRequestFormModal === 'function') {
+                    window.openRequestFormModal({});
+                } else {
+                    const orderModal = document.getElementById('orderModal');
+                    if (orderModal) {
+                        this.openModal(orderModal);
+                    } else {
+                        console.warn('Форма создания заказа недоступна');
+                    }
+                }
+            });
+        }
+
     }
 
     setupNotifications() {

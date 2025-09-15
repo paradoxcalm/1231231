@@ -1,3 +1,17 @@
+const appBaseUrl = new URL('..', window.location.href);
+const resolveAppUrl = (relativePath) => new URL(relativePath, appBaseUrl).toString();
+const formatCurrency = (amount) => {
+    if (window.utils && typeof window.utils.formatCurrency === 'function') {
+        return window.utils.formatCurrency(amount);
+    }
+
+    return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        minimumFractionDigits: 0
+    }).format(amount);
+};
+
 /**
  * Рассчитывает стоимость заявки на основе данных расписания и тарифов.
  * @param {Object} schedule - объект расписания с городом, складом и маркетплейсом
@@ -7,9 +21,10 @@ async function calculateCost(schedule) {
     if (!schedule || !schedule.city || !schedule.warehouses) return 0;
 
     try {
-        const resp = await fetch(
+        const tariffUrl = resolveAppUrl(
             `get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(schedule.warehouses)}`
         );
+        const resp = await fetch(tariffUrl);
         const data = await resp.json();
         if (!data.success) return 0;
 
@@ -34,13 +49,15 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
             : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
 
     try {
-        const tmplResp = await fetch('/client/templates/orderModal.html');
+        const templateUrl = resolveAppUrl('client/templates/orderModal.html');
+        const tmplResp = await fetch(templateUrl);
         if (!tmplResp.ok) {
             if (tmplResp.status === 404) {
                 throw new Error('Шаблон формы заявки не найден');
             }
             throw new Error('Ошибка загрузки шаблона формы заявки');
         }
+
         const tmplHtml = await tmplResp.text();
         const wrap = document.createElement('div');
         wrap.innerHTML = tmplHtml.trim();
@@ -48,13 +65,62 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         if (!modal) {
             throw new Error('Шаблон формы заявки не содержит модальное окно');
         }
+
+        const existingModal = document.getElementById('orderModal');
+        if (existingModal && existingModal !== modal) {
+            if (typeof existingModal.closeModal === 'function') {
+                existingModal.closeModal();
+                existingModal.remove();
+            } else {
+                existingModal.remove();
+            }
+        }
+
         document.body.appendChild(modal);
+
+        let isClosed = false;
+        const unlockBodyScroll = () => {
+            if (!document.querySelector('.modal.active')) {
+                document.body.style.overflow = '';
+            }
+        };
+
+        const closeModal = () => {
+            if (isClosed) {
+                return;
+            }
+            isClosed = true;
+            modal.classList.remove('active');
+            document.removeEventListener('keydown', handleKeydown);
+            setTimeout(() => {
+                modal.remove();
+                unlockBodyScroll();
+            }, 150);
+        };
+
+        const handleKeydown = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeModal();
+            }
+        };
+
+        modal.closeModal = closeModal;
+        document.addEventListener('keydown', handleKeydown);
+
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => modal.classList.add('active'));
 
         const closeBtn = modal.querySelector('#closeOrderModal');
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => modal.remove());
+            closeBtn.addEventListener('click', closeModal);
         }
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
 
         const scheduleIdInput = modal.querySelector('#orderScheduleId');
         if (scheduleIdInput) scheduleIdInput.value = schedule.id || '';
@@ -64,9 +130,15 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         if (whInput) whInput.value = schedule.warehouses || schedule.warehouse || '';
 
         const costInput = modal.querySelector('#orderCost');
-        if (costInput && schedule.city && schedule.warehouses) {
-            const cost = await calculateCost(schedule);
-            costInput.value = cost ? window.utils.formatCurrency(cost) : '';
+        if (costInput) {
+            if (schedule.city && schedule.warehouses) {
+                const cost = await calculateCost(schedule);
+                if (!isClosed) {
+                    costInput.value = cost ? formatCurrency(cost) : '';
+                }
+            } else {
+                costInput.value = '';
+            }
         }
 
         const itemsContainer = modal.querySelector('#itemsContainer');
@@ -76,28 +148,51 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
                 const row = document.createElement('div');
                 row.className = 'item-row';
                 row.innerHTML = `
-              <input type="text" class="item-barcode" placeholder="Штрихкод" required>
-              <input type="number" class="item-qty" min="1" value="1" required>
-              <button type="button" class="remove-item">&times;</button>`;
+                    <input type="text" class="item-barcode" placeholder="Штрихкод" required>
+                    <input type="number" class="item-qty" min="1" value="1" required>
+                    <button type="button" class="remove-item" aria-label="Удалить товар">&times;</button>`;
                 itemsContainer.appendChild(row);
             });
-            itemsContainer.addEventListener('click', (ev) => {
-                if (ev.target.classList.contains('remove-item')) {
-                    const row = ev.target.closest('.item-row');
-                    if (row) row.remove();
+
+            itemsContainer.addEventListener('click', (event) => {
+                if (event.target.classList.contains('remove-item')) {
+                    const row = event.target.closest('.item-row');
+                    if (row) {
+                        row.remove();
+                    }
                 }
             });
         }
 
         const form = modal.querySelector('#createOrderForm');
         if (form) {
+            const user = window.app && window.app.currentUser ? window.app.currentUser : null;
+            if (user) {
+                if (form.elements.company_name && !form.elements.company_name.value) {
+                    form.elements.company_name.value = user.companyName || '';
+                }
+                if (form.elements.store_name && !form.elements.store_name.value) {
+                    form.elements.store_name.value = user.storeName || '';
+                }
+            }
+
+            const firstField = form.querySelector('input:not([type="hidden"])');
+            if (firstField) {
+                firstField.focus();
+            }
+
             form.addEventListener('submit', submitOrderForm);
         } else {
             console.error('Форма создания заказа не найдена в шаблоне');
         }
     } catch (err) {
         console.error('Ошибка открытия формы заявки:', err);
-        alert(err.message || 'Не удалось открыть форму заявки');
+        const message = err.message || 'Не удалось открыть форму заявки';
+        if (window.app && typeof window.app.showError === 'function') {
+            window.app.showError(message);
+        } else {
+            alert(message);
+        }
     }
 }
 
@@ -121,6 +216,27 @@ function submitOrderForm(e) {
         }
     });
 
+    const submitBtn = form.querySelector('.submit-btn');
+    const originalSubmitText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+    }
+
+    if (items.length === 0) {
+        const message = 'Добавьте хотя бы один товар';
+        if (window.app && typeof window.app.showError === 'function') {
+            window.app.showError(message);
+        } else {
+            alert(message);
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalSubmitText;
+        }
+        return;
+    }
+
     const payload = {
         schedule_id: form.elements.schedule_id?.value || '',
         company_name: form.elements.company_name?.value.trim() || '',
@@ -132,24 +248,69 @@ function submitOrderForm(e) {
         items
     };
 
-    fetch('create_order.php', {
+    const requestUrl = resolveAppUrl('create_order.php');
+
+    fetch(requestUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         credentials: 'include'
     })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert('Заказ успешно создан!');
-                const modal = form.closest('.modal');
-                if (modal) modal.remove();
+        .then(async (response) => {
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                console.error('Некорректный ответ сервера при создании заказа', parseError);
+                throw new Error('Не удалось обработать ответ сервера');
+            }
+
+            if (!response.ok || !data.success) {
+                const message = data?.message || 'Ошибка создания заказа';
+                throw new Error(message);
+            }
+
+            return data;
+        })
+        .then(() => {
+            if (window.app && typeof window.app.showSuccess === 'function') {
+                window.app.showSuccess('Заказ успешно создан!');
             } else {
-                alert(data.message || 'Ошибка создания заказа');
+                alert('Заказ успешно создан!');
+            }
+
+            const modal = form.closest('.modal');
+            if (modal) {
+                if (typeof modal.closeModal === 'function') {
+                    modal.closeModal();
+                } else {
+                    modal.remove();
+                    if (!document.querySelector('.modal.active')) {
+                        document.body.style.overflow = '';
+                    }
+                }
+            }
+
+            form.reset();
+
+            if (window.OrdersManager && typeof window.OrdersManager.loadOrders === 'function') {
+                window.OrdersManager.loadOrders();
             }
         })
-        .catch(err => {
-            alert('Ошибка сети: ' + err.message);
+        .catch((error) => {
+            console.error('Ошибка создания заказа:', error);
+            const message = error.message || 'Ошибка создания заказа';
+            if (window.app && typeof window.app.showError === 'function') {
+                window.app.showError(message);
+            } else {
+                alert(message);
+            }
+        })
+        .finally(() => {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalSubmitText;
+            }
         });
 }
 
