@@ -59,25 +59,6 @@ function renderStaticCalendar() {
     }
 }
 
-// Вспомогательная функция: возвращает дату в формате yyyy-mm-dd.
-function getFullDate(year, month, day) {
-    if (month < 0) {
-        year--;
-        month = 11;
-    } else if (month > 11) {
-        year++;
-        month = 0;
-    }
-    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-// Проверяет, является ли строка dateStr сегодняшней датой.
-function isDateToday(dateStr) {
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    return dateStr === todayStr;
-}
-
 // Загружает данные расписаний и обновляет календарь. Если выбран фильтр по складу,
 // отправляется в запросе. Использует updateCalendarWithData() для перерисовки.
 function fetchDataAndUpdateCalendar() {
@@ -200,8 +181,6 @@ function openShipmentsForDate(date) {
 
 // Экспортируем функции в глобальный объект window
 window.renderStaticCalendar = renderStaticCalendar;
-window.getFullDate = getFullDate;
-window.isDateToday = isDateToday;
 window.fetchDataAndUpdateCalendar = fetchDataAndUpdateCalendar;
 window.updateCalendarWithData = updateCalendarWithData;
 window.changeMonth = changeMonth;

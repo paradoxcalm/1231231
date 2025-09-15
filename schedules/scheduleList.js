@@ -412,23 +412,6 @@ function fetchAndDisplayUpcoming(showArchived = false) {
 }
 
 /**
- * Форматирование даты сдачи для отображения (добавляет номер дня недели).
- * Используется в списке ближайших отправлений. Взята из schedule.js.
- * @param {string} dateStr
- */
-function formatDeliveryDate(dateStr) {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-    const dayName = days[d.getDay()];
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}.${mm}.${yyyy} ${dayName}`;
-}
-
-/**
  * Применение фильтра по городу (используется в списке городов, если есть
  * горизонтальная навигация). Включает выбранный таб и обновляет список.
  * @param {string} cityName
@@ -445,5 +428,4 @@ function filterByCity(cityName) {
 // были доступны в других модулях без систем сборки
 window.loadSchedule = loadSchedule;
 window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
-window.formatDeliveryDate = formatDeliveryDate;
 window.filterByCity = filterByCity;
