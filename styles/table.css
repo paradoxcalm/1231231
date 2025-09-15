@@ -105,6 +105,12 @@
 }
 
 /* ==== Новая таблица FBS и все современные таблицы (.table-container) ==== */
+
+/* Базовое состояние модальных окон: скрыты при загрузке */
+.modal {
+    display: none;
+}
+
 .table-container {
     width: 100%;
     background-color: #fff;
