@@ -236,7 +236,6 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <script src="auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
 <script src="processing.js?v=<?php echo $version; ?>"></script>
 <script src="main.js?v=<?php echo $version; ?>"></script>
-<script src="table.js?v=<?php echo $version; ?>"></script>
 <script src="form.js?v=<?php echo $version; ?>"></script>
 <script src="clients.js?v=<?php echo $version; ?>"></script>
 <script src="tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
@@ -276,6 +275,10 @@ function toggleMobileProfileMenu() {
     const menu = document.getElementById("mobileProfileMenu");
     if (!menu || window.innerWidth > 768) return;
     menu.classList.toggle("visible");
+}
+
+function loadTable() {
+    window.location.href = '/table/index.html';
 }
 document.addEventListener('click', function (e) {
     const menu = document.getElementById("mobileProfileMenu");
