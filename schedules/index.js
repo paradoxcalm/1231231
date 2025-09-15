@@ -28,7 +28,6 @@ async function initScheduleModule() {
     loadSchedule: window.loadSchedule,
     fetchAndDisplayUpcoming: window.fetchAndDisplayUpcoming,
     formatDeliveryDate: window.formatDeliveryDate,
-    filterByCity: window.filterByCity,
     switchTab: window.switchTab,
     toggleExcelMenu: window.toggleExcelMenu,
     openImportModal: window.openImportModal,
