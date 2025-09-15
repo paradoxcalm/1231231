@@ -155,6 +155,7 @@ requireRole(['accountant']);
                     <th data-sort='payment_type'>Тип оплаты</th>
                     <th data-sort='status'>Статус</th>
                     <th data-sort='author'>Автор</th>
+                    <th>Действия</th>
                 </tr>
             </thead>
             <tbody id='ordersBody'></tbody>
@@ -222,11 +223,14 @@ requireRole(['accountant']);
                 <td>${row.submission_date || ''}</td>
                 <td>${row.city || ''} ${row.warehouses ? '/' + row.warehouses : ''}</td>
                 <td>${row.client || ''}</td>
-                <td>${row.payment}</td>
-                <td>${row.payment_type || ''}</td>
+                <td class='cell-payment'>${row.payment}</td>
+                <td class='cell-payment-type'>${row.payment_type || ''}</td>
                 <td>${row.status || ''}</td>
-                <td>${row.author || ''}</td>`;
+                <td>${row.author || ''}</td>
+                <td><button class='edit-btn'>Редактировать</button></td>`;
             tbody.appendChild(tr);
+            const btn = tr.querySelector('.edit-btn');
+            btn.addEventListener('click', () => editPayment(row.order_id, row.payment, row.payment_type || '', tr, row));
         });
     }
 
@@ -236,6 +240,38 @@ requireRole(['accountant']);
         document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
         document.getElementById('prevPage').disabled = currentPage <= 1;
         document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    }
+
+    async function editPayment(orderId, currentPayment, currentType, rowEl, rowData) {
+        const amountStr = prompt('Введите новую сумму', currentPayment);
+        if (amountStr === null) return;
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount)) {
+            alert('Некорректная сумма');
+            return;
+        }
+        const type = prompt('Введите тип оплаты', currentType);
+        if (type === null) return;
+        try {
+            const res = await fetch('../api/accountant/update_payment.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, payment: amount, payment_type: type })
+            });
+            const json = await res.json();
+            if (json.success) {
+                rowEl.querySelector('.cell-payment').textContent = amount;
+                rowEl.querySelector('.cell-payment-type').textContent = type;
+                rowData.payment = amount;
+                rowData.payment_type = type;
+                fetchSummary();
+            } else {
+                alert(json.message || 'Ошибка');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Ошибка');
+        }
     }
 
     document.getElementById('applyFilters').addEventListener('click', () => {
