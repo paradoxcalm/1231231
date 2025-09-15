@@ -237,6 +237,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <script src="processing.js?v=<?php echo $version; ?>"></script>
 <script src="main.js?v=<?php echo $version; ?>"></script>
 <script src="form.js?v=<?php echo $version; ?>"></script>
+<script src="acceptance/acceptanceForm.js?v=<?php echo $version; ?>"></script>
 <script src="clients.js?v=<?php echo $version; ?>"></script>
 <script src="tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
 <script src="autofill_user_fields.js?v=<?php echo $version; ?>"></script>
