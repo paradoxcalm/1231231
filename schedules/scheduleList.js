@@ -301,6 +301,330 @@ function loadSchedule() {
     initStepWizard();
 }
 
+function switchTab(tabName) {
+    const tabs = ["upcoming"];
+    if (document.getElementById("tab-calendar")) {
+        tabs.push("calendar");
+    }
+
+    tabs.forEach(tab => {
+        const content = document.getElementById(`tabContent-${tab}`);
+        const button = document.getElementById(`tab-${tab}`);
+        if (content) {
+            content.style.display = tab === tabName ? "block" : "none";
+        }
+        if (button) {
+            button.classList.toggle("active", tab === tabName);
+        }
+    });
+
+    if (tabName === "calendar" && document.getElementById("tab-calendar")) {
+        if (typeof renderStaticCalendar === "function") {
+            renderStaticCalendar();
+        }
+        if (typeof fetchDataAndUpdateCalendar === "function") {
+            fetchDataAndUpdateCalendar();
+        }
+    }
+}
+
+function toggleExcelMenu() {
+    const menu = document.getElementById("excelMenu");
+    const arrow = document.getElementById("excelArrow");
+    const btn = document.getElementById("excelDropdownBtn");
+
+    if (!menu || !arrow || !btn) {
+        return;
+    }
+
+    const opened = menu.classList.toggle("show");
+    arrow.innerHTML = opened ? "▲" : "▼";
+    btn.classList.toggle("open", opened);
+}
+
+function openImportModal() {
+    const modal = document.getElementById("importScheduleModal");
+    if (modal) {
+        modal.style.display = "block";
+    } else {
+        alert("❌ Модальное окно импорта не найдено.");
+    }
+}
+
+function showImportResultModal(inserted, errors) {
+    let html = `<p>✅ Успешно добавлено: <strong>${inserted}</strong></p>`;
+    if (Array.isArray(errors) && errors.length > 0) {
+        html += `<p>❌ Ошибки:</p><ul style="padding-left:16px;">`;
+        for (const e of errors) {
+            html += `<li>Строка ${e.row}: ${e.error}</li>`;
+        }
+        html += `</ul>`;
+    }
+    const resultContent = document.getElementById("importResultModalContent");
+    const resultModal = document.getElementById("importResultModal");
+    if (resultContent) {
+        resultContent.innerHTML = html;
+    }
+    if (resultModal) {
+        resultModal.style.display = "block";
+    }
+}
+
+function showShipmentReport() {
+    const modalContent = document.getElementById("shipmentReportText");
+    if (!modalContent) return;
+
+    modalContent.innerHTML = `
+      <div id="shipmentReportFilters" style="display:flex;gap:18px;margin-bottom:18px;align-items:flex-end;">
+        <div>
+          <label style="font-weight:600;">Маркетплейс</label>
+          <select id="shipmentFilterMarketplace" class="styled-filter" style="min-width:140px;"></select>
+        </div>
+        <div>
+          <label style="font-weight:600;">Город</label>
+          <select id="shipmentFilterCity" class="styled-filter" style="min-width:140px;"></select>
+        </div>
+        <div>
+          <label style="font-weight:600;">Склад</label>
+          <select id="shipmentFilterWarehouse" class="styled-filter" style="min-width:140px;"></select>
+        </div>
+        <div>
+          <label style="font-weight:600;">Дата</label>
+          <input type="date" id="shipmentFilterDate" class="styled-filter" style="min-width:140px;">
+        </div>
+        <button id="shipmentFilterApplyBtn" class="primary" style="margin-left:12px;padding:12px 20px;">Применить</button>
+      </div>
+      <div id="shipmentReportTable"></div>
+    `;
+
+    fetch("filter_options.php?action=marketplaces")
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById("shipmentFilterMarketplace");
+            if (sel) {
+                sel.innerHTML = `<option value="">Все</option>` +
+                    (data.marketplaces || []).map(mp => `<option value="${mp}">${mp}</option>`).join('');
+            }
+        });
+
+    fetch("filter_options.php?action=all_cities")
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById("shipmentFilterCity");
+            if (sel) {
+                sel.innerHTML = `<option value="">Все</option>` +
+                    (data.cities || []).map(c => `<option value="${c}">${c}</option>`).join('');
+            }
+        });
+
+    fetch("filter_options.php?action=all_warehouses")
+        .then(r => r.json())
+        .then(data => {
+            const sel = document.getElementById("shipmentFilterWarehouse");
+            if (sel) {
+                sel.innerHTML = `<option value="">Все</option>` +
+                    (data.warehouses || []).map(w => `<option value="${w}">${w}</option>`).join('');
+            }
+        });
+
+    const applyBtn = document.getElementById("shipmentFilterApplyBtn");
+    if (applyBtn) {
+        applyBtn.onclick = reloadShipmentReport;
+    }
+    reloadShipmentReport();
+}
+
+function reloadShipmentReport() {
+    const mp = document.getElementById("shipmentFilterMarketplace")?.value || '';
+    const ct = document.getElementById("shipmentFilterCity")?.value || '';
+    const wh = document.getElementById("shipmentFilterWarehouse")?.value || '';
+    const st = document.getElementById("shipmentFilterStatus")?.value || '';
+    const dt = document.getElementById("shipmentFilterDate")?.value || '';
+
+    let url = "get_schedules.php";
+    const params = [];
+    if (mp) params.push("marketplace=" + encodeURIComponent(mp));
+    if (ct) params.push("city=" + encodeURIComponent(ct));
+    if (wh) params.push("warehouse=" + encodeURIComponent(wh));
+    if (st) params.push("status=" + encodeURIComponent(st));
+    if (dt) params.push("date=" + encodeURIComponent(dt));
+    if (params.length) url += "?" + params.join("&");
+
+    const tableBlock = document.getElementById("shipmentReportTable");
+    if (!tableBlock) return;
+    tableBlock.innerHTML = "Загрузка…";
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (!Array.isArray(data)) {
+                tableBlock.innerHTML = "<p>Нет данных для отображения</p>";
+                return;
+            }
+
+            data.sort((a, b) => {
+                const dA = new Date(a.accept_deadline || a.acceptance_end || a.accept_date || 0);
+                const dB = new Date(b.accept_deadline || b.acceptance_end || b.accept_date || 0);
+                return dA - dB;
+            });
+
+            const today = new Date().toISOString().slice(0, 10);
+            let html = `
+            <style>
+               .shipment-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+                    font-size: 14px;
+                    background: #fcfcfd;
+                }
+                .shipment-table th, .shipment-table td {
+                    padding: 7px 10px;
+                    border-bottom: 1px solid #e7eaf3;
+                    text-align: left;
+                    vertical-align: middle;
+                }
+                .shipment-table th {
+                    background: #f5f7fa;
+                    font-weight: 600;
+                    color: #36435c;
+                    letter-spacing: 0.03em;
+                }
+                .shipment-table tr:nth-child(even) {
+                    background: #f8fafc;
+                }
+                .shipment-table tr:hover {
+                    background: #eef3fa;
+                    transition: background 0.2s;
+                }
+                .shipment-table td.route {
+                    font-weight: 500;
+                    color: #3b82f6;
+                }
+                .shipment-table td.driver {
+                    color: #36435c;
+                    font-weight: 500;
+                }
+                .shipment-table td.phone {
+                    font-family: 'Menlo', 'Consolas', monospace;
+                    font-size: 13px;
+                    color: #2563eb;
+                }
+                .shipment-table td.auto {
+                    color: #374151;
+                    font-size: 13px;
+                }
+                .shipment-table td.status {
+                    font-weight: bold;
+                    color: #059669;
+                }
+                .shipment-table td.reception {
+                    font-style: italic;
+                    color: #6b7280;
+                }
+                @media print {
+                    .shipment-table th, .shipment-table td {
+                        padding: 4px 6px;
+                        font-size: 12px;
+                    }
+                    body {
+                        background: #fff !important;
+                    }
+                }
+            </style>
+            <table class="shipment-table">
+                <thead>
+                    <tr>
+                        <th>Статус</th>
+                        <th>Дата отправления</th>
+                        <th>Маршрут</th>
+                        <th>Дата сдачи</th>
+                        <th>Водитель</th>
+                        <th>Телефон</th>
+                        <th>Авто</th>
+                        <th>Приёмка</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+            if (!data.length) {
+                html += `<tr><td colspan="8" style="text-align:center;color:#bbb;">Нет отправлений по выбранным условиям</td></tr>`;
+            } else {
+                let currentDate = "";
+                data.forEach(s => {
+                    if (s.accept_date !== currentDate) {
+                        currentDate = s.accept_date;
+                        html += `
+                        <tr class="date-group">
+                            <td colspan="8" style="text-align:center; color:#36435c;">${currentDate}</td>
+                        </tr>
+                    `;
+                    }
+
+                    let reception = "—";
+                    if (s.status === "Завершено") {
+                        reception = "Завершена";
+                    } else if (s.status === "На складе") {
+                        reception = "Завершена";
+                    } else if (s.status === "В пути") {
+                        if (s.delivery_date && s.delivery_date <= today) {
+                            reception = "Принимается";
+                        } else {
+                            reception = "Ожидается";
+                        }
+                    } else if (s.status === "Ожидает отправки" || s.status === "Приём заявок" || s.status === "Готов к отправке") {
+                        reception = "Ожидается";
+                    }
+
+                    html += `
+                    <tr>
+                        <td class="status">${s.status || "—"}</td>
+                        <td>${s.accept_date || "—"}</td>
+                        <td class="route">${s.city || "—"} <span style="color:#889;">→</span> ${s.warehouses || "—"}</td>
+                        <td>${s.delivery_date || "—"}</td>
+                        <td class="driver">${s.driver_name || "—"}</td>
+                        <td class="phone">${s.driver_phone || "—"}</td>
+                        <td class="auto">${s.car_brand || "—"}<br><span style="color:#bbb;">${s.car_number || "—"}</span></td>
+                        <td class="reception">${reception}</td>
+                    </tr>
+                `;
+                });
+            }
+
+            html += `
+                </tbody>
+            </table>
+        `;
+
+            tableBlock.innerHTML = html;
+            const modal = document.getElementById("shipmentReportModal");
+            if (modal) {
+                modal.style.display = "block";
+            }
+        })
+        .catch(err => {
+            tableBlock.innerHTML = "<p>Ошибка загрузки данных</p>";
+            console.error("Ошибка reloadShipmentReport:", err);
+        });
+}
+
+document.addEventListener("mousedown", event => {
+    const menu = document.getElementById("excelMenu");
+    const btn = document.getElementById("excelDropdownBtn");
+
+    if (!menu || !btn) return;
+
+    if (!menu.contains(event.target) && !btn.contains(event.target)) {
+        menu.classList.remove("show");
+        btn.classList.remove("open");
+        const arrow = document.getElementById("excelArrow");
+        if (arrow) {
+            arrow.innerHTML = "▼";
+        }
+    }
+});
+
 // Инициализация пошагового интерфейса
 function initStepWizard() {
     // Сбрасываем состояние
@@ -1182,6 +1506,13 @@ function confirmWarehouseDelete() {
     .catch(error => alert('Ошибка: ' + error.message));
 }
 
+window.loadSchedule = loadSchedule;
+window.switchTab = switchTab;
+window.toggleExcelMenu = toggleExcelMenu;
+window.openImportModal = openImportModal;
+window.showImportResultModal = showImportResultModal;
+window.showShipmentReport = showShipmentReport;
+window.reloadShipmentReport = reloadShipmentReport;
 window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
 window.renderScheduleCard = renderScheduleCard;
 window.filterByCity = filterByCity;
