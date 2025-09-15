@@ -157,13 +157,13 @@ function reloadManagementSchedules() {
                         <td>${s.accept_date || '—'}${s.accept_time ? ' ' + s.accept_time : ''}</td>
                         <td>${s.delivery_date || '—'}</td>
                         <td>
-                            <select onchange="updateStatus(${s.id}, this.value)">
+                            <select onchange="window.schedule.updateStatus(${s.id}, this.value)">
                                 ${statusOptions}
                             </select>
                         </td>
                         <td>
-                            <button onclick="deleteSchedule(${s.id})">Удалить</button>
-                            <button onclick="archiveSchedule(${s.id})">Архивировать</button>
+                            <button onclick="window.schedule.deleteSchedule(${s.id})">Удалить</button>
+                            <button onclick="window.schedule.archiveSchedule(${s.id})">Архивировать</button>
                         </td>
                     </tr>
                 `;

@@ -169,7 +169,9 @@ function openShipmentsForDate(date) {
             buttons.forEach((btn, idx) => {
                 btn.addEventListener("click", () => {
                     const sh = list[idx];
-                    if (typeof openSingleShipmentModal === 'function') openSingleShipmentModal(sh);
+                    if (window.schedule && typeof window.schedule.openSingleShipmentModal === 'function') {
+                        window.schedule.openSingleShipmentModal(sh);
+                    }
                 });
             });
             modalContainer.appendChild(modalContent);

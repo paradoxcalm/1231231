@@ -46,22 +46,22 @@ function loadSchedule() {
           <h1>Расписание</h1>
         </div>
         <div class="schedule-tabs">
-          <button id="tab-upcoming" class="active" onclick="switchTab('upcoming')">Ближайшие отправления</button>
-          ${isAdminOrManager ? `<button id="tab-calendar" onclick="switchTab('calendar')">Календарь</button>` : `<button id="tab-calendar" onclick="switchTab('calendar')">Календарь</button>`}
+          <button id="tab-upcoming" class="active" onclick="window.schedule.switchTab('upcoming')">Ближайшие отправления</button>
+          ${isAdminOrManager ? `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>` : `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>`}
         </div>
         <div id="tabContent-upcoming" style="display:block;">
           <div class="filter-actions">
             <button id="toggleArchiveBtn">Показать архив</button>
             ${window.canCreateSchedule ? `
-              <button id="createScheduleBtn" onclick="showCreateForm()">Создать отправление</button>
+              <button id="createScheduleBtn" onclick="window.schedule.showCreateForm()">Создать отправление</button>
               <div class="excel-dropdown">
-                <button id="excelDropdownBtn" onclick="toggleExcelMenu()">📤 Excel <span id="excelArrow">▼</span></button>
+                <button id="excelDropdownBtn" onclick="window.schedule.toggleExcelMenu()">📤 Excel <span id="excelArrow">▼</span></button>
                 <div id="excelMenu" class="dropdown-content">
-                  <a href="#" onclick="exportSchedule()">📤 Экспорт данных</a>
-                  <a href="#" onclick="openImportModal()">📥 Импорт расписания</a>
+                  <a href="#" onclick="window.schedule.exportSchedule()">📤 Экспорт данных</a>
+                  <a href="#" onclick="window.schedule.openImportModal()">📥 Импорт расписания</a>
                   <a href="/templates/Расписание_шаблон.xlsx">📄 Скачать шаблон</a>
-                  <a href="#" onclick="openScheduleManagementModal()">⚙️ Управление</a>
-                  <a href="#" onclick="showShipmentReport()">📄Список Отправлений</a>
+                  <a href="#" onclick="window.schedule.openScheduleManagementModal()">⚙️ Управление</a>
+                  <a href="#" onclick="window.schedule.showShipmentReport()">📄Список Отправлений</a>
                 </div>
               </div>
             ` : ``}
@@ -396,7 +396,9 @@ function fetchAndDisplayUpcoming(showArchived = false) {
                         `;
                         // При клике открываем карточку отправления
                         div.addEventListener("click", () => {
-                            if (typeof openSingleShipmentModal === 'function') openSingleShipmentModal(sh);
+                            if (window.schedule && typeof window.schedule.openSingleShipmentModal === 'function') {
+                                window.schedule.openSingleShipmentModal(sh);
+                            }
                         });
                         container.appendChild(div);
                     });
