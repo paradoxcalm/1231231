@@ -628,34 +628,59 @@ class AccountantApp {
     }
 
     async loadCitiesChart() {
-        // Симуляция данных
-        const data = {
-            labels: ['Махачкала', 'Хасавюрт', 'Каспийск', 'Кизляр'],
-            datasets: [{
-                data: [35, 25, 20, 20],
-                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
-            }]
-        };
+        const canvasId = 'citiesChart';
+        const canvas = document.getElementById(canvasId);
+        const container = canvas.parentElement;
 
-        const ctx = document.getElementById('citiesChart').getContext('2d');
-        
-        if (this.charts.cities) {
-            this.charts.cities.destroy();
-        }
+        try {
+            const response = await fetch('../api/accountant/get_city_stats.php');
+            const result = await response.json();
 
-        this.charts.cities = new Chart(ctx, {
-            type: 'doughnut',
-            data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+            if (!result.success) {
+                throw new Error(result.message || 'Ошибка сервера');
+            }
+
+            const labels = result.labels || [];
+            const dataValues = result.data || [];
+
+            if (!labels.length || !dataValues.length) {
+                container.innerHTML = '<div class="empty-state"><p>Нет данных по городам</p></div>';
+                return;
+            }
+
+            container.innerHTML = `<canvas id="${canvasId}" width="300" height="300"></canvas>`;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            const data = {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                }]
+            };
+
+            if (this.charts.cities) {
+                this.charts.cities.destroy();
+            }
+
+            this.charts.cities = new Chart(ctx, {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки статистики по городам:', error);
+            this.showToast('Ошибка загрузки статистики по городам', 'error');
+            container.innerHTML = '<div class="empty-state"><p>Не удалось загрузить данные</p></div>';
+        }
     }
 
     async loadPaymentTypesChart() {
