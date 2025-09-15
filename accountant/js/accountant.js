@@ -683,36 +683,64 @@ class AccountantApp {
         }
     }
 
+    
     async loadPaymentTypesChart() {
-        // Симуляция данных
-        const data = {
-            labels: ['Наличные', 'Т-Банк', 'Долг'],
-            datasets: [{
-                data: [45, 40, 15],
-                backgroundColor: ['#10b981', '#3b82f6', '#ef4444']
-            }]
-        };
+        const canvasId = 'paymentTypesChart';
+        const canvas = document.getElementById(canvasId);
+        const container = canvas.parentElement;
 
-        const ctx = document.getElementById('paymentTypesChart').getContext('2d');
-        
-        if (this.charts.paymentTypes) {
-            this.charts.paymentTypes.destroy();
-        }
+        try {
+            const response = await fetch('../api/accountant/get_payment_types.php');
+            const result = await response.json();
 
-        this.charts.paymentTypes = new Chart(ctx, {
-            type: 'pie',
-            data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+            if (!result.success) {
+                throw new Error(result.message || 'Ошибка сервера');
+            }
+
+            const labels = result.labels || [];
+            const dataValues = result.data || [];
+
+            if (!labels.length || !dataValues.length) {
+                container.innerHTML = '<div class="empty-state"><p>Нет данных</p></div>';
+                return;
+            }
+
+            container.innerHTML = `<canvas id="${canvasId}" width="300" height="300"></canvas>`;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            const data = {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
+                }]
+            };
+
+            if (this.charts.paymentTypes) {
+                this.charts.paymentTypes.destroy();
+            }
+
+            this.charts.paymentTypes = new Chart(ctx, {
+                type: 'pie',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки статистики по типам оплаты:', error);
+            this.showToast('Ошибка загрузки статистики по типам оплаты', 'error');
+            container.innerHTML = '<div class="empty-state"><p>Не удалось загрузить данные</p></div>';
+        }
     }
+
+
 
     async loadTrendsChart(period) {
         // Симуляция данных трендов
