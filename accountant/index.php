@@ -46,6 +46,18 @@ requireRole(['accountant']);
             font-weight: 600;
             font-size: 14px;
         }
+        .accountant-menu {
+            background: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 20px;
+        }
+        .accountant-menu a {
+            text-decoration: none;
+            color: #0d47a1;
+            font-weight: 600;
+        }
         .container {
             max-width: 900px;
             margin: 20px auto;
@@ -120,6 +132,7 @@ requireRole(['accountant']);
         <div class='title'>Кабинет бухгалтера</div>
         <a class='exit' href='../logout.php'>Выйти</a>
     </header>
+    <?php include __DIR__ . '/menu.php'; ?>
     <main class='container'>
         <div class='filters'>
             <input type='date' id='date_from'>

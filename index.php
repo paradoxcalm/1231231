@@ -5,19 +5,16 @@ if (!isset($_SESSION['role'])) {
     header('Location: auth_form.php');
     exit();
 }
-if ($_SESSION['role'] === 'client') {
-    header('Location: /client/index.html');
-    exit();
-}
-if ($_SESSION['role'] === 'accountant') {
-    header('Location: /accountant/index.php');
-    exit();
-}
 $role = $_SESSION['role'];
 
-// Если у пользователя роль "deliverer", отправляем его на страницу курьера
-if ($role === 'deliverer') {
+if ($role === 'client') {
+    header('Location: /client/index.html');
+    exit();
+} elseif ($role === 'deliverer') {
     header('Location: /deliver/index.php');
+    exit();
+} elseif ($role === 'accountant') {
+    header('Location: /accountant/index.php');
     exit();
 }
 
