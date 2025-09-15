@@ -337,7 +337,7 @@ window.onload = function () {
     scheduleReady.then(() => {
         switch (userRole) {
             case 'admin':
-                loadTable();
+                window.schedule.loadSchedule();
                 break;
             case 'manager':
                 loadForm();
