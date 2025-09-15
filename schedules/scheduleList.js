@@ -816,16 +816,20 @@ function renderWarehouseOptions(warehouses) {
 function selectWarehouse(warehouse) {
     window.selectedWarehouse = warehouse;
     window.activeDestinationWarehouseFilter = warehouse;
-    
+
     // Обновляем индикатор шага
     updateStepIndicator(3, true);
-    
+
     // Переходим к результатам
     goToStep(4);
-    
+
     // Загружаем результаты
     loadScheduleResults();
 }
+
+window.selectCity = selectCity;
+window.selectMarketplace = selectMarketplace;
+window.selectWarehouse = selectWarehouse;
 
 // Загрузка результатов расписания
 function loadScheduleResults() {
