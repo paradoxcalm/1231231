@@ -413,21 +413,7 @@ function fetchAndDisplayUpcoming(showArchived = false) {
         });
 }
 
-/**
- * Применение фильтра по городу (используется в списке городов, если есть
- * горизонтальная навигация). Включает выбранный таб и обновляет список.
- * @param {string} cityName
- */
-function filterByCity(cityName) {
-    window.activeCityFilter = cityName;
-    document.querySelectorAll(".city-tab-header .tab-button").forEach(btn => {
-        btn.classList.toggle("active", btn.textContent === cityName || (cityName === "" && btn.textContent === "Все"));
-    });
-    fetchAndDisplayUpcoming(window.archiveView);
-}
-
 // Экспортируем функции в глобальный объект window, чтобы они
 // были доступны в других модулях без систем сборки
 window.loadSchedule = loadSchedule;
 window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
-window.filterByCity = filterByCity;
