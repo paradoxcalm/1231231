@@ -316,16 +316,16 @@ class TableApp {
                 } else {
                     img.src = photoUrl;
                 }
-                modal.classList.add('active');
+                modal.classList.add('show');
             })
             .catch(() => {
                 img.src = photoUrl;
-                modal.classList.add('active');
+                modal.classList.add('show');
             });
     }
 
     closePhotoModal() {
-        document.getElementById('photoModal').classList.remove('active');
+        document.getElementById('photoModal').classList.remove('show');
     }
 
     showLoading(show) {

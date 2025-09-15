@@ -602,7 +602,7 @@ body {
     justify-content: center;
 }
 
-.modal.active {
+.modal.show {
     display: flex;
 }
 

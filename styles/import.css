@@ -1,4 +1,4 @@
-/* Modal overlay (center content via flexbox) */
+/* Modal overlay (hidden by default, centered when shown) */
 .modal {
     display: none;
     position: fixed;
@@ -6,10 +6,12 @@
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: rgba(0,0,0,0.5);
-    /* Center the modal content */
-    display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.modal.show {
+    display: flex;
 }
 
 /* Modal content container */
