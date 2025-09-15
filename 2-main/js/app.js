@@ -89,9 +89,7 @@ class App {
     loadSectionData(sectionName) {
         switch (sectionName) {
             case 'schedule':
-                if (window.schedule) {
-                    window.schedule.loadSchedule();
-                }
+                scheduleReady.then(() => window.schedule.loadSchedule());
                 break;
             case 'tariffs':
                 if (window.TariffsManager) {
