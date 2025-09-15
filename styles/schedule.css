@@ -1,913 +1,811 @@
-/* === schedule.css (окончательная версия, с учётом всех частей) === */
-.modal-close i,
-.modal-close svg {
-    display: flex !important;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-}
+/*
+ * scheduleList.js
+ *
+ * Этот модуль отвечает за вкладку «Ближайшие отправления» и фильтры
+ * расписания. Здесь находятся функции для загрузки и отображения
+ * предстоящих отправлений, формирования фильтров по маркетплейсам,
+ * городам и складам, а также вспомогательные методы форматирования
+ * дат и кликов по городу.
+ *
+ * Большая часть кода взята из исходного файла schedule.js без
+ * изменения логики. Переменные и функции экспортируются через
+ * глобальный объект window, чтобы ими могли пользоваться другие
+ * модули без системы сборки.
+ */
 
-.warehouse-checkboxes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px 15px;
-    margin-top: 10px;
-    margin-bottom: 15px;
-}
+// Глобальные переменные для фильтров и прав. Они привязываются к window,
+// чтобы сохранять совместимость с остальным кодом, который ожидал
+// видеть их в глобальной области видимости.
+window.calendarCurrentDate = new Date();
+window.canCreateSchedule = false;
+window.canCreateOrder = false;
+window.activeCityFilter = "";
+window.activeWarehouseFilter = "";
+window.activeDestinationWarehouseFilter = "";
+window.archiveView = false;
+window.activeMarketplaceFilter = "";
 
-.warehouse-checkbox-item {
-    display: flex;
-    align-items: center;
-    background-color: #f4f4f4;
-    padding: 6px 12px;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-    font-size: 14px;
-    transition: background 0.3s;
-}
+/**
+ * Основная функция для загрузки страницы расписания. Она формирует
+ * разметку пошагового интерфейса и запускает начальную загрузку
+ * предстоящих отправлений и календаря.
+ */
+function loadSchedule() {
+    const dynamicContent = document.getElementById("dynamicContent");
+    if (!dynamicContent) return;
 
-.warehouse-checkbox-item:hover {
-    background-color: #e0e0e0;
-}
+    // Определяем, является ли пользователь администратором или менеджером
+    window.canCreateSchedule = (userRole === "admin" || userRole === "manager");
+    const isAdminOrManager = (userRole === "admin" || userRole === "manager");
 
-.warehouse-checkbox-item label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    line-height: 1.4;
-    width: 100%;
-}
+    // Шаблон HTML для раздела расписания с пошаговым интерфейсом
+    const html = `
+        <div class="schedule-header">
+            <h1>Расписание отправлений</h1>
+            <p class="schedule-subtitle">Выберите параметры отправления пошагово</p>
+        </div>
+        
+        <!-- Пошаговый интерфейс -->
+        <div class="step-wizard">
+            <div class="step-indicator">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Город</div>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Маркетплейс</div>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Склад</div>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Результат</div>
+                </div>
+            </div>
+        </div>
 
-.warehouse-checkbox-item input[type="checkbox"] {
-    transform: scale(1.1);
+        <!-- Шаг 1: Выбор города -->
+        <div class="step-content active" id="step-1">
+            <div class="step-card">
+                <h2>Выберите город отправления</h2>
+                <div class="city-grid" id="cityGrid">
+                    <!-- Города загружаются динамически -->
+                </div>
+                <div class="step-actions">
+                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Шаг 2: Выбор маркетплейса -->
+        <div class="step-content" id="step-2">
+            <div class="step-card">
+                <h2>Выберите маркетплейс</h2>
+                <div class="selected-info">
+                    <span class="info-label">Город:</span>
+                    <span class="info-value" id="selectedCity">—</span>
+                    <button class="change-btn" onclick="goToStep(1)">Изменить</button>
+                </div>
+                <div class="marketplace-grid" id="marketplaceGrid">
+                    <!-- Маркетплейсы загружаются динамически -->
+                </div>
+                <div class="step-actions">
+                    <button class="btn-secondary" onclick="goToStep(1)">Назад</button>
+                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Шаг 3: Выбор склада -->
+        <div class="step-content" id="step-3">
+            <div class="step-card">
+                <h2>Выберите склад назначения</h2>
+                <div class="selected-info">
+                    <div class="info-row">
+                        <span class="info-label">Город:</span>
+                        <span class="info-value" id="selectedCity2">—</span>
+                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Маркетплейс:</span>
+                        <span class="info-value" id="selectedMarketplace">—</span>
+                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
+                    </div>
+                </div>
+                <div class="warehouse-grid" id="warehouseGrid">
+                    <!-- Склады загружаются динамически -->
+                </div>
+                <div class="step-actions">
+                    <button class="btn-secondary" onclick="goToStep(2)">Назад</button>
+                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Шаг 4: Результаты -->
+        <div class="step-content" id="step-4">
+            <div class="step-card">
+                <h2>Доступные отправления</h2>
+                <div class="selected-info">
+                    <div class="info-row">
+                        <span class="info-label">Город:</span>
+                        <span class="info-value" id="selectedCity3">—</span>
+                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Маркетплейс:</span>
+                        <span class="info-value" id="selectedMarketplace2">—</span>
+                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Склад:</span>
+                        <span class="info-value" id="selectedWarehouse">—</span>
+                        <button class="change-btn" onclick="goToStep(3)">Изменить</button>
+                    </div>
+                </div>
+                <div class="results-container">
+                    <div id="scheduleResults" class="schedule-results">
+                        <!-- Результаты загружаются динамически -->
+                    </div>
+                </div>
+                <div class="step-actions">
+                    <button class="btn-secondary" onclick="goToStep(3)">Назад</button>
+                    <button class="btn-secondary" onclick="resetSteps()">Начать заново</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="schedule-tabs">
+          <button id="tab-upcoming" class="active" onclick="switchTab('upcoming')" style="display:none;">Ближайшие отправления</button>
+          ${isAdminOrManager ? `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>` : `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>`}
+        </div>
+        <div id="tabContent-upcoming" style="display:block;">
+          <div class="filter-actions" style="display:none;">
+            <button id="toggleArchiveBtn">Показать архив</button>
+            ${window.canCreateSchedule ? `
+              <button id="createScheduleBtn" onclick="window.schedule.showCreateForm()">Создать отправление</button>
+              <div class="excel-dropdown">
+                <button id="excelDropdownBtn" onclick="window.schedule.toggleExcelMenu()">📤 Excel <span id="excelArrow">▼</span></button>
+                <div id="excelMenu" class="dropdown-content">
+                  <a href="#" onclick="window.schedule.exportSchedule()">📤 Экспорт данных</a>
+                  <a href="#" onclick="window.schedule.openImportModal()">📥 Импорт расписания</a>
+                  <a href="/templates/Расписание_шаблон.xlsx">📄 Скачать шаблон</a>
+                  <a href="#" onclick="window.schedule.openScheduleManagementModal()">⚙️ Управление</a>
+                  <a href="#" onclick="window.schedule.showShipmentReport()">📄Список Отправлений</a>
+                </div>
+              </div>
+            ` : ``}
+          </div>
     cursor: pointer;
-    margin-top: 1px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
 }
 
-.add-warehouse-button {
-    margin-top: 10px;
-    padding: 10px 16px;
-    background-color: #fff;
-    border: 2px solid #333;
-    border-radius: 6px;
-    font-weight: bold;
-    transition: all 0.2s ease-in-out;
+.schedule-card.can-order {
+    border-left: 4px solid var(--success);
 }
 
-.add-warehouse-button:hover {
-    background-color: #f0f0f0;
-    transform: scale(1.02);
+.schedule-card.cannot-order {
+    border-left: 4px solid var(--text-muted);
+    opacity: 0.7;
 }
 
-/* Общий контейнер всего расписания */
-.schedule-container {
-    border-radius: 8px;
-    margin: 20px auto;
-    max-width: 1200px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
+.schedule-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
 }
 
-/* Заголовок (section-title) в расписании */
-.section-title {
-    font-size: 28px;
-    margin-bottom: 20px;
-    text-align: center;
-    color: #2c3e50;
-    font-weight: bold;
-}
-
-/* ========= Блок вкладок (tab-header) ========= */
-.tab-header {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-.tab-header .tab-button {
-    padding: 12px 20px;
-    border: none;
-    border-radius: 6px;
-    background: #e0e0e0;
-    font-weight: bold;
-    font-size: 15px;
-    color: #333;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-.tab-header .tab-button:hover {
-    background: #d5d5d5;
-}
-.tab-header .tab-button.active {
-    background: linear-gradient(45deg, #4CAF50, #2ecc71);
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
-}
-
-/* ========= Кнопки управления расписанием ========= */
-.schedule-controls {
+.schedule-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}
-.action-buttons button,
-.navigation-buttons button {
-    padding: 10px 20px;
-    margin-right: 10px;
-    border: none;
-    border-radius: 5px;
-    background-color: #4CAF50;
-    color: #fff;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-}
-.action-buttons button:hover,
-.navigation-buttons button:hover {
-    background-color: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    align-items: flex-start;
+    margin-bottom: 16px;
 }
 
-/* ========= Фильтр в разделе Календарь ========= */
-.filter-section {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-.filter-group {
-    margin-bottom: 10px;
-    flex: 1 1 200px;
-    padding: 0 10px;
-}
-.filter-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 14px;
-    color: #333;
-}
-.filter-group input,
-.filter-group select {
-    width: 100%;
-    padding: 8px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-.filter-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 10px;
-}
-.apply-button,
-.reset-button {
-    padding: 10px 15px;
-    background: #4CAF50;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-.apply-button:hover,
-.reset-button:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-}
-
-/* ========= Календарный вид ========= */
-.calendar-view {
-    margin-top: 20px;
-    width: 100%;
-    height: auto;
-}
-.schedule-nav {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 10px;
-    font-size: 16px;
-    font-weight: bold;
-}
-.calendar-header {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-    text-align: center;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-.calendar-header div {
-    padding: 5px;
-    background: #f0f0f0;
-    border-radius: 5px;
-}
-.calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-auto-rows: 60px;
-    gap: 5px;
-    width: 100%;
-    /* 6 недель * 60px + 5px между рядами */
-    height: calc(6 * 60px + 5 * 5px);
-    box-sizing: border-box;
-}
-.calendar-cell {
-    background: #f9f9f9;
-    border-radius: 5px;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.3s;
-    padding: 5px;
-    overflow: hidden;
-    height: 60px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-}
-.calendar-cell:hover {
-    background: #e9e9e9;
-}
-/* Индикатор точки отправления */
-.calendar-cell .shipment-dot {
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    z-index: 2;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #999;
-}
-.cell-date {
-    font-weight: bold;
-    margin-bottom: 3px;
-    font-size: 14px;
-    white-space: nowrap;
-}
-.calendar-cell.today {
-    border: 2px solid #4CAF50;
-    box-shadow: inset 0 0 10px rgba(76,175,80,0.3);
-}
-.shipment-label {
-    font-size: 12px;
-    background: rgba(76,175,80,0.1);
-    padding: 2px 4px;
-    border-radius: 3px;
-    margin-top: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    text-align: center;
-}
-
-/* ========= Ближайшие отправления ========= */
-.upcoming-shipments {
-    background: #f1f1f1;
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 20px;
-}
-.upcoming-shipments h3 {
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: #333;
-}
-.upcoming-item {
-    padding: 5px;
-    cursor: pointer;
-    transition: background 0.3s;
-}
-.upcoming-item:hover {
-    background: #ddd;
-}
-.upcoming-item .shipment-dot {
-    position: static;
-    display: inline-block;
-    margin: 0;
-    vertical-align: middle;
-}
-
-/* ========= Модальное окно общего назначения (если внутри расписания) ========= */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-    backdrop-filter: blur(2px);
-    overflow: auto; /* Прокрутка при большом контенте */
-}
-.modal-content {
-    background: #ffffff;
-    margin: 5% auto;
-    padding: 25px 30px;
-    border-radius: 12px;
-    max-width: 700px;
-    width: 90%;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    position: relative;
-    animation: fadeIn 0.3s ease;
-    font-family: 'Segoe UI', sans-serif; /* или Roboto */
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.modal-header {
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 15px;
-    margin-bottom: 15px;
-    text-align: center;
-}
-.modal-header h2 {
-    margin: 0;
-    font-size: 26px;
-    font-weight: bold;
-    text-transform: uppercase;
-    background: linear-gradient(45deg, #4CAF50, #2ecc71);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-/* Кнопка закрытия (крестик) */
-.modal-close {
-    position: absolute;
-    top: 12px;
-    right: 16px;
-    font-size: 24px;
-    color: #333;
-    background: none;
-    border: none;
-    padding: 0;
-    line-height: 1;
-    cursor: pointer;
-    font-weight: normal;
-    transition: color 0.2s ease;
-}
-
-.modal-close:hover {
-    color: #000;
-}
-
-/* Тело модалки */
-.modal-body {
-    max-height: none;
-    overflow-y: auto;
-    font-size: 15px;
-    color: #333;
-}
-/* Кнопки действий внизу модалки */
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-/* ========= Таблицы деталей отправления внутри модалки (shipment-table) ========= */
-.shipment-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-.shipment-table th {
-    background-color: #f0f0f0;
-    padding: 10px;
-    text-align: left;
-    font-weight: bold;
-    border-bottom: 2px solid #ddd;
-    font-size: 14px;
-}
-.shipment-table td {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
-    font-size: 14px;
-}
-.shipment-table tr:hover {
-    background-color: #f5f5f5;
-}
-.shipment-table td.actions {
-    display: flex;
-    gap: 5px;
-    justify-content: flex-end;
-    white-space: nowrap;
-}
-
-/* ========= Блочный формат содержимого модалки (секции, строки) ========= */
-.modal-section {
-    background: #fdfdfd;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 18px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.modal-section-title {
+.schedule-route {
+    font-size: 1.1rem;
     font-weight: 600;
-    font-size: 16px;
-    color: #333;
-}
-.modal-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 15px;
-}
-.modal-label {
-    font-weight: 500;
-    color: #444;
-}
-.modal-value {
-    color: #555;
-    max-width: 60%;
-    text-align: right;
-}
-
-
-
-/* Кнопки внутри модалки */
-.action-button {
-    padding: 12px 25px;
-    border: none;
-    border-radius: 6px;
-    font-size: 15px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
+    color: var(--text-primary);
     display: flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(45deg, #f39c12, #e67e22);
-    color: #222; /* ✅ Контрастный текст */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-}
-.action-button:hover {
-    background: linear-gradient(45deg, #e67e22, #d35400);
-    transform: translateY(-2px);
 }
 
-/* Кнопка редактирования */
-.edit-btn {
-    background: linear-gradient(45deg, #d6eaf8, #aed6f1); /* светло-синий фон */
-    color: #1b2631; /* ✅ тёмно-серый текст */
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-    border: 1px solid #85c1e9;
-}
-.edit-btn:hover {
-    background: linear-gradient(45deg, #aed6f1, #85c1e9);
-    transform: translateY(-2px);
+.schedule-status {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* Кнопка удаления */
-.delete-btn {
-    background: linear-gradient(45deg, #fadbd8, #f5b7b1); /* светло-красный фон */
-    color: #78281f; /* ✅ насыщенный тёмно-красный текст */
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-    border: 1px solid #ec7063;
-}
-.delete-btn:hover {
-    background: linear-gradient(45deg, #f5b7b1, #ec7063);
-    transform: translateY(-2px);
+.status-open {
+    background: rgba(16, 185, 129, 0.1);
+    color: #065f46;
 }
 
-/* Кнопка архивирования */
-.archive-btn {
-    background: linear-gradient(45deg, #fdf2e9, #fad7a0);
-    color: #7d6608;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 14px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-    border: 1px solid #f8c471;
-}
-.archive-btn:hover {
-    background: linear-gradient(45deg, #fad7a0, #f8c471);
-    transform: translateY(-2px);
+.status-pending {
+    background: rgba(251, 191, 36, 0.1);
+    color: #92400e;
 }
 
-/* Сообщения массового управления */
-#massManageMessages {
-    margin-top: 10px;
-    font-size: 14px;
-}
-#massManageMessages .success { color: #196f3d; }
-#massManageMessages .warning { color: #7d6608; }
-#massManageMessages .error   { color: #922b21; }
-
-
-
-/* ========= Пример строки-элемента (shipment-row) ========= */
-.shipment-row {
-    display: flex;
-    gap: 10px;
-    padding: 5px 0;
-    border-bottom: 1px dashed #ccc;
-    align-items: center;
-    font-size: 14px;
-}
-.shipment-row:last-child {
-    border-bottom: none;
-}
-.col {
-    flex: 1;
-    text-align: left;
-}
-.col-action {
-    flex: 0 0 auto;
+.status-transit {
+    background: rgba(59, 130, 246, 0.1);
+    color: #1e40af;
 }
 
-/* ========= Блок “Ближайшие отправления” в виде карточек (styled-upcoming-item) ========= */
-.styled-upcoming-item {
-    background: #fff;
-    border-radius: 8px;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-}
-.styled-upcoming-item:hover {
-    background: #f0fdf4;
-    transform: translateY(-2px);
-    cursor: pointer;
-}
-.shipment-info {
-    display: flex;
-    flex-direction: column;
-}
-.shipment-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: bold;
-    font-size: 15px;
-    color: #2c3e50;
-}
-.shipment-date {
-    font-size: 15px;
-}
-.shipment-status {
-    font-size: 13px;
-    color: #666;
-}
-.shipment-sub {
-    font-size: 13px;
-    color: #777;
-    margin-top: 4px;
-}
-.shipment-sub strong {
-    font-weight: bold;
-    color: #333;
+.status-completed {
+    background: rgba(156, 163, 175, 0.1);
+    color: #374151;
 }
 
-/* ========= Переключатель вкладок для городов (city-tab-header) ========= */
-.city-tab-header {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-.city-tab-header .tab-button {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 4px;
-    background: #eee;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-.city-tab-header .tab-button:hover {
-    background-color: #ddd;
-}
-/* Активная вкладка для городов */
-.city-tab-header .tab-button.active {
-    background: linear-gradient(45deg, #4CAF50, #2ecc71);
-    color: white;
-}
-
-/* Элемент (warehouse/city/...) */
-.shipment-warehouse {
-    font-weight: bold;
-    font-size: 15px;
-}
-
-/* ========= Адаптивность (медиа-запросы) ========= */
-@media (max-width: 768px) {
-    .calendar-cell {
-        height: 80px;
-    }
-    .modal-content {
-        max-width: 90%;
-    }
-    .action-button {
-        padding: 8px 15px;
-        font-size: 12px;
-        min-width: 80px;
-    }
-}
-@media (max-width: 480px) {
-    .calendar-cell {
-        height: 60px;
-    }
-    .modal-content {
-        margin: 20% auto;
-        width: 95%;
-    }
-    .action-button {
-        padding: 6px 10px;
-        font-size: 10px;
-        min-width: 70px;
-    }
-    .shipment-row {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .col {
-        flex: none;
-        width: 100%;
-    }
-    .col-action {
-        width: 100%;
-        display: flex;
-        gap: 5px;
-        margin-top: 5px;
-    }
-}
-
-/* ========= Вкладки внутри модалки "Создать заявку" ========= */
-.modal-tabs {
-    padding-top: 10px;
-}
-
-.modal-tabs .tabs {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
+.schedule-info {
     margin-bottom: 20px;
 }
 
-.modal-tabs .tab-button {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    background: #e0e0e0;
-    font-weight: bold;
-    font-size: 15px;
-    color: #333;
-    transition: all 0.2s ease;
-    cursor: pointer;
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
 }
 
-.modal-tabs .tab-button.active {
-    background: linear-gradient(45deg, #4CAF50, #2ecc71);
+.info-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.info-value {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.schedule-action {
+    text-align: center;
+}
+
+.create-order-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--success);
     color: white;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.modal-tabs .tab-content {
-    padding: 10px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+.create-order-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
 }
 
-
-/* Патч: отображение модалки при добавлении класса .show */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 10000;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-    overflow: auto;
+.schedule-disabled {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+    border-radius: var(--radius);
+    font-weight: 500;
 }
 
-
-
-.modal-content {
-    background: #ffffff;
-    margin: 5% auto;
-    padding: 25px 30px;
-    border-radius: 12px;
-    max-width: 700px;
-    width: 90%;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    position: relative;
-    animation: fadeIn 0.3s ease;
-    font-family: 'Segoe UI', sans-serif;
+/* Состояния загрузки и ошибок */
+.loading-state,
+.empty-state,
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-secondary);
+    grid-column: 1 / -1;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
 }
 
-/* === schedule.css === */
-/* ✅ Основные стили для раздела расписания */
-
-.schedule-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    margin-top: 15px;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-.schedule-table th,
-.schedule-table td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
+.empty-state i,
+.error-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--text-muted);
 }
 
-.schedule-table th {
-    background-color: #f0f0f0;
-    font-weight: bold;
+.empty-state h3,
+.error-state h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
 }
 
-/* Таблица в модалке управления расписанием */
-.management-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    margin-top: 15px;
-}
-.management-table th,
-.management-table td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
-}
-.management-table th {
-    background-color: #f0f0f0;
-    font-weight: bold;
+.empty-state p,
+.error-state p {
+    font-size: 1rem;
+    color: var(--text-secondary);
 }
 
-/* ✅ Контейнер, оборачивающий таблицу */
-.schedule-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* 📱 Мобильная адаптация */
-@media screen and (max-width: 768px) {
-    .schedule-table {
-        font-size: 13px;
-        min-width: 600px;
+/* Адаптивность */
+@media (max-width: 768px) {
+    .schedule-container {
+        padding: 16px;
     }
-
-    .schedule-table th,
-    .schedule-table td {
-        padding: 6px;
-    }
-}
-/* === Исправление для модалки деталей заказа === */
-.modal-body.accordion-view {
-    max-height: none !important;
-    overflow-y: visible !important;
-    display: block !important;
-    padding-bottom: 20px;
-}
-/* 🔄 Плавное появление модалки */
-.modal-content {
-    animation: fadeInScale 0.3s ease forwards;
-    transform-origin: top center;
     
-    transform: scale(0.95);
-}
-@keyframes fadeInScale {
-    to {
-        opacity: 1;
-        transform: scale(1);
+    .schedule-header h1 {
+        font-size: 2rem;
+    }
+    
+    .step-indicator {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .step {
+        flex-direction: row;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .step-line {
+        display: none;
+    }
+    
+    .step-card {
+        padding: 24px 20px;
+    }
+    
+    .step-header h2 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .selection-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .selection-card {
+        padding: 20px;
+    }
+    
+    .param-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .param-label {
+        min-width: auto;
+    }
+    
+    .step-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .btn-back,
+    .btn-reset {
+        width: 100%;
+        justify-content: center;
     }
 }
 
-/* 📱 Адаптация для смартфонов */
 @media (max-width: 480px) {
-    .modal-content {
+    .schedule-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .step-circle {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .step-number {
+        font-size: 14px;
+    }
+    
+    .step-check {
+        font-size: 14px;
+    }
+    
+    .step-card {
         padding: 20px 16px;
     }
-    .modal-header h2 {
+    
+    .selection-card {
+        padding: 16px;
+    }
+    
+    .card-icon {
+        width: 50px;
+        height: 50px;
         font-size: 20px;
     }
-    .modal-section-title {
-        font-size: 15px;
+    
+    .card-content h3 {
+        font-size: 1.1rem;
     }
-    .modal-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
+}
+
+            <!-- Фильтры загружаются ниже -->
+          </div>
+          <div id="upcomingList" class="upcoming-list"></div>
+        </div>
+        <div id="tabContent-calendar" style="display:none;">
+          ${isAdminOrManager ? `
+            <div id="calendarControls" class="calendar-controls">
+              <!-- Управление отображением месяца здесь -->
+            </div>
+            <div id="calendarFilters" class="calendar-filters">
+              <!-- Фильтры календаря здесь -->
+            </div>
+            <div id="calendarView" class="calendar-view">
+              <div id="currentMonthYear"></div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+            </div>
+            <div id="calendarNoAccess" style="display:none;">Нет прав для просмотра календаря</div>
+          ` : `<div id="calendarNoAccess">Нет прав для просмотра календаря</div>`}
+        </div>
+    `;
+    dynamicContent.innerHTML = html;
+
+    // --- Фильтры ---
+    const filterBlock = document.getElementById("filterBlock");
+    if (filterBlock) {
+        filterBlock.innerHTML = `
+          <label for="marketplaceFilter">Маркетплейс</label>
+          <select id="marketplaceFilter" name="marketplaceFilter"></select>
+          <label for="cityDropdown">Город</label>
+          <select id="cityDropdown" name="cityDropdown"></select>
+          <label for="destinationWarehouseFilter">Склад</label>
+          <select id="destinationWarehouseFilter" name="destinationWarehouseFilter"></select>
+        `;
     }
-    .modal-label {
-        font-size: 14px;
+
+    // --- Уведомление для фильтров ---
+    function showFilterNotice(msg) {
+        let n = document.getElementById('filterNotice');
+        if (!n) {
+            n = document.createElement('div');
+            n.id = 'filterNotice';
+            n.style = "color:#b70000;font-size:1em;padding:7px 0 3px 0;";
+            filterBlock.appendChild(n);
+        }
+        n.textContent = msg;
+        setTimeout(() => { n.textContent = ""; }, 3000);
     }
-    .modal-value {
-        font-size: 14px;
-        text-align: left;
+
+    // Сбрасываем фильтры
+    window.activeMarketplaceFilter = "";
+    window.activeCityFilter = "";
+    window.activeDestinationWarehouseFilter = "";
+
+    const marketplaceSelect = document.getElementById("marketplaceFilter");
+    const citySelect = document.getElementById("cityDropdown");
+    const warehouseSelect = document.getElementById("destinationWarehouseFilter");
+
+    // Загружаем список маркетплейсов
+    fetch("filter_options.php?action=marketplaces")
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                marketplaceSelect.innerHTML = `<option value="">Все</option>` +
+                    data.marketplaces.map(mp => `<option value="${mp}">${mp}</option>`).join('');
+            }
+        });
+
+    // Подгружаем все города (по всем маркетплейсам)
+    function loadAllCities(selectedCity) {
+        fetch("filter_options.php?action=all_cities")
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    citySelect.innerHTML = `<option value="">Все</option>` +
+                        data.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+                }
+            });
     }
-    .create-order-btn.big-action {
-    background: linear-gradient(45deg, #2baf61, #6bb23d);
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    padding: 14px 28px;
-    border-radius: 32px;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease-in-out;
-}
-.create-order-btn.big-action:hover {
-    background: linear-gradient(45deg, #64dd17, #00c853);
-    transform: scale(1.03);
+
+    // Подгружаем все склады (по всем маркетплейсам и городам)
+    function loadAllWarehouses(selectedCity, selectedWarehouse) {
+        let url = "filter_options.php?action=all_warehouses";
+        if (selectedCity) url += "&city=" + encodeURIComponent(selectedCity);
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    warehouseSelect.innerHTML = `<option value="">Все</option>` +
+                        data.warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
+                }
+            });
+    }
+
+    // Изначально подгружаем все города и склады
+    loadAllCities();
+    loadAllWarehouses();
+
+    // --- Логика изменения фильтров ---
+    marketplaceSelect.onchange = function () {
+        window.activeMarketplaceFilter = this.value;
+        const prevCity = window.activeCityFilter;
+        const prevWarehouse = window.activeDestinationWarehouseFilter;
+
+        let cityPromise;
+        if (!window.activeMarketplaceFilter) {
+            cityPromise = fetch("filter_options.php?action=all_cities")
+                .then(r => r.json())
+                .then(data => data.cities || []);
+        } else {
+            cityPromise = fetch(`filter_options.php?action=cities&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`)
+                .then(r => r.json())
+                .then(data => data.cities || []);
+        }
+
+        cityPromise.then(cities => {
+            const cityValid = !prevCity || cities.includes(prevCity);
+            if (!cityValid) {
+                showFilterNotice("Нет отправлений по выбранному маркетплейсу и городу.");
+                window.activeCityFilter = "";
+                window.activeDestinationWarehouseFilter = "";
+            } else {
+                window.activeCityFilter = prevCity;
+            }
+            citySelect.innerHTML = `<option value="">Все</option>` +
+                cities.map(c => `<option value="${c}">${c}</option>`).join('');
+            citySelect.disabled = false;
+
+            let whPromise;
+            if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
+                whPromise = fetch("filter_options.php?action=all_warehouses")
+                    .then(r => r.json())
+                    .then(data => data.warehouses || []);
+            } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
+                whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
+                    .then(r => r.json())
+                    .then(data => data.warehouses || []);
+            } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
+                whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
+                    .then(r => r.json())
+                    .then(data => data.warehouses || []);
+            } else {
+                whPromise = Promise.resolve([]);
+            }
+
+            whPromise.then(warehouses => {
+                const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
+                if (!whValid && prevWarehouse) {
+                    showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
+                    window.activeDestinationWarehouseFilter = "";
+                } else {
+                    window.activeDestinationWarehouseFilter = prevWarehouse;
+                }
+                warehouseSelect.innerHTML = `<option value="">Все</option>` +
+                    warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
+                warehouseSelect.disabled = false;
+                fetchAndDisplayUpcoming();
+            });
+        });
+    };
+
+    citySelect.onchange = function () {
+        window.activeCityFilter = this.value;
+        const prevWarehouse = window.activeDestinationWarehouseFilter;
+
+        let whPromise;
+        if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
+            whPromise = fetch("filter_options.php?action=all_warehouses")
+                .then(r => r.json())
+                .then(data => data.warehouses || []);
+        } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
+            whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
+                .then(r => r.json())
+                .then(data => data.warehouses || []);
+        } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
+            whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
+                .then(r => r.json())
+                .then(data => data.warehouses || []);
+        } else {
+            whPromise = Promise.resolve([]);
+        }
+
+        whPromise.then(warehouses => {
+            const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
+            if (!whValid && prevWarehouse) {
+                showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
+                window.activeDestinationWarehouseFilter = "";
+            } else {
+                window.activeDestinationWarehouseFilter = prevWarehouse;
+            }
+            warehouseSelect.innerHTML = `<option value="">Все</option>` +
+                warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
+            warehouseSelect.disabled = false;
+            fetchAndDisplayUpcoming();
+        });
+    };
+
+    warehouseSelect.onchange = function () {
+        window.activeDestinationWarehouseFilter = this.value;
+        fetchAndDisplayUpcoming();
+    };
+
+    document.getElementById("toggleArchiveBtn").addEventListener("click", () => {
+        window.archiveView = !window.archiveView;
+        document.getElementById("toggleArchiveBtn").textContent = window.archiveView ? "Показать активные" : "Показать архив";
+        fetchAndDisplayUpcoming();
+    });
+
+    // Функция переключения вкладок. Добавляем в window, чтобы ею пользовались
+    window.switchTab = function(tab) {
+        document.getElementById('tab-upcoming').classList.remove('active');
+        document.getElementById('tab-calendar').classList.remove('active');
+        document.getElementById('tabContent-upcoming').style.display = 'none';
+        document.getElementById('tabContent-calendar').style.display = 'none';
+        if (tab === 'upcoming') {
+            document.getElementById('tab-upcoming').classList.add('active');
+            document.getElementById('tabContent-upcoming').style.display = 'block';
+        } else if (tab === 'calendar') {
+            document.getElementById('tab-calendar').classList.add('active');
+            document.getElementById('tabContent-calendar').style.display = 'block';
+            if (!isAdminOrManager) {
+                document.getElementById("calendarNoAccess").style.display = "block";
+                document.getElementById("calendarControls").style.display = "none";
+                document.getElementById("calendarFilters").style.display = "none";
+                document.getElementById("calendarView").style.display = "none";
+            } else {
+                document.getElementById("calendarNoAccess").style.display = "none";
+                document.getElementById("calendarControls").style.display = "";
+                document.getElementById("calendarFilters").style.display = "";
+                document.getElementById("calendarView").style.display = "";
+            }
+        }
+    };
+
+    // Инициализация календаря при первой загрузке
+    if (typeof renderStaticCalendar === 'function') renderStaticCalendar();
+    if (typeof fetchDataAndUpdateCalendar === 'function') fetchDataAndUpdateCalendar();
+
+    // Загружаем список отправлений
+    fetchAndDisplayUpcoming();
 }
 
-@media (max-width: 480px) {
-  .action-button:not(.create-order-btn) {
-    padding: 6px 10px;
-    font-size: 10px;
-    min-width: 70px;
-  }
-}
-/* ...весь ваш schedule.css (как выше)... */
-.dropdown-excel {
-  position: relative;
-  display: inline-block;
+/**
+ * Загрузка предстоящих отправлений и отображение их на вкладке
+ * «Ближайшие отправления». Фильтрация по выбранным параметрам,
+ * группировка по дате приёмки и построение элементов списка. Взята
+ * без изменений из schedule.js.
+ * @param {boolean} showArchived - показывать ли архивированные записи
+ */
+function fetchAndDisplayUpcoming(showArchived = false) {
+    const container = document.getElementById("upcomingList");
+    if (!container) return;
+    container.innerHTML = "Загрузка…";
+    // Формируем URL с учётом фильтров
+    let url = `schedule.php?archived=${showArchived ? 1 : 0}`;
+    if (window.activeMarketplaceFilter) {
+        url += `&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`;
+    }
+    if (window.activeCityFilter) {
+        url += `&city=${encodeURIComponent(window.activeCityFilter)}`;
+    }
+    if (window.activeDestinationWarehouseFilter) {
+        url += `&warehouse=${encodeURIComponent(window.activeDestinationWarehouseFilter)}`;
+    }
+    fetch(url)
+        .then(r => {
+            if (!r.ok) throw new Error("Ошибка загрузки: " + r.status);
+            return r.json();
+        })
+        .then(data => {
+            // В некоторых ответах backend либо возвращает массив, либо объект {schedules: []}
+            const list = Array.isArray(data.schedules) ? data.schedules : data;
+            if (!Array.isArray(list) || !list.length) {
+                container.innerHTML = "Нет расписаний.";
+                return;
+            }
+            const now = new Date();
+            const isClient = window.userRole === 'client';
+            // Фильтрация: исключаем прошедшие и записи, по которым клиент уже не может создать заявку
+            const filtered = list.filter(item => {
+                const delivery = new Date(item.delivery_date);
+                if (delivery < now) {
+                    return false; // уже отправились
+                }
+                if (isClient) {
+                    return typeof canCreateOrderForSchedule === 'function'
+                        ? canCreateOrderForSchedule(item)
+                        : true;
+                }
+                return true;
+            });
+            // Группировка по дате приёмки (accept_date)
+            const grouped = {};
+            filtered.forEach(sh => {
+                const d = sh.accept_date;
+                if (!grouped[d]) grouped[d] = [];
+                grouped[d].push(sh);
+            });
+            // Очищаем контейнер и заполняем блоками
+            container.innerHTML = "";
+            Object.keys(grouped)
+                .sort((a, b) => new Date(a) - new Date(b))
+                .forEach(d => {
+                    grouped[d].forEach(sh => {
+                        const formattedDelivery = typeof formatDeliveryDate === 'function'
+                            ? formatDeliveryDate(sh.delivery_date)
+                            : sh.delivery_date;
+                        let mpClass = '';
+                        if (sh.marketplace === 'Ozon') {
+                            mpClass = 'mp-ozon';
+                        } else if (sh.marketplace === 'Wildberries') {
+                            mpClass = 'mp-wb';
+                        } else if (sh.marketplace === 'YandexMarket') {
+                            mpClass = 'mp-yandex';
+                        }
+                        const div = document.createElement("div");
+                        div.className = "upcoming-item styled-upcoming-item";
+                        div.innerHTML = `
+                            <div class="shipment-info">
+                              <div class="shipment-header">
+                                <span class="route">${sh.city || '—'} → ${sh.warehouses || '—'}</span>
+                                <span class="marketplace ${mpClass}">${sh.marketplace || ''}</span>
+                              </div>
+                              <div class="shipment-dates">
+                                <span class="delivery-date">${formattedDelivery}</span>
+                              </div>
+                            </div>
+                        `;
+                        // При клике открываем карточку отправления
+                        div.addEventListener("click", () => {
+                            if (window.schedule && typeof window.schedule.openSingleShipmentModal === 'function') {
+                                window.schedule.openSingleShipmentModal(sh);
+                            }
+                        });
+                        container.appendChild(div);
+                    });
+                });
+            if (!container.innerHTML.trim()) {
+                container.innerHTML = "Нет отправлений по выбранным условиям.";
+            }
+        })
+        .catch(err => {
+            console.error("Ошибка fetchAndDisplayUpcoming:", err);
+            container.innerHTML = `Ошибка загрузки: ${err.message}`;
+        });
 }
 
-.excel-button {
-  background: #ebebef;
-  color: #1c1c1e;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  min-width: 200px;
-  gap: 8px;
-  transition: background 0.2s;
-}
-
-.excel-button:hover {
-  background: #e0e0e5;
-}
-
-.excel-menu {
-  display: none;
-  position: absolute;
-  top: 105%;
-  left: 0;
-  background: #fff;
-  border: 1px solid #e5e5ea;
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 1000;
-  min-width: 280px;
-  padding: 8px 0;
-  font-size: 15px;
-}
-
-.excel-menu.show {
-  display: block;
-}
-
-.excel-menu .excel-item {
-  padding: 12px 18px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: #1c1c1e;
-}
-
-.excel-menu .excel-item:hover {
-  background-color: #f2f2f7;
-}
-
-
+// Экспортируем функции в глобальный объект window, чтобы они
+// были доступны в других модулях без систем сборки
+window.loadSchedule = loadSchedule;
+window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
