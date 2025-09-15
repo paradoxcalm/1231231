@@ -51,6 +51,40 @@ requireRole(['accountant']);
             margin: 20px auto;
             padding: 0 16px;
         }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            align-items: flex-end;
+        }
+        .filters input,
+        .filters button {
+            padding: 8px;
+            font-size: 14px;
+        }
+        .metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 16px;
+            flex: 1;
+            min-width: 150px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .card .label {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .card .value {
+            font-size: 24px;
+            font-weight: 600;
+        }
     </style>
     <script src='../main.js' defer></script>
 </head>
@@ -60,7 +94,50 @@ requireRole(['accountant']);
         <a class='exit' href='../logout.php'>Выйти</a>
     </header>
     <main class='container'>
-        <!-- Контент бухгалтера будет здесь -->
+        <div class='filters'>
+            <input type='date' id='date_from'>
+            <input type='date' id='date_to'>
+            <input type='text' id='city' placeholder='Город'>
+            <input type='text' id='warehouses' placeholder='Склады'>
+            <input type='number' id='client_id' placeholder='ID клиента'>
+            <button id='applyFilters'>Показать</button>
+        </div>
+        <div class='metrics'>
+            <div class='card'>
+                <div class='label'>Отправок</div>
+                <div class='value' id='shipments_count'>0</div>
+            </div>
+            <div class='card'>
+                <div class='label'>Сумма оплат</div>
+                <div class='value' id='total_payments'>0</div>
+            </div>
+            <div class='card'>
+                <div class='label'>Клиентов</div>
+                <div class='value' id='clients_count'>0</div>
+            </div>
+        </div>
     </main>
+    <script>
+    async function fetchSummary() {
+        const params = new URLSearchParams();
+        ['date_from','date_to','city','warehouses','client_id'].forEach(id => {
+            const v = document.getElementById(id).value;
+            if (v) params.append(id, v);
+        });
+        try {
+            const res = await fetch('../api/accountant/get_summary.php?' + params.toString());
+            const json = await res.json();
+            if (json.success) {
+                document.getElementById('shipments_count').textContent = json.data.shipments_count;
+                document.getElementById('total_payments').textContent = json.data.total_payments;
+                document.getElementById('clients_count').textContent = json.data.clients_count;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    document.getElementById('applyFilters').addEventListener('click', fetchSummary);
+    window.addEventListener('DOMContentLoaded', fetchSummary);
+    </script>
 </body>
 </html>
