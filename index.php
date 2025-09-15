@@ -9,6 +9,10 @@ if ($_SESSION['role'] === 'client') {
     header('Location: /client/index.html');
     exit();
 }
+if ($_SESSION['role'] === 'accountant') {
+    header('Location: /accountant/index.php');
+    exit();
+}
 $role = $_SESSION['role'];
 
 // Если у пользователя роль "deliverer", отправляем его на страницу курьера
