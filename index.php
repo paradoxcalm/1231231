@@ -307,11 +307,23 @@ function updateNotificationBadge(count) {
 }
 function fetchLiveNotifications() {
     fetch('fetch_notifications.php')
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                console.error('Ошибка сети при получении уведомлений:', r.status, r.statusText);
+                return null;
+            }
+            return r
+                .json()
+                .catch(err => {
+                    console.error('Ошибка парсинга JSON уведомлений:', err);
+                    return null;
+                });
+        })
         .then(data => {
             if (!Array.isArray(data)) return;
             updateNotificationBadge(data.length);
-        });
+        })
+        .catch(err => console.error('Ошибка при запросе уведомлений:', err));
 }
 document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById("notificationsBtn");
