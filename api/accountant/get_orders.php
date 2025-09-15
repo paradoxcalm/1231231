@@ -74,10 +74,22 @@ try {
     // Count total
     $countSql = "SELECT COUNT(*) FROM orders o JOIN shipments s ON s.order_id = o.order_id JOIN usersff u ON o.user_id = u.id LEFT JOIN order_reception_details d ON o.order_id = d.order_id LEFT JOIN usersff au ON o.author_id = au.id" . $where;
     $stmt = $conn->prepare($countSql);
+    if (!$stmt) {
+        error_log('MySQL prepare error: ' . mysqli_error($conn));
+        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+        $conn->close();
+        exit;
+    }
     if ($params) {
         $stmt->bind_param($types, ...$params);
     }
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        error_log('MySQL execute error: ' . mysqli_error($conn));
+        echo json_encode(['success' => false, 'message' => 'Ошибка выполнения запроса']);
+        $stmt->close();
+        $conn->close();
+        exit;
+    }
     $stmt->bind_result($total);
     $stmt->fetch();
     $stmt->close();
@@ -85,12 +97,24 @@ try {
     // Data query
     $sql = "SELECT o.order_id, o.order_date, s.submission_date, s.city, s.warehouses, CONCAT(u.first_name, ' ', u.last_name) AS client_name, COALESCE(d.payment, s.payment, 0) AS payment, COALESCE(d.payment_type, s.payment_type) AS payment_type, o.status, CONCAT(au.first_name, ' ', au.last_name) AS author_name FROM orders o JOIN shipments s ON s.order_id = o.order_id JOIN usersff u ON o.user_id = u.id LEFT JOIN order_reception_details d ON o.order_id = d.order_id LEFT JOIN usersff au ON o.author_id = au.id" . $where . " ORDER BY $order_by $sort_dir LIMIT ? OFFSET ?";
     $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        error_log('MySQL prepare error: ' . mysqli_error($conn));
+        echo json_encode(['success' => false, 'message' => 'Ошибка подготовки запроса']);
+        $conn->close();
+        exit;
+    }
     $bindTypes = $types . 'ii';
     $bindParams = $params;
     $bindParams[] = $per_page;
     $bindParams[] = $offset;
     $stmt->bind_param($bindTypes, ...$bindParams);
-    $stmt->execute();
+    if (!$stmt->execute()) {
+        error_log('MySQL execute error: ' . mysqli_error($conn));
+        echo json_encode(['success' => false, 'message' => 'Ошибка выполнения запроса']);
+        $stmt->close();
+        $conn->close();
+        exit;
+    }
     $res = $stmt->get_result();
     $orders = [];
     while ($row = $res->fetch_assoc()) {
@@ -113,8 +137,9 @@ try {
     $conn->close();
     exit;
 } catch (Throwable $e) {
+    error_log('get_orders.php exception: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Internal Server Error']);
+    echo json_encode(['success' => false, 'message' => 'Внутренняя ошибка сервера']);
     exit;
 }
 ?>
