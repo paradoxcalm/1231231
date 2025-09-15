@@ -35,8 +35,6 @@ async function initScheduleModule() {
     showShipmentReport: window.showShipmentReport,
     reloadShipmentReport: window.reloadShipmentReport,
     renderStaticCalendar: window.renderStaticCalendar,
-    getFullDate: window.getFullDate,
-    isDateToday: window.isDateToday,
     fetchDataAndUpdateCalendar: window.fetchDataAndUpdateCalendar,
     updateCalendarWithData: window.updateCalendarWithData,
     changeMonth: window.changeMonth,
@@ -72,7 +70,23 @@ async function initScheduleModule() {
     confirmWarehouseDelete: window.confirmWarehouseDelete,
     SCHEDULE_STATUSES: window.SCHEDULE_STATUSES,
     MARKETPLACES: window.MARKETPLACES,
-    TIME_SLOTS: window.TIME_SLOTS
+    TIME_SLOTS: window.TIME_SLOTS,
+    calendar: {
+      renderStaticCalendar: window.renderStaticCalendar,
+      fetchDataAndUpdateCalendar: window.fetchDataAndUpdateCalendar,
+      changeMonth: window.changeMonth,
+      openShipmentsForDate: window.openShipmentsForDate,
+    },
+    management: {
+      openScheduleManagementModal: window.openScheduleManagementModal,
+      massManageSchedules: window.massManageSchedules,
+      updateStatus: window.updateStatus,
+    },
+    modal: {
+      openSingleShipmentModal: window.openSingleShipmentModal,
+      renderShipmentDetailsHTML: window.renderShipmentDetailsHTML,
+      closeScheduleModal: window.closeScheduleModal,
+    }
   };
 }
 
