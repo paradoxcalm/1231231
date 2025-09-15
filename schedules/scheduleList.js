@@ -632,8 +632,118 @@ function initStepWizard() {
     window.selectedMarketplace = '';
     window.selectedWarehouse = '';
     window.currentStep = 1;
-    
+
     // Загружаем города для первого шага
+    loadCitiesForStep();
+}
+
+function goToStep(step) {
+    const targetStep = Number(step);
+    if (!Number.isFinite(targetStep)) {
+        return;
+    }
+
+    const stepContents = document.querySelectorAll('.step-content');
+    stepContents.forEach(content => {
+        const match = content.id?.match(/step-(\d+)/);
+        const contentStep = match ? Number(match[1]) : NaN;
+        content.classList.toggle('active', contentStep === targetStep);
+    });
+
+    const indicatorSteps = document.querySelectorAll('.step-indicator .step');
+    indicatorSteps.forEach(stepElement => {
+        const stepValue = Number(stepElement.dataset.step);
+        const isCurrent = stepValue === targetStep;
+        stepElement.classList.toggle('active', isCurrent);
+
+        if (stepValue > targetStep) {
+            stepElement.classList.remove('completed');
+        }
+    });
+
+    window.currentStep = targetStep;
+}
+
+function updateStepIndicator(step, completed) {
+    const stepNumber = Number(step);
+    if (!Number.isFinite(stepNumber)) {
+        return;
+    }
+
+    const current = Number(window.currentStep) || 1;
+    const indicatorSteps = document.querySelectorAll('.step-indicator .step');
+    indicatorSteps.forEach(stepElement => {
+        const stepValue = Number(stepElement.dataset.step);
+        stepElement.classList.toggle('active', stepValue === current);
+
+        if (typeof completed === 'boolean' && stepValue === stepNumber) {
+            stepElement.classList.toggle('completed', completed);
+        }
+    });
+}
+
+function resetSteps() {
+    window.selectedCity = '';
+    window.selectedMarketplace = '';
+    window.selectedWarehouse = '';
+    window.activeCityFilter = '';
+    window.activeWarehouseFilter = '';
+    window.activeDestinationWarehouseFilter = '';
+    window.activeMarketplaceFilter = '';
+    lastRenderedSchedules = [];
+
+    goToStep(1);
+
+    const indicatorSteps = document.querySelectorAll('.step-indicator .step');
+    indicatorSteps.forEach(stepElement => stepElement.classList.remove('completed'));
+    updateStepIndicator(1, false);
+
+    const valuesToReset = [
+        'selectedCity',
+        'selectedCity2',
+        'selectedCity3',
+        'selectedMarketplace',
+        'selectedMarketplace2',
+        'selectedWarehouse'
+    ];
+    valuesToReset.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.textContent = '—';
+        }
+    });
+
+    const marketplaceGrid = document.getElementById('marketplaceGrid');
+    if (marketplaceGrid) {
+        marketplaceGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-store"></i>
+                <span>Выберите город, чтобы увидеть маркетплейсы</span>
+            </div>
+        `;
+    }
+
+    const warehouseGrid = document.getElementById('warehouseGrid');
+    if (warehouseGrid) {
+        warehouseGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-warehouse"></i>
+                <span>Выберите маркетплейс, чтобы увидеть склады</span>
+            </div>
+        `;
+    }
+
+    const resultsContainer = document.getElementById('scheduleResults');
+    if (resultsContainer) {
+        resultsContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-list"></i>
+                <h3>Параметры не выбраны</h3>
+                <p>Пройдите шаги, чтобы получить список отправлений</p>
+            </div>
+        `;
+    }
+
     loadCitiesForStep();
 }
 
@@ -1529,3 +1639,6 @@ window.cancelWarehouseEdits = cancelWarehouseEdits;
 window.saveWarehouseEdits = saveWarehouseEdits;
 window.confirmWarehouseDelete = confirmWarehouseDelete;
 window.openScheduleDetails = openScheduleDetails;
+window.goToStep = goToStep;
+window.updateStepIndicator = updateStepIndicator;
+window.resetSteps = resetSteps;
