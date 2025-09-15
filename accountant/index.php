@@ -44,7 +44,7 @@ requireRole(['accountant']);
                 <span>Отчёты</span>
             </a>
             <a href="#" class="nav-item" data-section="analytics">
-                <i class="fas fa-analytics"></i>
+                <i class="fas fa-chart-pie"></i>
                 <span>Аналитика</span>
             </a>
             <a href="#" class="nav-item" data-section="clients">
