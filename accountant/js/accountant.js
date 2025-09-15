@@ -8,6 +8,10 @@ class AccountantApp {
         this.sortDirection = 'desc';
         this.filters = {};
         this.charts = {};
+
+        // Параметры для работы с клиентами
+        this.clientSearchQuery = '';
+        this.clientSort = 'name';
         
         this.init();
     }
@@ -889,14 +893,38 @@ class AccountantApp {
         window.open('../api/accountant/export_dashboard.php', '_blank');
     }
 
-    searchClients(query) {
-        // Реализация поиска клиентов
-        console.log('Поиск клиентов:', query);
+    async searchClients(query) {
+        this.clientSearchQuery = query;
+
+        const sortParam = this.clientSort ? `&sort=${encodeURIComponent(this.clientSort)}` : '';
+
+        try {
+            const response = await fetch(`../api/accountant/get_clients_stats.php?search=${encodeURIComponent(query)}${sortParam}`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.renderClientsGrid(data.clients);
+            }
+        } catch (error) {
+            console.error('Ошибка поиска клиентов:', error);
+        }
     }
 
-    sortClients(sortBy) {
-        // Реализация сортировки клиентов
-        console.log('Сортировка клиентов по:', sortBy);
+    async sortClients(sortBy) {
+        this.clientSort = sortBy;
+
+        const searchParam = this.clientSearchQuery ? `&search=${encodeURIComponent(this.clientSearchQuery)}` : '';
+
+        try {
+            const response = await fetch(`../api/accountant/get_clients_stats.php?sort=${encodeURIComponent(sortBy)}${searchParam}`);
+            const data = await response.json();
+
+            if (data.success) {
+                this.renderClientsGrid(data.clients);
+            }
+        } catch (error) {
+            console.error('Ошибка сортировки клиентов:', error);
+        }
     }
 
     // Модальные окна
