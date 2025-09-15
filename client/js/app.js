@@ -89,8 +89,8 @@ class App {
     loadSectionData(sectionName) {
         switch (sectionName) {
             case 'schedule':
-                if (window.ScheduleManager) {
-                    window.ScheduleManager.loadSchedules();
+                if (window.schedule) {
+                    window.schedule.loadSchedule();
                 }
                 break;
             case 'tariffs':

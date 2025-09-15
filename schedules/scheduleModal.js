@@ -61,7 +61,7 @@ function openSingleShipmentModal(sh) {
 
         ${
             canOrder
-                ? `<button onclick="createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}', '${sh.marketplace}')">Создать заявку</button>`
+                ? `<button onclick="window.schedule.createOrder(${sh.id}, '${sh.city}', '${sh.warehouses}', '${sh.marketplace}')">Создать заявку</button>`
                 : `<p>Приём заявок закрыт</p>`
         }
 
@@ -69,12 +69,12 @@ function openSingleShipmentModal(sh) {
             canEdit
                 ? `
             <label>Изменить статус:</label>
-            <select onchange="updateStatus(${sh.id}, this.value)">
+            <select onchange="window.schedule.updateStatus(${sh.id}, this.value)">
                 ${statusOptions}
             </select>
             <br/>
-            <button onclick="editSchedule(${sh.id})">Редактировать</button>
-            <button onclick="deleteSchedule(${sh.id})">Удалить</button>
+            <button onclick="window.schedule.editSchedule(${sh.id})">Редактировать</button>
+            <button onclick="window.schedule.deleteSchedule(${sh.id})">Удалить</button>
         `
                 : ""
         }
@@ -120,12 +120,12 @@ function renderShipmentDetailsHTML(sh) {
             canEdit
                 ? `
             <label>Изменить статус:</label>
-            <select onchange="updateStatus(${sh.id}, this.value)">
+            <select onchange="window.schedule.updateStatus(${sh.id}, this.value)">
                 ${statusOptions}
             </select>
             <br/>
-            <button onclick="editSchedule(${sh.id})">✏️ Редактировать</button>
-            <button onclick="deleteSchedule(${sh.id})">🗑️ Удалить</button>
+            <button onclick="window.schedule.editSchedule(${sh.id})">✏️ Редактировать</button>
+            <button onclick="window.schedule.deleteSchedule(${sh.id})">🗑️ Удалить</button>
         `
                 : ""
         }
@@ -220,7 +220,7 @@ function editSchedule(id) {
                             <div class="warehouse-checkboxes">
                                 ${warehousesHTML}
                             </div>
-                            <button type="button" onclick="addNewWarehouse('editScheduleForm')">Добавить склад</button>
+                            <button type="button" onclick="window.schedule.addNewWarehouse('editScheduleForm')">Добавить склад</button>
 
                             <label>Маркетплейс:</label>
                             <select name="marketplace" id="marketplaceSelectEdit">
@@ -257,7 +257,7 @@ function editSchedule(id) {
                             <div id="editError" style="display:none;color:red"></div>
 
                             <button type="submit">Сохранить</button>
-                            <button type="button" onclick="deleteSchedule(${sh.id})">Удалить</button>
+                            <button type="button" onclick="window.schedule.deleteSchedule(${sh.id})">Удалить</button>
                         </form>
                     `;
                     modalContainer.innerHTML = "";
