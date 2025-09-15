@@ -743,63 +743,89 @@ class AccountantApp {
 
 
     async loadTrendsChart(period) {
-        // Симуляция данных трендов
-        const data = {
-            labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн'],
-            datasets: [{
-                label: 'Доходы',
-                data: [120000, 150000, 180000, 160000, 200000, 220000],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 2,
-                fill: true
-            }, {
-                label: 'Заказы',
-                data: [45, 55, 65, 60, 75, 80],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                yAxisID: 'y1'
-            }]
-        };
+        const canvasId = 'trendsChart';
+        const canvas = document.getElementById(canvasId);
+        const container = canvas.parentElement;
 
-        const ctx = document.getElementById('trendsChart').getContext('2d');
-        
-        if (this.charts.trends) {
-            this.charts.trends.destroy();
-        }
+        try {
+            const response = await fetch(`../api/accountant/get_trends.php?period=${encodeURIComponent(period)}`);
+            const result = await response.json();
 
-        this.charts.trends = new Chart(ctx, {
-            type: 'line',
-            data: data,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
+            if (!result.success) {
+                throw new Error(result.message || 'Ошибка сервера');
+            }
+
+            const points = result.data || [];
+            if (!points.length) {
+                container.innerHTML = '<div class="empty-state"><p>Нет данных</p></div>';
+                return;
+            }
+
+            const labels = points.map(p => p.label);
+            const revenueData = points.map(p => p.revenue);
+            const ordersData = points.map(p => p.orders);
+
+            container.innerHTML = `<canvas id="${canvasId}" width="400" height="300"></canvas>`;
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (this.charts.trends) {
+                this.charts.trends.destroy();
+            }
+
+            this.charts.trends = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Выручка',
+                        data: revenueData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Заказы',
+                        data: ordersData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        yAxisID: 'y1'
+                    }]
                 },
-                scales: {
-                    y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        ticks: {
-                            callback: (value) => this.formatCurrency(value)
-                        }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
                     },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        grid: {
-                            drawOnChartArea: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            ticks: {
+                                callback: (value) => this.formatCurrency(value)
+                            }
                         },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки трендов:', error);
+            this.showToast('Ошибка загрузки трендов', 'error');
+            container.innerHTML = '<div class="empty-state"><p>Не удалось загрузить данные</p></div>';
+        }
     }
 
     // Утилиты
