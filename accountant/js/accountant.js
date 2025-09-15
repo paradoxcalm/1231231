@@ -570,15 +570,17 @@ class AccountantApp {
 
     // Графики
     async fetchRevenueData(days) {
-        // Симуляция данных - замените на реальный API
-        const data = [];
+        const response = await fetch(`../api/accountant/get_revenue_timeseries.php?days=${days}`);
+        const json = await response.json();
+
         const labels = [];
-        
-        for (let i = days - 1; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            labels.push(date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }));
-            data.push(Math.random() * 50000 + 10000);
+        const data = [];
+
+        if (json && json.success && Array.isArray(json.data)) {
+            json.data.forEach(item => {
+                labels.push(new Date(item.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }));
+                data.push(item.amount);
+            });
         }
 
         return { labels, data };
