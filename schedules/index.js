@@ -99,5 +99,6 @@ function showMaintenanceMessage() {
   }
 }
 
-initScheduleModule();
+export const scheduleReady = initScheduleModule();
+window.scheduleReady = scheduleReady;
 window.showMaintenanceMessage = showMaintenanceMessage;

@@ -79,7 +79,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
                 <i class="fas fa-money-bill"></i> Тарифы
             </button>
 
-        <button class="icon-button" onclick="window.schedule.loadSchedule()"><i class="fas fa-calendar"></i> Расписание</button>
+        <button class="icon-button" onclick="scheduleReady.then(() => window.schedule.loadSchedule())"><i class="fas fa-calendar"></i> Расписание</button>
 
         <?php if ($role === 'admin' || $role === 'manager'): ?>
             <button class="icon-button" onclick="loadStatistics()"><i class="fas fa-chart-pie"></i> Статистика</button>
@@ -129,7 +129,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
     <?php endif; ?>
 
     <!-- Расписание -->
-    <button onclick="window.schedule.loadSchedule()" title="Расписание">
+    <button onclick="scheduleReady.then(() => window.schedule.loadSchedule())" title="Расписание">
         <i class="fas fa-calendar"></i>
     </button>
 
@@ -318,11 +318,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 setInterval(fetchLiveNotifications, 30000);
 window.onload = function () {
-    switch (userRole) {
-        case 'admin': loadTable(); break;
-        case 'manager': loadForm(); break;
-        default: window.schedule.loadSchedule(); break;
-    }
+    scheduleReady.then(() => {
+        switch (userRole) {
+            case 'admin':
+                loadTable();
+                break;
+            case 'manager':
+                loadForm();
+                break;
+            default:
+                window.schedule.loadSchedule();
+                break;
+        }
+    });
 };
 
 
