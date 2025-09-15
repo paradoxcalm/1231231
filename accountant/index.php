@@ -85,6 +85,33 @@ requireRole(['accountant']);
             font-size: 24px;
             font-weight: 600;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+        th {
+            background: #f7f7f7;
+            cursor: pointer;
+            user-select: none;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+        }
     </style>
     <script src='../main.js' defer></script>
 </head>
@@ -116,14 +143,40 @@ requireRole(['accountant']);
                 <div class='value' id='clients_count'>0</div>
             </div>
         </div>
+        <table id='ordersTable'>
+            <thead>
+                <tr>
+                    <th data-sort='order_id'>ID</th>
+                    <th data-sort='order_date'>Дата заявки</th>
+                    <th data-sort='submission_date'>Дата отправки</th>
+                    <th data-sort='city'>Город/Склад</th>
+                    <th data-sort='client'>Клиент</th>
+                    <th data-sort='payment'>Сумма</th>
+                    <th data-sort='payment_type'>Тип оплаты</th>
+                    <th data-sort='status'>Статус</th>
+                    <th data-sort='author'>Автор</th>
+                </tr>
+            </thead>
+            <tbody id='ordersBody'></tbody>
+        </table>
+        <div class='pagination'>
+            <button id='prevPage'>Назад</button>
+            <span id='pageInfo'></span>
+            <button id='nextPage'>Вперёд</button>
+        </div>
     </main>
     <script>
-    async function fetchSummary() {
+    function getFilters() {
         const params = new URLSearchParams();
         ['date_from','date_to','city','warehouses','client_id'].forEach(id => {
             const v = document.getElementById(id).value;
             if (v) params.append(id, v);
         });
+        return params;
+    }
+
+    async function fetchSummary() {
+        const params = getFilters();
         try {
             const res = await fetch('../api/accountant/get_summary.php?' + params.toString());
             const json = await res.json();
@@ -136,8 +189,92 @@ requireRole(['accountant']);
             console.error(e);
         }
     }
-    document.getElementById('applyFilters').addEventListener('click', fetchSummary);
-    window.addEventListener('DOMContentLoaded', fetchSummary);
+
+    let currentPage = 1;
+    let sortField = 'order_date';
+    let sortDir = 'desc';
+
+    async function fetchOrders() {
+        const params = getFilters();
+        params.append('page', currentPage);
+        params.append('sort_field', sortField);
+        params.append('sort_dir', sortDir);
+        try {
+            const res = await fetch('../api/accountant/get_orders.php?' + params.toString());
+            const json = await res.json();
+            if (json.success) {
+                renderTable(json.data.orders);
+                renderPagination(json.data.total);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('ordersBody');
+        tbody.innerHTML = '';
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.order_id}</td>
+                <td>${row.order_date || ''}</td>
+                <td>${row.submission_date || ''}</td>
+                <td>${row.city || ''} ${row.warehouses ? '/' + row.warehouses : ''}</td>
+                <td>${row.client || ''}</td>
+                <td>${row.payment}</td>
+                <td>${row.payment_type || ''}</td>
+                <td>${row.status || ''}</td>
+                <td>${row.author || ''}</td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function renderPagination(total) {
+        const perPage = 20;
+        const totalPages = Math.ceil(total / perPage) || 1;
+        document.getElementById('pageInfo').textContent = `${currentPage} / ${totalPages}`;
+        document.getElementById('prevPage').disabled = currentPage <= 1;
+        document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    }
+
+    document.getElementById('applyFilters').addEventListener('click', () => {
+        currentPage = 1;
+        fetchSummary();
+        fetchOrders();
+    });
+
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchOrders();
+        }
+    });
+    document.getElementById('nextPage').addEventListener('click', () => {
+        currentPage++;
+        fetchOrders();
+    });
+
+    document.querySelectorAll('#ordersTable th').forEach(th => {
+        th.addEventListener('click', () => {
+            const field = th.dataset.sort;
+            if (field) {
+                if (sortField === field) {
+                    sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortField = field;
+                    sortDir = 'asc';
+                }
+                currentPage = 1;
+                fetchOrders();
+            }
+        });
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+        fetchSummary();
+        fetchOrders();
+    });
     </script>
 </body>
 </html>
