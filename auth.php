@@ -68,6 +68,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['role']    = $user['role'];
 
+        if ($user['role'] === 'accountant') {
+            header('Location: /accountant/index.php');
+            exit();
+        }
+
         if ($user['role'] === 'client') {
             header('Location: /client/index.html');
             exit();
