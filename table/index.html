@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Таблица отправлений - IDEAL TranSport</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles/table.css">
+</head>
+<body>
+    <!-- Заголовок с навигацией -->
+    <header class="table-header">
+        <div class="header-content">
+            <div class="header-left">
+                <button class="back-btn" onclick="goBackToAdmin()">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>Вернуться в админку</span>
+                </button>
+                <div class="header-info">
+                    <h1>Таблица отправлений</h1>
+                    <p>Управление данными отправлений</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn refresh-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Обновить</span>
+                </button>
+                <button class="action-btn export-btn" onclick="exportData()">
+                    <i class="fas fa-download"></i>
+                    <span>Экспорт</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Панель фильтров -->
+    <div class="filters-panel">
+        <div class="filters-container">
+            <div class="filter-group">
+                <label for="cityFilter">Город</label>
+                <select id="cityFilter" class="filter-select">
+                    <option value="">Все города</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="paymentTypeFilter">Тип оплаты</label>
+                <select id="paymentTypeFilter" class="filter-select">
+                    <option value="">Все типы</option>
+                    <option value="Наличные">Наличные</option>
+                    <option value="ТБанк">Т-Банк</option>
+                    <option value="Долг">Долг</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="searchInput">Поиск</label>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Поиск по отправителю, направлению...">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label for="perPageSelect">На странице</label>
+                <select id="perPageSelect" class="filter-select">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="btn-primary" onclick="applyFilters()">
+                    <i class="fas fa-filter"></i>
+                    Применить
+                </button>
+                <button class="btn-secondary" onclick="resetFilters()">
+                    <i class="fas fa-times"></i>
+                    Сбросить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="stats-panel">
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-shipping-fast"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalRecords">0</div>
+                    <div class="stat-label">Всего записей</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-ruble-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalAmount">₽0</div>
+                    <div class="stat-label">Общая сумма</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalBoxes">0</div>
+                    <div class="stat-label">Всего коробок</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="avgAmount">₽0</div>
+                    <div class="stat-label">Средний чек</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основная таблица -->
+    <div class="table-panel">
+        <div class="table-container">
+            <div class="table-header">
+                <h3>Данные отправлений</h3>
+                <div class="table-info">
+                    <span id="tableInfo">Показано 0 из 0 записей</span>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="sender" class="sortable">
+                                Отправитель
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="direction" class="sortable">
+                                Направление
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="submission_date" class="sortable">
+                                Дата приёмки
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="date_of_delivery" class="sortable">
+                                Дата сдачи
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="shipment_type" class="sortable">
+                                Тип
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="boxes" class="sortable">
+                                Кол-во
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th data-sort="payment" class="sortable">
+                                Оплата
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                            <th>Фото</th>
+                            <th data-sort="comment" class="sortable">
+                                Комментарий
+                                <i class="fas fa-sort sort-icon"></i>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Данные загружаются динамически -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-loading" id="tableLoading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <span>Загрузка данных...</span>
+            </div>
+            <div class="table-empty" id="tableEmpty" style="display: none;">
+                <i class="fas fa-inbox"></i>
+                <h3>Нет данных</h3>
+                <p>По выбранным фильтрам данные не найдены</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Пагинация -->
+    <div class="pagination-panel">
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span id="paginationInfo">Показано 0-0 из 0</span>
+            </div>
+            <div class="pagination-controls">
+                <button class="page-btn" id="firstPageBtn" onclick="goToPage(1)" disabled>
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button class="page-btn" id="prevPageBtn" onclick="previousPage()" disabled>
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <div class="page-numbers" id="pageNumbers">
+                    <!-- Номера страниц генерируются динамически -->
+                </div>
+                <button class="page-btn" id="nextPageBtn" onclick="nextPage()" disabled>
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button class="page-btn" id="lastPageBtn" onclick="goToLastPage()" disabled>
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для просмотра фото -->
+    <div class="modal" id="photoModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closePhotoModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="photo-container">
+                <img id="modalPhoto" src="" alt="Фото отправления">
+            </div>
+        </div>
+    </div>
+
+    <script src="js/table.js"></script>
+</body>
+</html>
