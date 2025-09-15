@@ -257,6 +257,8 @@ class AccountantApp {
 
             if (data.success) {
                 this.renderRecentOrders(data.data.orders);
+            } else {
+                this.showToast(data.message || 'Ошибка загрузки последних заказов', 'error');
             }
         } catch (error) {
             console.error('Ошибка загрузки последних заказов:', error);
@@ -313,6 +315,8 @@ class AccountantApp {
             if (data.success) {
                 this.renderOrdersTable(data.data.orders);
                 this.updatePagination(data.data.total);
+            } else {
+                this.showToast(data.message || 'Ошибка загрузки заказов', 'error');
             }
         } catch (error) {
             console.error('Ошибка загрузки заказов:', error);
