@@ -1,811 +1,1258 @@
-/*
- * scheduleList.js
- *
- * Этот модуль отвечает за вкладку «Ближайшие отправления» и фильтры
- * расписания. Здесь находятся функции для загрузки и отображения
- * предстоящих отправлений, формирования фильтров по маркетплейсам,
- * городам и складам, а также вспомогательные методы форматирования
- * дат и кликов по городу.
- *
- * Большая часть кода взята из исходного файла schedule.js без
- * изменения логики. Переменные и функции экспортируются через
- * глобальный объект window, чтобы ими могли пользоваться другие
- * модули без системы сборки.
+/* styles/schedule.css
+ * --------------------
+ * Стили для раздела расписания: пошаговый выбор параметров,
+ * список ближайших отправлений, календарь и модальные окна.
  */
 
-// Глобальные переменные для фильтров и прав. Они привязываются к window,
-// чтобы сохранять совместимость с остальным кодом, который ожидал
-// видеть их в глобальной области видимости.
-window.calendarCurrentDate = new Date();
-window.canCreateSchedule = false;
-window.canCreateOrder = false;
-window.activeCityFilter = "";
-window.activeWarehouseFilter = "";
-window.activeDestinationWarehouseFilter = "";
-window.archiveView = false;
-window.activeMarketplaceFilter = "";
-
-/**
- * Основная функция для загрузки страницы расписания. Она формирует
- * разметку пошагового интерфейса и запускает начальную загрузку
- * предстоящих отправлений и календаря.
- */
-function loadSchedule() {
-    const dynamicContent = document.getElementById("dynamicContent");
-    if (!dynamicContent) return;
-
-    // Определяем, является ли пользователь администратором или менеджером
-    window.canCreateSchedule = (userRole === "admin" || userRole === "manager");
-    const isAdminOrManager = (userRole === "admin" || userRole === "manager");
-
-    // Шаблон HTML для раздела расписания с пошаговым интерфейсом
-    const html = `
-        <div class="schedule-header">
-            <h1>Расписание отправлений</h1>
-            <p class="schedule-subtitle">Выберите параметры отправления пошагово</p>
-        </div>
-        
-        <!-- Пошаговый интерфейс -->
-        <div class="step-wizard">
-            <div class="step-indicator">
-                <div class="step active" data-step="1">
-                    <div class="step-number">1</div>
-                    <div class="step-label">Город</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="2">
-                    <div class="step-number">2</div>
-                    <div class="step-label">Маркетплейс</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="3">
-                    <div class="step-number">3</div>
-                    <div class="step-label">Склад</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="4">
-                    <div class="step-number">4</div>
-                    <div class="step-label">Результат</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Шаг 1: Выбор города -->
-        <div class="step-content active" id="step-1">
-            <div class="step-card">
-                <h2>Выберите город отправления</h2>
-                <div class="city-grid" id="cityGrid">
-                    <!-- Города загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Шаг 2: Выбор маркетплейса -->
-        <div class="step-content" id="step-2">
-            <div class="step-card">
-                <h2>Выберите маркетплейс</h2>
-                <div class="selected-info">
-                    <span class="info-label">Город:</span>
-                    <span class="info-value" id="selectedCity">—</span>
-                    <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                </div>
-                <div class="marketplace-grid" id="marketplaceGrid">
-                    <!-- Маркетплейсы загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(1)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Шаг 3: Выбор склада -->
-        <div class="step-content" id="step-3">
-            <div class="step-card">
-                <h2>Выберите склад назначения</h2>
-                <div class="selected-info">
-                    <div class="info-row">
-                        <span class="info-label">Город:</span>
-                        <span class="info-value" id="selectedCity2">—</span>
-                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Маркетплейс:</span>
-                        <span class="info-value" id="selectedMarketplace">—</span>
-                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
-                    </div>
-                </div>
-                <div class="warehouse-grid" id="warehouseGrid">
-                    <!-- Склады загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(2)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Шаг 4: Результаты -->
-        <div class="step-content" id="step-4">
-            <div class="step-card">
-                <h2>Доступные отправления</h2>
-                <div class="selected-info">
-                    <div class="info-row">
-                        <span class="info-label">Город:</span>
-                        <span class="info-value" id="selectedCity3">—</span>
-                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Маркетплейс:</span>
-                        <span class="info-value" id="selectedMarketplace2">—</span>
-                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Склад:</span>
-                        <span class="info-value" id="selectedWarehouse">—</span>
-                        <button class="change-btn" onclick="goToStep(3)">Изменить</button>
-                    </div>
-                </div>
-                <div class="results-container">
-                    <div id="scheduleResults" class="schedule-results">
-                        <!-- Результаты загружаются динамически -->
-                    </div>
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(3)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Начать заново</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="schedule-tabs">
-          <button id="tab-upcoming" class="active" onclick="switchTab('upcoming')" style="display:none;">Ближайшие отправления</button>
-          ${isAdminOrManager ? `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>` : `<button id=\"tab-calendar\" onclick=\"window.schedule.switchTab('calendar')\">Календарь</button>`}
-        </div>
-        <div id="tabContent-upcoming" style="display:block;">
-          <div class="filter-actions" style="display:none;">
-            <button id="toggleArchiveBtn">Показать архив</button>
-            ${window.canCreateSchedule ? `
-              <button id="createScheduleBtn" onclick="window.schedule.showCreateForm()">Создать отправление</button>
-              <div class="excel-dropdown">
-                <button id="excelDropdownBtn" onclick="window.schedule.toggleExcelMenu()">📤 Excel <span id="excelArrow">▼</span></button>
-                <div id="excelMenu" class="dropdown-content">
-                  <a href="#" onclick="window.schedule.exportSchedule()">📤 Экспорт данных</a>
-                  <a href="#" onclick="window.schedule.openImportModal()">📥 Импорт расписания</a>
-                  <a href="/templates/Расписание_шаблон.xlsx">📄 Скачать шаблон</a>
-                  <a href="#" onclick="window.schedule.openScheduleManagementModal()">⚙️ Управление</a>
-                  <a href="#" onclick="window.schedule.showShipmentReport()">📄Список Отправлений</a>
-                </div>
-              </div>
-            ` : ``}
-          </div>
-    cursor: pointer;
-    transition: var(--transition);
-    position: relative;
-    overflow: hidden;
+:root {
+    --schedule-primary: #1f8b4c;
+    --schedule-primary-hover: #176b3a;
+    --schedule-secondary: #f0f7f3;
+    --schedule-accent: #2563eb;
+    --schedule-danger: #d64545;
+    --schedule-warning: #f59e0b;
+    --schedule-success: #1a936f;
+    --schedule-muted: #5f6b6f;
+    --schedule-border: #dbe7e1;
+    --schedule-shadow: 0 18px 48px -24px rgba(15, 81, 61, 0.45);
+    --schedule-card-shadow: 0 16px 32px -18px rgba(15, 33, 55, 0.35);
+    --schedule-radius-lg: 18px;
+    --schedule-radius-md: 12px;
+    --schedule-radius-sm: 8px;
 }
 
-.schedule-card.can-order {
-    border-left: 4px solid var(--success);
+/* Контейнер и заголовок */
+.schedule-container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 32px clamp(16px, 4vw, 40px) 42px;
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: var(--schedule-radius-lg);
+    box-shadow: var(--schedule-shadow);
+    backdrop-filter: blur(12px);
 }
 
-.schedule-card.cannot-order {
-    border-left: 4px solid var(--text-muted);
-    opacity: 0.7;
-}
-
-.schedule-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+.schedule-container .section-title,
+.schedule-header h1 {
+    font-size: clamp(28px, 3vw, 34px);
+    font-weight: 700;
+    color: #143a2c;
+    margin-bottom: 8px;
 }
 
 .schedule-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.schedule-subtitle {
+    color: var(--schedule-muted);
+    font-size: 1.05rem;
+}
+
+/* Вкладки */
+.tab-header,
+.schedule-tabs {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 12px;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+}
+
+.tab-button,
+.schedule-tabs button {
+    background: transparent;
+    color: var(--schedule-muted);
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-md) var(--schedule-radius-md) 0 0;
+    font-weight: 600;
+    font-size: 0.98rem;
+    transition: all 0.2s ease;
+}
+
+.tab-button:hover,
+.schedule-tabs button:hover {
+    background: #e9f5ef;
+    color: var(--schedule-primary);
+}
+
+.tab-button.active,
+.schedule-tabs button.active {
+    background: var(--schedule-primary);
+    color: #fff;
+    box-shadow: 0 10px 16px -12px rgba(31, 139, 76, 0.65);
+}
+
+.city-tab-header {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
     margin-bottom: 16px;
 }
 
-.schedule-route {
+.tab-content {
+    animation: fadeIn 0.25s ease;
+}
+
+/* Пошаговый индикатор */
+.step-wizard {
+    margin-bottom: 28px;
+}
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--schedule-muted);
+    font-weight: 600;
+}
+
+.step-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #e6f4ec;
+    color: var(--schedule-primary);
+    display: grid;
+    place-items: center;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: all 0.25s ease;
+    position: relative;
+}
+
+.step-number {
+    display: block;
+}
+
+.step-check {
     font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    color: #fff;
+}
+
+.step-line {
+    width: 44px;
+    height: 2px;
+    background: #cde7da;
+}
+
+.step.active .step-circle {
+    background: var(--schedule-primary);
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(31, 139, 76, 0.4);
+}
+
+.step.completed .step-circle {
+    background: var(--schedule-success);
+    color: #fff;
+}
+
+.step.completed .step-number {
+    display: none;
+}
+
+.step.completed .step-check {
+    display: inline-flex !important;
+}
+
+.step-label {
+    font-size: 0.95rem;
+}
+
+/* Содержимое шагов */
+.step-content {
+    display: none;
+    animation: fadeIn 0.2s ease;
+}
+
+.step-content.active {
+    display: block;
+}
+
+.step-card {
+    background: #ffffff;
+    border-radius: var(--schedule-radius-lg);
+    box-shadow: 0 18px 42px -28px rgba(17, 42, 33, 0.5);
+    padding: clamp(22px, 4vw, 32px);
+    border: 1px solid rgba(209, 232, 222, 0.9);
+}
+
+.step-header h2 {
+    font-size: 1.45rem;
+    color: #16382c;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.step-header p {
+    color: var(--schedule-muted);
+    margin-bottom: 18px;
+}
+
+.selected-info,
+.selected-params {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.info-row,
+.param-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-.schedule-status {
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
+.info-label,
+.param-label {
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #24483b;
 }
 
-.status-open {
-    background: rgba(16, 185, 129, 0.1);
-    color: #065f46;
+.info-value,
+.param-value {
+    color: #1f2933;
 }
 
-.status-pending {
-    background: rgba(251, 191, 36, 0.1);
-    color: #92400e;
+.change-btn {
+    background: transparent;
+    border: 1px solid var(--schedule-border);
+    color: var(--schedule-primary);
+    padding: 6px 12px;
+    border-radius: var(--schedule-radius-sm);
+    font-size: 0.85rem;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    transition: all 0.2s ease;
 }
 
-.status-transit {
-    background: rgba(59, 130, 246, 0.1);
-    color: #1e40af;
+.change-btn:hover {
+    background: #e9f5ef;
+    border-color: var(--schedule-primary);
 }
 
-.status-completed {
-    background: rgba(156, 163, 175, 0.1);
-    color: #374151;
+.selection-grid,
+.city-grid,
+.marketplace-grid,
+.warehouse-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
 }
 
-.schedule-info {
-    margin-bottom: 20px;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 0.9rem;
-}
-
-.info-label {
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.info-value {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.schedule-action {
-    text-align: center;
-}
-
-.create-order-btn {
+.selection-card {
+    background: #ffffff;
+    border-radius: var(--schedule-radius-md);
+    border: 1px solid rgba(209, 232, 222, 0.8);
+    padding: 18px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    width: 100%;
-    padding: 12px 20px;
-    background: var(--success);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
+    gap: 16px;
     cursor: pointer;
-    transition: var(--transition);
+    transition: all 0.22s ease;
+    box-shadow: 0 12px 32px -24px rgba(25, 42, 32, 0.45);
 }
 
-.create-order-btn:hover {
-    background: #059669;
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+.selection-card:hover,
+.selection-card.active {
+    transform: translateY(-4px);
+    border-color: var(--schedule-primary);
+    box-shadow: 0 18px 42px -28px rgba(31, 139, 76, 0.55);
+    background: linear-gradient(135deg, #ffffff 0%, #ecf9f2 100%);
 }
 
-.schedule-disabled {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 20px;
-    background: var(--bg-tertiary);
-    color: var(--text-muted);
-    border-radius: var(--radius);
-    font-weight: 500;
+.card-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--schedule-secondary);
+    color: var(--schedule-primary);
+    display: grid;
+    place-items: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
 }
 
-/* Состояния загрузки и ошибок */
+.card-icon.ozon {
+    background: rgba(19, 112, 227, 0.12);
+    color: #136fe3;
+}
+
+.card-icon.wildberries {
+    background: rgba(174, 23, 172, 0.12);
+    color: #ae17ac;
+}
+
+.card-icon.yandexmarket {
+    background: rgba(249, 181, 22, 0.18);
+    color: #c08700;
+}
+
+.card-content h3 {
+    font-size: 1.08rem;
+    margin-bottom: 4px;
+    color: #122c22;
+}
+
+.card-content p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--schedule-muted);
+}
+
+.card-arrow {
+    margin-left: auto;
+    color: var(--schedule-muted);
+    font-size: 1.1rem;
+}
+
+/* Состояния загрузки */
 .loading-state,
-.empty-state,
-.error-state {
+.error-state,
+.empty-state {
+    border-radius: var(--schedule-radius-md);
+    border: 1px dashed rgba(188, 214, 202, 0.7);
+    padding: 32px 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    gap: 10px;
+    color: var(--schedule-muted);
     text-align: center;
-    color: var(--text-secondary);
-    grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.65);
 }
 
 .loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border);
-    border-top: 3px solid var(--primary);
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 16px;
+    border: 4px solid rgba(31, 139, 76, 0.2);
+    border-top-color: var(--schedule-primary);
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to { transform: rotate(360deg); }
 }
 
 .empty-state i,
 .error-state i {
-    font-size: 48px;
-    margin-bottom: 16px;
-    color: var(--text-muted);
+    font-size: 28px;
+    color: var(--schedule-primary);
 }
 
-.empty-state h3,
-.error-state h3 {
-    font-size: 1.3rem;
+/* Кнопки шагов */
+.step-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+.btn-back,
+.btn-reset,
+.btn-secondary {
+    background: #e8f4ef;
+    color: var(--schedule-primary);
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-sm);
     font-weight: 600;
-    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.btn-back:hover,
+.btn-reset:hover,
+.btn-secondary:hover {
+    background: var(--schedule-primary);
+    color: #fff;
+}
+
+/* Фильтры и кнопки */
+#filterBlock {
+    margin-bottom: 18px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.schedule-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+#toggleArchiveBtn {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 500;
+}
+
+#toggleArchiveBtn:hover {
+    background: #e1e7ef;
+}
+
+.primary-button,
+.apply-button,
+#mgmtFilterApplyBtn {
+    background: var(--schedule-primary);
+    color: #fff;
+    padding: 11px 22px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+
+.primary-button:hover,
+.apply-button:hover,
+#mgmtFilterApplyBtn:hover {
+    background: var(--schedule-primary-hover);
+}
+
+.secondary-button,
+.reset-button {
+    background: #f3f6fa;
+    color: #1f2937;
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 500;
+}
+
+.secondary-button:hover,
+.reset-button:hover {
+    background: #e1e7ef;
+}
+
+.dropdown-excel,
+.excel-dropdown {
+    position: relative;
+}
+
+.excel-button,
+#excelDropdownBtn {
+    background: #e9f5ef;
+    color: var(--schedule-primary);
+    padding: 10px 16px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.excel-button.open,
+#excelDropdownBtn.open {
+    background: var(--schedule-primary);
+    color: #fff;
+}
+
+.excel-menu,
+.dropdown-content {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 220px;
+    background: #fff;
+    border-radius: var(--schedule-radius-sm);
+    box-shadow: 0 22px 40px -24px rgba(15, 33, 55, 0.45);
+    border: 1px solid #e2e8f0;
+    padding: 10px 0;
+    z-index: 20;
+    display: none;
+}
+
+.excel-menu.show,
+.dropdown-content.show {
+    display: block;
+}
+
+.excel-menu div,
+.dropdown-content a {
+    display: block;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    color: #1f2937;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.excel-menu div:hover,
+.dropdown-content a:hover {
+    background: #f1f5f9;
+}
+
+/* Календарь */
+.schedule-controls,
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.schedule-controls .action-buttons,
+.calendar-controls .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 20px;
+}
+
+.calendar-view {
+    background: #ffffff;
+    border-radius: var(--schedule-radius-lg);
+    padding: 18px clamp(12px, 4vw, 24px) 24px;
+    border: 1px solid rgba(209, 232, 222, 0.8);
+    box-shadow: 0 16px 36px -26px rgba(16, 40, 32, 0.55);
+}
+
+.schedule-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.nav-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #e8f4ef;
+    display: grid;
+    place-items: center;
+    font-size: 1.1rem;
+    color: var(--schedule-primary);
+}
+
+.nav-button:hover {
+    background: var(--schedule-primary);
+    color: #fff;
+}
+
+.calendar-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 12px;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.calendar-cell {
+    min-height: 110px;
+    background: rgba(248, 252, 249, 0.9);
+    border-radius: var(--schedule-radius-md);
+    border: 1px solid rgba(209, 232, 222, 0.8);
+    padding: 10px 12px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.calendar-cell:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 36px -26px rgba(31, 139, 76, 0.45);
+    border-color: var(--schedule-primary);
+}
+
+.calendar-cell.today {
+    border-color: var(--schedule-accent);
+    box-shadow: 0 16px 34px -24px rgba(37, 99, 235, 0.35);
+    background: rgba(226, 239, 255, 0.95);
+}
+
+.cell-date {
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.shipment-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--schedule-primary);
+}
+
+.shipment-label {
+    font-size: 0.82rem;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+/* Ближайшие отправления */
+.upcoming-shipments {
+    background: #ffffff;
+    border-radius: var(--schedule-radius-lg);
+    padding: clamp(22px, 4vw, 30px);
+    box-shadow: 0 18px 46px -30px rgba(14, 34, 24, 0.55);
+    border: 1px solid rgba(209, 232, 222, 0.9);
+}
+
+.upcoming-shipments h3 {
+    font-size: 1.35rem;
+    color: #173229;
+    margin-bottom: 18px;
+}
+
+.upcoming-list,
+#upcomingList {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.upcoming-item {
+    list-style: none;
+}
+
+.styled-upcoming-item {
+    background: #ffffff;
+    border-radius: var(--schedule-radius-md);
+    border: 1px solid rgba(209, 232, 222, 0.75);
+    padding: 18px 20px;
+    box-shadow: 0 14px 34px -24px rgba(14, 34, 24, 0.45);
+    transition: all 0.2s ease;
+}
+
+.styled-upcoming-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--schedule-primary);
+}
+
+.shipment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shipment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.shipment-warehouse {
+    font-weight: 700;
+    color: #143a2c;
+}
+
+.shipment-marketplace {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.shipment-date-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #1f2937;
+}
+
+.shipment-sub {
+    font-weight: 500;
+}
+
+/* Результаты поиска */
+.schedule-results {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.results-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.results-header h3 {
+    font-size: 1.2rem;
+    color: #122c22;
+}
+
+.schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+}
+
+.schedule-card {
+    background: #fff;
+    border-radius: var(--schedule-radius-lg);
+    padding: 20px 22px;
+    border: 1px solid rgba(209, 232, 222, 0.75);
+    box-shadow: var(--schedule-card-shadow);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.schedule-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--schedule-primary);
+}
+
+.schedule-card.can-order {
+    border-left: 4px solid var(--schedule-success);
+}
+
+.schedule-card.cannot-order {
+    opacity: 0.85;
+}
+
+.schedule-card .schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.schedule-route {
+    font-weight: 600;
+    color: #16382c;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.schedule-status {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #1f2937;
+}
+
+.schedule-status.waiting {
+    background: rgba(37, 99, 235, 0.12);
+    color: #2563eb;
+}
+
+.schedule-status.active {
+    background: rgba(26, 147, 111, 0.15);
+    color: var(--schedule-success);
+}
+
+.schedule-status.ready {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--schedule-warning);
+}
+
+.schedule-status.done {
+    background: rgba(15, 118, 110, 0.15);
+    color: #0f766e;
+}
+
+.schedule-info {
+    display: grid;
+    gap: 10px;
+}
+
+.schedule-info .info-row {
+    justify-content: space-between;
+}
+
+.schedule-info .info-label {
+    color: #576871;
+    font-size: 0.9rem;
+}
+
+.schedule-info .info-value {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.schedule-info .status-row {
+    color: var(--schedule-success);
+    font-weight: 600;
+}
+
+/* Модальные окна */
+.modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 999;
+    padding: 24px;
+}
+
+.modal-content {
+    position: relative;
+    background: #ffffff;
+    border-radius: var(--schedule-radius-lg);
+    max-width: min(900px, 95vw);
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px clamp(16px, 4vw, 32px);
+    box-shadow: 0 26px 60px -32px rgba(15, 23, 42, 0.55);
+    animation: fadeIn 0.25s ease;
+}
+
+.modal-close,
+.close {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    font-size: 1.3rem;
+    color: #6b7280;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.modal-close:hover,
+.close:hover {
+    color: #111827;
+}
+
+.modal-header {
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    font-size: 1.4rem;
+    color: #122c22;
+}
+
+.modal-section {
+    margin-bottom: 20px;
+}
+
+.modal-section-title {
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #143a2c;
+    font-size: 1.05rem;
+}
+
+.modal-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
     margin-bottom: 8px;
 }
 
-.empty-state p,
-.error-state p {
-    font-size: 1rem;
-    color: var(--text-secondary);
+.modal-label {
+    color: #6b7280;
+    font-weight: 600;
+    min-width: 150px;
+}
+
+.modal-value {
+    color: #1f2937;
+    font-weight: 500;
+    flex: 1;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.create-order-btn {
+    background: var(--schedule-primary);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: var(--schedule-radius-md);
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    font-weight: 600;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.create-order-btn:hover {
+    background: var(--schedule-primary-hover);
+    transform: translateY(-1px);
+}
+
+.create-order-btn.big-action {
+    font-size: 1.02rem;
+}
+
+.closed-message {
+    color: #dc2626;
+    font-weight: 600;
+}
+
+.status-control {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.status-control select {
+    padding: 8px 12px;
+    border-radius: var(--schedule-radius-sm);
+    border: 1px solid #cbd5f5;
+}
+
+.action-button {
+    background: #f1f5f9;
+    color: #1f2937;
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 600;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background: #dce7f5;
+}
+
+.action-button.save-btn {
+    background: var(--schedule-primary);
+    color: #fff;
+}
+
+.action-button.save-btn:hover {
+    background: var(--schedule-primary-hover);
+}
+
+.action-button.delete-btn {
+    background: rgba(214, 69, 69, 0.12);
+    color: var(--schedule-danger);
+}
+
+.action-button.delete-btn:hover {
+    background: rgba(214, 69, 69, 0.22);
+}
+
+.action-button.archive-btn {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--schedule-accent);
+}
+
+.action-button.archive-btn:hover {
+    background: rgba(37, 99, 235, 0.2);
+}
+
+.action-button.btn-move {
+    background: rgba(26, 147, 111, 0.12);
+    color: var(--schedule-success);
+}
+
+.action-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Формы внутри модалей */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: inline-block;
+    color: #173229;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--schedule-radius-sm);
+    font-size: 0.95rem;
+}
+
+.warehouse-checkboxes {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 10px;
+}
+
+.warehouse-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8fafc;
+    padding: 10px 12px;
+    border-radius: var(--schedule-radius-sm);
+}
+
+.warehouse-label {
+    color: #1f2937;
+}
+
+.add-warehouse-button {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 10px 16px;
+    border-radius: var(--schedule-radius-sm);
+    font-weight: 600;
+}
+
+.edit-input {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: var(--schedule-radius-sm);
+    border: 1px solid #cbd5e1;
+    margin-bottom: 6px;
+}
+
+/* Управление расписанием */
+.mass-actions {
+    margin-top: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+}
+
+.mass-actions button {
+    padding: 10px 18px;
+    border-radius: var(--schedule-radius-sm);
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.management-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+    background: #fff;
+    border-radius: var(--schedule-radius-md);
+    overflow: hidden;
+}
+
+.management-table th,
+.management-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.management-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.management-table tr:hover {
+    background: #f1f5f9;
+}
+
+.management-table .orders-col {
+    text-align: center;
+    font-weight: 600;
+}
+
+.schedule-checkbox {
+    width: 18px;
+    height: 18px;
+}
+
+#massManageMessages .success {
+    color: #166534;
+    background: rgba(34, 197, 94, 0.12);
+    padding: 10px 14px;
+    border-radius: var(--schedule-radius-sm);
+    margin-top: 10px;
+}
+
+#massManageMessages .warning {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.12);
+    padding: 10px 14px;
+    border-radius: var(--schedule-radius-sm);
+    margin-top: 10px;
+}
+
+#massManageMessages .error {
+    color: #b91c1c;
+    background: rgba(239, 68, 68, 0.12);
+    padding: 10px 14px;
+    border-radius: var(--schedule-radius-sm);
+    margin-top: 10px;
+}
+
+/* Карточка отправления внутри деталей */
+.shipment-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: var(--schedule-radius-md);
+    padding: 18px 20px;
+    box-shadow: 0 16px 32px -26px rgba(15, 23, 42, 0.45);
+    margin-bottom: 16px;
+}
+
+.shipment-card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #143a2c;
+}
+
+.shipment-card p {
+    margin-bottom: 6px;
+    color: #1f2937;
+}
+
+.shipment-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.shipment-actions button {
+    background: #f3f4f6;
+    color: #1f2937;
+    padding: 8px 14px;
+    border-radius: var(--schedule-radius-sm);
+}
+
+.shipment-actions select {
+    padding: 8px 12px;
+    border-radius: var(--schedule-radius-sm);
+    border: 1px solid #cbd5e1;
+}
+
+/* Анимация появления */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Адаптивность */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .schedule-container {
-        padding: 16px;
+        padding: 24px 18px 34px;
     }
-    
-    .schedule-header h1 {
-        font-size: 2rem;
+
+    .calendar-cell {
+        min-height: 90px;
     }
-    
+}
+
+@media (max-width: 680px) {
+    .schedule-container {
+        padding: 20px 14px 28px;
+    }
+
+    .schedule-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .calendar-header {
+        font-size: 0.85rem;
+    }
+
+    .calendar-cell {
+        min-height: 80px;
+    }
+
     .step-indicator {
-        flex-direction: column;
-        gap: 20px;
+        justify-content: flex-start;
     }
-    
-    .step {
-        flex-direction: row;
-        width: 100%;
-        max-width: 300px;
-    }
-    
-    .step-line {
-        display: none;
-    }
-    
-    .step-card {
-        padding: 24px 20px;
-    }
-    
-    .step-header h2 {
-        font-size: 1.5rem;
-        flex-direction: column;
-        gap: 8px;
-    }
-    
+
     .selection-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
     }
-    
-    .selection-card {
-        padding: 20px;
+
+    .modal-content {
+        max-height: 88vh;
     }
-    
-    .param-item {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-    }
-    
-    .param-label {
-        min-width: auto;
-    }
-    
-    .step-actions {
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .btn-back,
-    .btn-reset {
-        width: 100%;
+}
+
+@media (max-width: 520px) {
+    .tab-header,
+    .schedule-tabs {
         justify-content: center;
     }
-}
 
-@media (max-width: 480px) {
-    .schedule-header h1 {
-        font-size: 1.8rem;
+    .shipment-date-row {
+        flex-direction: column;
+        align-items: flex-start;
     }
-    
-    .step-circle {
-        width: 40px;
-        height: 40px;
+
+    .modal-row {
+        flex-direction: column;
+        align-items: flex-start;
     }
-    
-    .step-number {
-        font-size: 14px;
-    }
-    
-    .step-check {
-        font-size: 14px;
-    }
-    
-    .step-card {
-        padding: 20px 16px;
-    }
-    
-    .selection-card {
-        padding: 16px;
-    }
-    
-    .card-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-    }
-    
-    .card-content h3 {
-        font-size: 1.1rem;
+
+    .mass-actions {
+        flex-direction: column;
+        align-items: stretch;
     }
 }
-
-            <!-- Фильтры загружаются ниже -->
-          </div>
-          <div id="upcomingList" class="upcoming-list"></div>
-        </div>
-        <div id="tabContent-calendar" style="display:none;">
-          ${isAdminOrManager ? `
-            <div id="calendarControls" class="calendar-controls">
-              <!-- Управление отображением месяца здесь -->
-            </div>
-            <div id="calendarFilters" class="calendar-filters">
-              <!-- Фильтры календаря здесь -->
-            </div>
-            <div id="calendarView" class="calendar-view">
-              <div id="currentMonthYear"></div>
-              <div id="calendarGrid" class="calendar-grid"></div>
-            </div>
-            <div id="calendarNoAccess" style="display:none;">Нет прав для просмотра календаря</div>
-          ` : `<div id="calendarNoAccess">Нет прав для просмотра календаря</div>`}
-        </div>
-    `;
-    dynamicContent.innerHTML = html;
-
-    // --- Фильтры ---
-    const filterBlock = document.getElementById("filterBlock");
-    if (filterBlock) {
-        filterBlock.innerHTML = `
-          <label for="marketplaceFilter">Маркетплейс</label>
-          <select id="marketplaceFilter" name="marketplaceFilter"></select>
-          <label for="cityDropdown">Город</label>
-          <select id="cityDropdown" name="cityDropdown"></select>
-          <label for="destinationWarehouseFilter">Склад</label>
-          <select id="destinationWarehouseFilter" name="destinationWarehouseFilter"></select>
-        `;
-    }
-
-    // --- Уведомление для фильтров ---
-    function showFilterNotice(msg) {
-        let n = document.getElementById('filterNotice');
-        if (!n) {
-            n = document.createElement('div');
-            n.id = 'filterNotice';
-            n.style = "color:#b70000;font-size:1em;padding:7px 0 3px 0;";
-            filterBlock.appendChild(n);
-        }
-        n.textContent = msg;
-        setTimeout(() => { n.textContent = ""; }, 3000);
-    }
-
-    // Сбрасываем фильтры
-    window.activeMarketplaceFilter = "";
-    window.activeCityFilter = "";
-    window.activeDestinationWarehouseFilter = "";
-
-    const marketplaceSelect = document.getElementById("marketplaceFilter");
-    const citySelect = document.getElementById("cityDropdown");
-    const warehouseSelect = document.getElementById("destinationWarehouseFilter");
-
-    // Загружаем список маркетплейсов
-    fetch("filter_options.php?action=marketplaces")
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                marketplaceSelect.innerHTML = `<option value="">Все</option>` +
-                    data.marketplaces.map(mp => `<option value="${mp}">${mp}</option>`).join('');
-            }
-        });
-
-    // Подгружаем все города (по всем маркетплейсам)
-    function loadAllCities(selectedCity) {
-        fetch("filter_options.php?action=all_cities")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    citySelect.innerHTML = `<option value="">Все</option>` +
-                        data.cities.map(c => `<option value="${c}">${c}</option>`).join('');
-                }
-            });
-    }
-
-    // Подгружаем все склады (по всем маркетплейсам и городам)
-    function loadAllWarehouses(selectedCity, selectedWarehouse) {
-        let url = "filter_options.php?action=all_warehouses";
-        if (selectedCity) url += "&city=" + encodeURIComponent(selectedCity);
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                        data.warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-                }
-            });
-    }
-
-    // Изначально подгружаем все города и склады
-    loadAllCities();
-    loadAllWarehouses();
-
-    // --- Логика изменения фильтров ---
-    marketplaceSelect.onchange = function () {
-        window.activeMarketplaceFilter = this.value;
-        const prevCity = window.activeCityFilter;
-        const prevWarehouse = window.activeDestinationWarehouseFilter;
-
-        let cityPromise;
-        if (!window.activeMarketplaceFilter) {
-            cityPromise = fetch("filter_options.php?action=all_cities")
-                .then(r => r.json())
-                .then(data => data.cities || []);
-        } else {
-            cityPromise = fetch(`filter_options.php?action=cities&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`)
-                .then(r => r.json())
-                .then(data => data.cities || []);
-        }
-
-        cityPromise.then(cities => {
-            const cityValid = !prevCity || cities.includes(prevCity);
-            if (!cityValid) {
-                showFilterNotice("Нет отправлений по выбранному маркетплейсу и городу.");
-                window.activeCityFilter = "";
-                window.activeDestinationWarehouseFilter = "";
-            } else {
-                window.activeCityFilter = prevCity;
-            }
-            citySelect.innerHTML = `<option value="">Все</option>` +
-                cities.map(c => `<option value="${c}">${c}</option>`).join('');
-            citySelect.disabled = false;
-
-            let whPromise;
-            if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
-                whPromise = fetch("filter_options.php?action=all_warehouses")
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
-                whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
-                whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else {
-                whPromise = Promise.resolve([]);
-            }
-
-            whPromise.then(warehouses => {
-                const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
-                if (!whValid && prevWarehouse) {
-                    showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
-                    window.activeDestinationWarehouseFilter = "";
-                } else {
-                    window.activeDestinationWarehouseFilter = prevWarehouse;
-                }
-                warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                    warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-                warehouseSelect.disabled = false;
-                fetchAndDisplayUpcoming();
-            });
-        });
-    };
-
-    citySelect.onchange = function () {
-        window.activeCityFilter = this.value;
-        const prevWarehouse = window.activeDestinationWarehouseFilter;
-
-        let whPromise;
-        if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
-            whPromise = fetch("filter_options.php?action=all_warehouses")
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
-            whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
-            whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else {
-            whPromise = Promise.resolve([]);
-        }
-
-        whPromise.then(warehouses => {
-            const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
-            if (!whValid && prevWarehouse) {
-                showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
-                window.activeDestinationWarehouseFilter = "";
-            } else {
-                window.activeDestinationWarehouseFilter = prevWarehouse;
-            }
-            warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-            warehouseSelect.disabled = false;
-            fetchAndDisplayUpcoming();
-        });
-    };
-
-    warehouseSelect.onchange = function () {
-        window.activeDestinationWarehouseFilter = this.value;
-        fetchAndDisplayUpcoming();
-    };
-
-    document.getElementById("toggleArchiveBtn").addEventListener("click", () => {
-        window.archiveView = !window.archiveView;
-        document.getElementById("toggleArchiveBtn").textContent = window.archiveView ? "Показать активные" : "Показать архив";
-        fetchAndDisplayUpcoming();
-    });
-
-    // Функция переключения вкладок. Добавляем в window, чтобы ею пользовались
-    window.switchTab = function(tab) {
-        document.getElementById('tab-upcoming').classList.remove('active');
-        document.getElementById('tab-calendar').classList.remove('active');
-        document.getElementById('tabContent-upcoming').style.display = 'none';
-        document.getElementById('tabContent-calendar').style.display = 'none';
-        if (tab === 'upcoming') {
-            document.getElementById('tab-upcoming').classList.add('active');
-            document.getElementById('tabContent-upcoming').style.display = 'block';
-        } else if (tab === 'calendar') {
-            document.getElementById('tab-calendar').classList.add('active');
-            document.getElementById('tabContent-calendar').style.display = 'block';
-            if (!isAdminOrManager) {
-                document.getElementById("calendarNoAccess").style.display = "block";
-                document.getElementById("calendarControls").style.display = "none";
-                document.getElementById("calendarFilters").style.display = "none";
-                document.getElementById("calendarView").style.display = "none";
-            } else {
-                document.getElementById("calendarNoAccess").style.display = "none";
-                document.getElementById("calendarControls").style.display = "";
-                document.getElementById("calendarFilters").style.display = "";
-                document.getElementById("calendarView").style.display = "";
-            }
-        }
-    };
-
-    // Инициализация календаря при первой загрузке
-    if (typeof renderStaticCalendar === 'function') renderStaticCalendar();
-    if (typeof fetchDataAndUpdateCalendar === 'function') fetchDataAndUpdateCalendar();
-
-    // Загружаем список отправлений
-    fetchAndDisplayUpcoming();
-}
-
-/**
- * Загрузка предстоящих отправлений и отображение их на вкладке
- * «Ближайшие отправления». Фильтрация по выбранным параметрам,
- * группировка по дате приёмки и построение элементов списка. Взята
- * без изменений из schedule.js.
- * @param {boolean} showArchived - показывать ли архивированные записи
- */
-function fetchAndDisplayUpcoming(showArchived = false) {
-    const container = document.getElementById("upcomingList");
-    if (!container) return;
-    container.innerHTML = "Загрузка…";
-    // Формируем URL с учётом фильтров
-    let url = `schedule.php?archived=${showArchived ? 1 : 0}`;
-    if (window.activeMarketplaceFilter) {
-        url += `&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`;
-    }
-    if (window.activeCityFilter) {
-        url += `&city=${encodeURIComponent(window.activeCityFilter)}`;
-    }
-    if (window.activeDestinationWarehouseFilter) {
-        url += `&warehouse=${encodeURIComponent(window.activeDestinationWarehouseFilter)}`;
-    }
-    fetch(url)
-        .then(r => {
-            if (!r.ok) throw new Error("Ошибка загрузки: " + r.status);
-            return r.json();
-        })
-        .then(data => {
-            // В некоторых ответах backend либо возвращает массив, либо объект {schedules: []}
-            const list = Array.isArray(data.schedules) ? data.schedules : data;
-            if (!Array.isArray(list) || !list.length) {
-                container.innerHTML = "Нет расписаний.";
-                return;
-            }
-            const now = new Date();
-            const isClient = window.userRole === 'client';
-            // Фильтрация: исключаем прошедшие и записи, по которым клиент уже не может создать заявку
-            const filtered = list.filter(item => {
-                const delivery = new Date(item.delivery_date);
-                if (delivery < now) {
-                    return false; // уже отправились
-                }
-                if (isClient) {
-                    return typeof canCreateOrderForSchedule === 'function'
-                        ? canCreateOrderForSchedule(item)
-                        : true;
-                }
-                return true;
-            });
-            // Группировка по дате приёмки (accept_date)
-            const grouped = {};
-            filtered.forEach(sh => {
-                const d = sh.accept_date;
-                if (!grouped[d]) grouped[d] = [];
-                grouped[d].push(sh);
-            });
-            // Очищаем контейнер и заполняем блоками
-            container.innerHTML = "";
-            Object.keys(grouped)
-                .sort((a, b) => new Date(a) - new Date(b))
-                .forEach(d => {
-                    grouped[d].forEach(sh => {
-                        const formattedDelivery = typeof formatDeliveryDate === 'function'
-                            ? formatDeliveryDate(sh.delivery_date)
-                            : sh.delivery_date;
-                        let mpClass = '';
-                        if (sh.marketplace === 'Ozon') {
-                            mpClass = 'mp-ozon';
-                        } else if (sh.marketplace === 'Wildberries') {
-                            mpClass = 'mp-wb';
-                        } else if (sh.marketplace === 'YandexMarket') {
-                            mpClass = 'mp-yandex';
-                        }
-                        const div = document.createElement("div");
-                        div.className = "upcoming-item styled-upcoming-item";
-                        div.innerHTML = `
-                            <div class="shipment-info">
-                              <div class="shipment-header">
-                                <span class="route">${sh.city || '—'} → ${sh.warehouses || '—'}</span>
-                                <span class="marketplace ${mpClass}">${sh.marketplace || ''}</span>
-                              </div>
-                              <div class="shipment-dates">
-                                <span class="delivery-date">${formattedDelivery}</span>
-                              </div>
-                            </div>
-                        `;
-                        // При клике открываем карточку отправления
-                        div.addEventListener("click", () => {
-                            if (window.schedule && typeof window.schedule.openSingleShipmentModal === 'function') {
-                                window.schedule.openSingleShipmentModal(sh);
-                            }
-                        });
-                        container.appendChild(div);
-                    });
-                });
-            if (!container.innerHTML.trim()) {
-                container.innerHTML = "Нет отправлений по выбранным условиям.";
-            }
-        })
-        .catch(err => {
-            console.error("Ошибка fetchAndDisplayUpcoming:", err);
-            container.innerHTML = `Ошибка загрузки: ${err.message}`;
-        });
-}
-
-// Экспортируем функции в глобальный объект window, чтобы они
-// были доступны в других модулях без систем сборки
-window.loadSchedule = loadSchedule;
-window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
