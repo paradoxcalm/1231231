@@ -1,3 +1,5 @@
+import { fetchMarketplaces, fetchCities, fetchWarehouses, populateSelect } from './filterOptions.js';
+
 // Управление расписанием отправлений
 class ScheduleManager {
     constructor() {
@@ -56,14 +58,89 @@ class ScheduleManager {
         const cityFilter = document.getElementById('cityFilter');
         const warehouseFilter = document.getElementById('warehouseFilter');
 
-        [marketplaceFilter, cityFilter, warehouseFilter].forEach(filter => {
-            if (filter) {
-                filter.addEventListener('change', (e) => {
-                    const filterType = e.target.id.replace('Filter', '');
-                    this.filters[filterType] = e.target.value;
-                    this.applyFilters();
-                });
+        if (!marketplaceFilter || !cityFilter || !warehouseFilter) {
+            return;
+        }
+
+        const baseUrl = '../filter_options.php';
+
+        cityFilter.disabled = true;
+        warehouseFilter.disabled = true;
+
+        const updateCities = async (marketplaceValue, selectedCity = '') => {
+            const cities = await fetchCities({ marketplace: marketplaceValue, baseUrl });
+            const value = populateSelect(cityFilter, cities, { selectedValue: selectedCity });
+            cityFilter.disabled = cities.length === 0;
+            return value;
+        };
+
+        const updateWarehouses = async (marketplaceValue, cityValue, selectedWarehouse = '') => {
+            const warehouses = await fetchWarehouses({
+                marketplace: marketplaceValue,
+                city: cityValue,
+                baseUrl
+            });
+            const value = populateSelect(warehouseFilter, warehouses, { selectedValue: selectedWarehouse });
+            warehouseFilter.disabled = warehouses.length === 0;
+            return value;
+        };
+
+        const initializeFilters = async () => {
+            const marketplaces = await fetchMarketplaces({ baseUrl });
+            const marketplaceValue = populateSelect(marketplaceFilter, marketplaces, {
+                selectedValue: this.filters.marketplace
+            });
+            this.filters.marketplace = marketplaceValue;
+            marketplaceFilter.disabled = marketplaces.length === 0;
+
+            const cityValue = await updateCities(this.filters.marketplace, this.filters.city);
+            this.filters.city = cityValue;
+
+            const warehouseValue = await updateWarehouses(
+                this.filters.marketplace,
+                this.filters.city,
+                this.filters.warehouse
+            );
+            this.filters.warehouse = warehouseValue;
+        };
+
+        initializeFilters().catch(error => {
+            console.error('Ошибка инициализации фильтров расписания:', error);
+        });
+
+        marketplaceFilter.addEventListener('change', async (event) => {
+            this.filters.marketplace = event.target.value;
+            try {
+                const cityValue = await updateCities(this.filters.marketplace);
+                this.filters.city = cityValue;
+                const warehouseValue = await updateWarehouses(
+                    this.filters.marketplace,
+                    this.filters.city
+                );
+                this.filters.warehouse = warehouseValue;
+            } catch (error) {
+                console.error('Ошибка обновления фильтров при выборе маркетплейса:', error);
             }
+            this.applyFilters();
+        });
+
+        cityFilter.addEventListener('change', async (event) => {
+            this.filters.city = event.target.value;
+            try {
+                const warehouseValue = await updateWarehouses(
+                    this.filters.marketplace,
+                    this.filters.city
+                );
+                this.filters.warehouse = warehouseValue;
+            } catch (error) {
+                console.error('Ошибка обновления складов при выборе города:', error);
+            }
+            this.applyFilters();
+        });
+
+        warehouseFilter.addEventListener('change', (event) => {
+            this.filters.warehouse = event.target.value;
+            this.applyFilters();
         });
     }
 
