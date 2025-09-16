@@ -61,6 +61,8 @@
   flex-direction: column !important;
 }
 
+
+
 /* Анимированный фон */
 .auth-page::before {
   content: "" !important;
@@ -182,11 +184,6 @@
   display: none !important;
   flex-direction: column !important;
   justify-content: center !important;
-  width: 44px !important;
-  height: 44px !important;
-  background: transparent !important;
-  border: 1px solid var(--auth-border) !important;
-  border-radius: var(--auth-radius) !important;
   cursor: pointer !important;
   transition: var(--auth-transition) !important;
   gap: 4px !important;
@@ -213,10 +210,6 @@
   transform: translateY(-6px) rotate(-45deg) !important;
 }
 
-.auth-page .burger:hover {
-  background: var(--auth-bg-secondary) !important;
-  border-color: var(--auth-accent) !important;
-}
 
 /* Мобильное меню */
 .auth-page .mobile-menu {
@@ -274,8 +267,8 @@
 }
 
 .auth-page .info-section {
+    
   margin-bottom: 4rem !important;
-  opacity: 0 !important;
   transform: translateY(20px) !important;
   animation: auth-slideInView 0.6s ease forwards !important;
 }
@@ -679,7 +672,6 @@
   color: var(--auth-text-muted) !important;
 }
 
-.auth-page .field i.fa {
   position: absolute !important;
   left: 1rem !important;
   top: 50% !important;
@@ -704,6 +696,7 @@
   border-radius: 50% !important;
   transition: var(--auth-transition) !important;
 }
+
 
 .auth-page .field i.fa.toggle-password:hover {
   background: var(--auth-bg-secondary) !important;
@@ -987,10 +980,7 @@
     min-height: 44px !important;
   }
   
-  .auth-page .burger {
-    min-width: 44px !important;
-    min-height: 44px !important;
-  }
+  
 }
 
 /* Высокий контраст */
