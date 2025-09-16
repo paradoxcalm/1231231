@@ -188,7 +188,9 @@ function submitOrderForm(e) {
         items
     };
 
-    fetch('create_order.php', {
+    const createOrderUrl = resolveTemplateUrl('/create_order.php');
+
+    fetch(createOrderUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
