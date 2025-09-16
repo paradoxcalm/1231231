@@ -672,10 +672,14 @@
   color: var(--auth-text-muted) !important;
 }
 
+.auth-page .field i.fa {
   position: absolute !important;
   left: 1rem !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   color: var(--auth-text-muted) !important;
   font-size: 1rem !important;
   line-height: 1 !important;
@@ -691,7 +695,7 @@
   left: auto !important;
   right: 1rem !important;
   cursor: pointer !important;
-  padding: 0.5rem !important;
+  padding: 0 0.5rem !important;
   line-height: 1 !important;
   border-radius: 50% !important;
   transition: var(--auth-transition) !important;
