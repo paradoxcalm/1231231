@@ -1,8 +1,62 @@
 // ===== form.js =====
 
+function resolveFormPath(relativePath) {
+    if (typeof relativePath !== 'string' || !relativePath) {
+        return relativePath;
+    }
+
+    // Не преобразуем уже абсолютные адреса и схемы data:
+    if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(relativePath) || relativePath.startsWith('data:')) {
+        return relativePath;
+    }
+
+    // Если путь начинается с "/" — этого достаточно для fetch, возвращаем как есть.
+    if (relativePath.startsWith('/')) {
+        return relativePath;
+    }
+
+    const pickFormScriptSrc = () => {
+        try {
+            const current = document?.currentScript;
+            if (current?.src && current.src.includes('form.js')) {
+                return current.src;
+            }
+            const scripts = document?.querySelectorAll?.('script[src]');
+            if (scripts) {
+                for (const script of scripts) {
+                    if (script.src?.includes('form.js')) {
+                        return script.src;
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('resolveFormPath: не удалось найти form.js в DOM', err);
+        }
+        return null;
+    };
+
+    const scriptSrc = pickFormScriptSrc();
+    if (scriptSrc) {
+        try {
+            const scriptUrl = new URL(scriptSrc, window.location.href);
+            return new URL(relativePath, scriptUrl).toString();
+        } catch (err) {
+            console.warn('resolveFormPath: ошибка при расчёте относительно form.js', err);
+        }
+    }
+
+    try {
+        return new URL(relativePath, window.location.href).toString();
+    } catch (err) {
+        console.warn('resolveFormPath: не удалось вычислить путь относительно страницы', err);
+    }
+
+    return relativePath;
+}
+
 // 1️⃣ Автозаполнение данных пользователя
 function preloadUserDataIntoForm() {
-    fetch('fetch_user_data.php')
+    fetch(resolveFormPath('fetch_user_data.php'))
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
@@ -480,11 +534,17 @@ function setupPalletFieldsTrigger() {
 function showSuccessModal(qrText, paymentAmount) {
     const modal = document.getElementById('requestModal');
     if (modal) {
-        modal.classList.remove('show');
-        modal.style.display = 'none';
-        const content = modal.querySelector('#requestModalContent');
-        if (content) content.innerHTML = '';
+        if (typeof modal._legacyCleanup === 'function') {
+            modal._legacyCleanup();
+        } else {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            const content = modal.querySelector('#requestModalContent');
+            if (content) content.innerHTML = '';
+        }
     }
+
+    document.body.classList.remove('modal-open');
 
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -516,31 +576,54 @@ function showSuccessModal(qrText, paymentAmount) {
     .modal-body button { font-size: 14px !important; width: 100%; }
 }
 </style>`);
-    overlay.innerHTML += `
+
+    const qrImageUrl = resolveFormPath('QR/1IP.jpg');
+    overlay.insertAdjacentHTML('beforeend', `
 <div class="modal-content" onclick="event.stopPropagation()">
   <div class="modal-header success-header" style="margin-bottom:20px;">
     <h2 style="font-size:20px; color:#2e7d32;">✅ Заявка успешно создана!</h2>
-    <button class="close-button" style="position:absolute;top:16px;right:16px;font-size:22px;" onclick="this.closest('.modal-overlay').remove(); loadOrders();">×</button>
+    <button type="button" class="close-button legacy-success-close" style="position:absolute;top:16px;right:16px;font-size:22px;">×</button>
   </div>
   <div class="modal-body">
     <div><p style="font-weight:500;">📱 Покажите этот QR менеджеру:</p><div id="qrCodeSuccess" class="qr-success-box" style="margin:auto;"></div></div>
     <hr style="width:100%;border-top:1px solid #ccc;">
     <div>
       <p style="font-weight:500;">💳 Отсканируйте QR для оплаты:</p>
-      <img src="QR/1IP.jpg" alt="QR для оплаты" style="width:200px;border:1px solid #ccc;border-radius:8px;">
+      <img src="${qrImageUrl}" alt="QR для оплаты" style="width:200px;border:1px solid #ccc;border-radius:8px;">
       <p style="margin-top:10px;font-size:16px;"><strong>Сумма к оплате:</strong> <span id="modalPaymentSum">${paymentAmount}</span> ₽</p>
     </div>
     <p style="color:#444;font-size:14px;">⚠️ Покажите чек оплаты менеджеру приёмки для подтверждения</p>
   </div>
-</div>`;
+</div>`);
+
     document.body.appendChild(overlay);
-    new QRCode(document.getElementById('qrCodeSuccess'), { text: qrText, width:200, height:200 });
-    overlay.addEventListener('click', ev => {
+
+    const cleanup = () => {
+        overlay.remove();
+        if (typeof window.loadOrders === 'function') {
+            try {
+                window.loadOrders();
+            } catch (err) {
+                console.warn('loadOrders() завершился с ошибкой:', err);
+            }
+        }
+    };
+
+    const closeBtn = overlay.querySelector('.legacy-success-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', cleanup, { once: true });
+    }
+
+    overlay.addEventListener('click', (ev) => {
         if (!ev.target.closest('.modal-content')) {
-            overlay.remove();
-            loadOrders();
+            cleanup();
         }
     });
+
+    const qrContainer = overlay.querySelector('#qrCodeSuccess');
+    if (qrContainer) {
+        new QRCode(qrContainer, { text: qrText, width: 200, height: 200 });
+    }
 }
 
 let pickupMapInstance;
@@ -658,7 +741,8 @@ function initializeForm() {
             if (pkg && pkg.value === 'Pallet') calculatePalletCost();
         };
         try {
-            const res = await fetch(`get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(wh)}`);
+            const tariffUrl = resolveFormPath(`get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(wh)}`);
+            const res = await fetch(tariffUrl);
             const d = await res.json();
             if (d && d.success) {
                 setupVolumeCalculator(
@@ -711,7 +795,8 @@ function initializeForm() {
         const btn = form.querySelector('button[type="submit"]');
         if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
         try {
-            const res    = await fetch('log_data.php', { method: 'POST', body: new FormData(form) });
+            const submitUrl = resolveFormPath('log_data.php');
+            const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
             const result = await res.json();
             if (result && result.status === 'success') {
                 const pay = document.getElementById('payment');
