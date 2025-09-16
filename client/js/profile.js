@@ -6,7 +6,10 @@ class ProfileManager {
     }
 
     async init() {
-        await this.fetchUserData();
+        const hasUserData = await this.fetchUserData();
+        if (!hasUserData) {
+            return;
+        }
         this.setupForm();
         this.loadProfile();
         this.loadStats();
@@ -15,21 +18,37 @@ class ProfileManager {
     async fetchUserData() {
         try {
             const response = await fetch('../fetch_user_data.php', { credentials: 'include' });
-            const data = await response.json();
-            if (data.success && data.data) {
-                const u = data.data;
-                window.app.currentUser = {
-                    lastName: u.last_name || '',
-                    firstName: u.first_name || '',
-                    middleName: u.middle_name || '',
-                    phone: u.phone || '',
-                    email: u.email || '',
-                    companyName: u.company_name || '',
-                    storeName: u.store_name || ''
-                };
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
+
+            const data = await response.json();
+            if (!data.success || !data.data) {
+                window.location.href = '../auth_form.php';
+                return false;
+            }
+
+            const u = data.data;
+            const user = {
+                lastName: u.last_name || '',
+                firstName: u.first_name || '',
+                middleName: u.middle_name || '',
+                phone: u.phone || '',
+                email: u.email || '',
+                companyName: u.company_name || '',
+                storeName: u.store_name || ''
+            };
+
+            if (window.app) {
+                window.app.currentUser = user;
+            }
+
+            this.updateProfileDisplay(user);
+            return true;
         } catch (error) {
             console.error('Ошибка загрузки данных пользователя:', error);
+            window.location.href = '../auth_form.php';
+            return false;
         }
     }
 
@@ -52,49 +71,58 @@ class ProfileManager {
     }
 
     loadProfile() {
-        // Данные уже загружены в app.currentUser
-        const user = window.app.currentUser;
+        const appInstance = window.app || {};
+        const user = appInstance.currentUser || {};
         const form = document.getElementById('profileForm');
-        
-        if (form && user) {
-            form.querySelector('input[name="lastName"]').value = user.lastName;
-            form.querySelector('input[name="firstName"]').value = user.firstName;
-            form.querySelector('input[name="middleName"]').value = user.middleName;
-            form.querySelector('input[name="phone"]').value = user.phone;
-            form.querySelector('input[name="email"]').value = user.email;
-            form.querySelector('input[name="companyName"]').value = user.companyName;
-            form.querySelector('input[name="storeName"]').value = user.storeName;
+
+        if (form) {
+            const setValue = (selector, value) => {
+                const input = form.querySelector(selector);
+                if (input) {
+                    input.value = value || '';
+                }
+            };
+
+            setValue('input[name="lastName"]', user.lastName);
+            setValue('input[name="firstName"]', user.firstName);
+            setValue('input[name="middleName"]', user.middleName);
+            setValue('input[name="phone"]', user.phone);
+            setValue('input[name="email"]', user.email);
+            setValue('input[name="companyName"]', user.companyName);
+            setValue('input[name="storeName"]', user.storeName);
         }
 
         // Обновляем отображение в шапке
         this.updateProfileDisplay(user);
     }
 
-    updateProfileDisplay(user) {
-        // Обновляем аватар и имя в навигации
-        const profileBtn = document.querySelector('.profile-btn span');
-        const avatar = document.querySelector('.profile-avatar');
-        const profileHeaderAvatar = document.querySelector('.profile-header .profile-avatar');
-        
-        if (profileBtn) {
-            profileBtn.textContent = `${user.firstName} ${user.lastName}`;
-        }
-        
-        if (avatar) {
-            avatar.textContent = `${user.firstName[0]}${user.lastName[0]}`;
-        }
-        
-        if (profileHeaderAvatar) {
-            profileHeaderAvatar.textContent = `${user.firstName[0]}${user.lastName[0]}`;
+    updateProfileDisplay(user = {}) {
+        const firstName = typeof user.firstName === 'string' ? user.firstName.trim() : '';
+        const lastName = typeof user.lastName === 'string' ? user.lastName.trim() : '';
+        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+        const initials = [firstName.charAt(0), lastName.charAt(0)]
+            .filter(Boolean)
+            .map(letter => letter.toUpperCase())
+            .join('');
+
+        const profileName = document.querySelector('.profile-btn .profile-name');
+        if (profileName) {
+            profileName.textContent = fullName;
         }
 
-        // Обновляем информацию в профиле
-        const profileInfo = document.querySelector('.profile-info');
-        if (profileInfo) {
-            const nameElement = profileInfo.querySelector('h3');
-            if (nameElement) {
-                nameElement.textContent = `${user.firstName} ${user.lastName}`;
-            }
+        const headerAvatar = document.querySelector('.profile-btn .avatar');
+        if (headerAvatar) {
+            headerAvatar.textContent = initials;
+        }
+
+        const profileHeaderAvatar = document.querySelector('.profile-header .profile-avatar');
+        if (profileHeaderAvatar) {
+            profileHeaderAvatar.textContent = initials;
+        }
+
+        const profileInfoName = document.querySelector('.profile-info .profile-full-name');
+        if (profileInfoName) {
+            profileInfoName.textContent = fullName;
         }
     }
 

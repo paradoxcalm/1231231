@@ -2,17 +2,8 @@
 class App {
     constructor() {
         this.currentSection = 'schedule';
-        this.currentUser = {
-            id: 1,
-            firstName: 'Александр',
-            lastName: 'Иванов',
-            middleName: 'Петрович',
-            phone: '+7 999 123 45 67',
-            email: 'aleksandr@example.com',
-            companyName: 'ИП Иванов А.П.',
-            storeName: 'АлексМаркет'
-        };
-        
+        this.currentUser = null;
+
         this.init();
     }
 
