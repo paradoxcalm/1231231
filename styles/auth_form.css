@@ -990,44 +990,6 @@
   }
 }
 
-/* Темная тема */
-@media (prefers-color-scheme: dark) {
-  .auth-page {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important;
-  }
-  
-  .auth-page .navbar {
-    background: rgba(15, 23, 42, 0.8) !important;
-    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
-  }
-  
-  .auth-page .logo,
-  .auth-page .nav-links a {
-    color: var(--auth-text-inverse) !important;
-  }
-  
-  .auth-page .glass {
-    background: rgba(15, 23, 42, 0.7) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-  }
-  
-  .auth-page .auth-content {
-    background: rgba(15, 23, 42, 0.95) !important;
-    color: var(--auth-text-inverse) !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-  }
-  
-  .auth-page .field input {
-    background: rgba(255, 255, 255, 0.05) !important;
-    color: var(--auth-text-inverse) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-  }
-  
-  .auth-page .field input::placeholder {
-    color: rgba(255, 255, 255, 0.5) !important;
-  }
-}
-
 /* Высокий контраст */
 @media (prefers-contrast: high) {
   .auth-page .glass {
