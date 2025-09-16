@@ -975,8 +975,12 @@ function canCreateOrderForSchedule(schedule) {
     const deadline = schedule.accept_deadline;
     if (!deadline) return true;
 
-    const now = new Date();
     const deadlineDate = new Date(deadline);
+    if (Number.isNaN(deadlineDate.getTime())) {
+        return true;
+    }
+
+    const now = new Date();
     return now <= deadlineDate;
 }
 
