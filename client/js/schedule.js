@@ -599,8 +599,13 @@ class ScheduleManager {
             window.app.closeModal(detailsModal);
         }
 
-        if (typeof window.openRequestFormModal === 'function') {
-            window.openRequestFormModal(schedule);
+        if (typeof window.openClientRequestFormModal === 'function') {
+            window.openClientRequestFormModal(schedule);
+        } else if (typeof window.openRequestFormModal === 'function') {
+            window.openRequestFormModal(schedule, '', '', '', {
+                modalId: 'clientRequestModal',
+                contentId: 'clientRequestModalContent'
+            });
         } else {
             console.error('openRequestFormModal is not loaded');
             if (window.app && typeof window.app.showError === 'function') {

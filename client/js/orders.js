@@ -11,8 +11,15 @@ class OrdersManager {
         this.setupTabs();
         const btn = document.getElementById('createOrderBtn');
         btn?.addEventListener('click', () => {
-            if (typeof window.openRequestFormModal === 'function') {
-                window.openRequestFormModal({});
+            if (typeof window.openClientRequestFormModal === 'function') {
+                window.openClientRequestFormModal({});
+            } else if (typeof window.openRequestFormModal === 'function') {
+                window.openRequestFormModal({}, '', '', '', {
+                    modalId: 'clientRequestModal',
+                    contentId: 'clientRequestModalContent'
+                });
+            } else {
+                console.error('openRequestFormModal is not loaded');
             }
         });
         this.loadOrders();

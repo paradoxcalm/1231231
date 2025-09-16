@@ -119,23 +119,68 @@ function ensureYandexMaps() {
     return yandexMapsPromise;
 }
 
-function ensureRequestModalContainer() {
-    let modal = document.getElementById('requestModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'requestModal';
-        modal.className = 'modal';
-        const content = document.createElement('div');
-        content.className = 'modal-content';
-        content.id = 'requestModalContent';
-        modal.appendChild(content);
-        document.body.appendChild(modal);
-    } else if (!modal.querySelector('#requestModalContent')) {
-        const content = document.createElement('div');
-        content.className = 'modal-content';
-        content.id = 'requestModalContent';
-        modal.appendChild(content);
+function findElementInsideById(container, elementId) {
+    if (!container || typeof elementId !== 'string' || !elementId) return null;
+
+    let element = null;
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+        try {
+            element = container.querySelector(`#${CSS.escape(elementId)}`);
+        } catch (err) {
+            element = null;
+        }
     }
+
+    if (!element) {
+        const escapedId = elementId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        element = container.querySelector(`[id="${escapedId}"]`);
+    }
+
+    if (!element) {
+        const globalElement = document.getElementById(elementId);
+        if (globalElement && typeof container.contains === 'function' && container.contains(globalElement)) {
+            element = globalElement;
+        }
+    }
+
+    return element;
+}
+
+function ensureRequestModalContainer(modalId = 'requestModal', contentId = 'requestModalContent') {
+    const doc = document;
+    let modal = doc.getElementById(modalId);
+    if (!modal) {
+        modal = doc.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        const parent = doc.body || doc.documentElement;
+        if (parent) {
+            parent.appendChild(modal);
+        }
+    } else if (!modal.classList.contains('modal')) {
+        modal.classList.add('modal');
+    }
+
+    let content = findElementInsideById(modal, contentId);
+    if (!content) {
+        content = doc.createElement('div');
+        content.className = 'modal-content';
+        content.id = contentId;
+        modal.appendChild(content);
+    } else {
+        if (!content.id) {
+            content.id = contentId;
+        }
+        if (!content.classList.contains('modal-content')) {
+            content.classList.add('modal-content');
+        }
+    }
+
+    if (modal && modal.dataset) {
+        modal.dataset.requestFormContentId = contentId;
+    }
+
+    window.__lastRequestFormModalId = modalId;
     return modal;
 }
 
@@ -245,8 +290,47 @@ function fillLegacyFormFields(container, scheduleData) {
     }
 }
 
-async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", marketplace = "") {
+async function openRequestFormModal(
+    scheduleOrId,
+    city = "",
+    warehouse = "",
+    marketplace = "",
+    options = {}
+) {
     const scheduleData = normalizeSchedule(scheduleOrId, city, warehouse, marketplace);
+
+    const {
+        modalId = 'requestModal',
+        contentId = 'requestModalContent',
+        onBeforeOpen,
+        onAfterOpen,
+        onBeforeClose,
+        onAfterClose,
+        onError
+    } = options || {};
+
+    const safeCall = (callback, ...args) => {
+        if (typeof callback !== 'function') return;
+        try {
+            return callback(...args);
+        } catch (err) {
+            console.error('Ошибка выполнения callback формы заявки:', err);
+        }
+    };
+
+    const safeCallAsync = async (callback, ...args) => {
+        if (typeof callback !== 'function') return;
+        try {
+            return await callback(...args);
+        } catch (err) {
+            console.error('Ошибка выполнения callback формы заявки:', err);
+        }
+    };
+
+    const notifyError = (error) => {
+        if (!error) return;
+        safeCall(onError, error, { modalId, contentId, schedule: scheduleData });
+    };
 
     let templateHtml = '';
     let lastError = null;
@@ -269,24 +353,41 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     }
 
     if (!templateHtml) {
-        console.error('Шаблон формы заявки не был загружен', lastError);
+        const error = lastError || new Error('Шаблон формы заявки не был загружен');
+        console.error('Шаблон формы заявки не был загружен', error);
+        notifyError(error);
         alert('Не удалось загрузить форму заявки. Попробуйте обновить страницу.');
         return;
     }
 
-    const modal = ensureRequestModalContainer();
-    const contentHost = modal.querySelector('#requestModalContent');
+    let modal;
+    try {
+        modal = ensureRequestModalContainer(modalId, contentId);
+    } catch (error) {
+        console.error('Не удалось подготовить контейнер модального окна.', error);
+        notifyError(error);
+        alert('Не удалось открыть форму заявки. Попробуйте обновить страницу.');
+        return;
+    }
+
+    let contentHost = findElementInsideById(modal, contentId);
     if (!contentHost) {
-        console.error('Контейнер модального окна не найден.');
+        const error = new Error(`Контейнер модального окна "${contentId}" не найден внутри "${modalId}"`);
+        console.error('Контейнер модального окна не найден.', error);
+        notifyError(error);
         alert('Не удалось открыть форму заявки.');
         return;
     }
+
+    await safeCallAsync(onBeforeOpen, modal, scheduleData);
 
     const wrapper = document.createElement('div');
     wrapper.innerHTML = templateHtml.trim();
     const contentRoot = wrapper.firstElementChild;
     if (!contentRoot) {
+        const error = new Error('Загруженный шаблон пуст');
         console.error('Загруженный шаблон пуст', templateUrlUsed);
+        notifyError(error);
         alert('Шаблон формы заявки повреждён.');
         return;
     }
@@ -301,13 +402,16 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     const escHandler = (event) => {
         if (event.key === 'Escape') {
             event.preventDefault();
-            closeModal();
+            closeModal('escape');
         }
     };
 
-    const closeModal = () => {
+    const closeModal = (reason = 'manual') => {
         if (closed) return;
         closed = true;
+
+        safeCall(onBeforeClose, modal, reason, scheduleData);
+
         modal.classList.remove('active', 'show');
         modal.style.display = 'none';
         if (contentHost) {
@@ -319,17 +423,19 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         if (modal._legacyCleanup === closeModal) {
             modal._legacyCleanup = null;
         }
+
+        safeCall(onAfterClose, modal, reason, scheduleData);
     };
 
     const backdropHandler = (event) => {
         if (event.target === modal) {
-            closeModal();
+            closeModal('backdrop');
         }
     };
 
     const closeBtn = modal.querySelector('[data-close-modal]');
     if (closeBtn) {
-        closeBtn.addEventListener('click', closeModal, { once: true });
+        closeBtn.addEventListener('click', () => closeModal('close-button'), { once: true });
     }
 
     modal.addEventListener('click', backdropHandler);
@@ -348,6 +454,7 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         await ensureLegacyFormScript();
         if (typeof window.initializeForm === 'function') {
             window.initializeForm();
+            safeCall(onAfterOpen, modal, contentHost, scheduleData);
         } else {
             throw new Error('Функция инициализации формы недоступна');
         }
@@ -360,7 +467,25 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         } else {
             alert(error.message || 'Не удалось инициализировать форму заявки');
         }
+        notifyError(error);
     }
 }
 
+function openClientRequestFormModal(
+    scheduleOrId,
+    city = "",
+    warehouse = "",
+    marketplace = "",
+    options = {}
+) {
+    const mergedOptions = {
+        modalId: 'clientRequestModal',
+        contentId: 'clientRequestModalContent',
+        ...(options || {})
+    };
+
+    return openRequestFormModal(scheduleOrId, city, warehouse, marketplace, mergedOptions);
+}
+
 window.openRequestFormModal = openRequestFormModal;
+window.openClientRequestFormModal = openClientRequestFormModal;
