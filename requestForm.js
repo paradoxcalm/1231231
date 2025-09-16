@@ -4,11 +4,13 @@
  * @returns {Promise<number>} рассчитанная стоимость
  */
 async function calculateCost(schedule) {
-    if (!schedule || !schedule.city || !schedule.warehouses) return 0;
+    if (!schedule || !schedule.city) return 0;
+    const warehouseName = schedule.warehouses || schedule.warehouse;
+    if (!warehouseName) return 0;
 
     try {
         const resp = await fetch(
-            `get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(schedule.warehouses)}`
+            `get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
         );
         const data = await resp.json();
         if (!data.success) return 0;
@@ -108,8 +110,11 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         if (whInput) whInput.value = schedule.warehouses || schedule.warehouse || '';
 
         const costInput = modal.querySelector('#orderCost');
-        if (costInput && schedule.city && schedule.warehouses) {
-            const cost = await calculateCost(schedule);
+        if (costInput && schedule.city && (schedule.warehouses || schedule.warehouse)) {
+            const cost = await calculateCost({
+                ...schedule,
+                warehouses: schedule.warehouses || schedule.warehouse
+            });
             costInput.value = cost ? window.utils.formatCurrency(cost) : '';
         }
 
