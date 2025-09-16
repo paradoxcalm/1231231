@@ -67,7 +67,7 @@ if (isset($_SESSION['role'])) {
 <link rel="stylesheet" href="styles/auth_form.css?v=<?php echo time(); ?>">
 </head>
 
-<body class="landing-page">
+<body class="auth-page">
 <header class="navbar" role="banner">
     <div class="nav-left">
         <a class="logo" href="#" aria-label="На главную">FF IDEAL</a>
