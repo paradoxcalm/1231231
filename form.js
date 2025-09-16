@@ -908,4 +908,6 @@ function initializeForm() {
 
 
 
+window.initializeForm = initializeForm;
+
 initializeForm();
