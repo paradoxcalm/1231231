@@ -56,7 +56,7 @@
   min-height: 100vh !important;
   position: relative !important;
   overflow-x: hidden !important;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f1f5f9 100%) !important;
+  background: linear-gradient(135deg, #f7f8fc 0%, #e5e8ef 45%, #f2f4f8 100%) !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -66,10 +66,11 @@
   content: "" !important;
   position: fixed !important;
   inset: 0 !important;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.02) 0%, transparent 50%) !important;
+  background:
+    linear-gradient(120deg, rgba(148, 163, 184, 0.14) 0%, rgba(241, 245, 249, 0.16) 55%, rgba(226, 232, 240, 0.2) 100%),
+    repeating-radial-gradient(circle at 12% 18%, rgba(100, 116, 139, 0.1) 0 2px, transparent 2px 18px),
+    repeating-linear-gradient(140deg, rgba(226, 232, 240, 0.1) 0 12px, transparent 12px 32px) !important;
+  background-blend-mode: soft-light, normal, screen !important;
   animation: auth-float 20s ease-in-out infinite !important;
   z-index: 0 !important;
 }
