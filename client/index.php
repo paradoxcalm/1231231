@@ -304,6 +304,10 @@ if (empty($_SESSION['user_id'])) {
         </div>
     </div>
 
+    <div class="modal" id="clientRequestModal">
+        <div class="modal-content" id="clientRequestModalContent"></div>
+    </div>
+
     <!-- Уведомления -->
     <div class="notifications-panel" id="notificationsPanel">
         <div class="notifications-header">
