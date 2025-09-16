@@ -73,11 +73,9 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
             ? scheduleOrId
             : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
     const relativeTemplatePath = window.location.pathname.includes('/client/')
-        ? 'templates/orderModal.html'
-        : 'client/templates/orderModal.html';
+        ? 'client/templates/orderModal.html'
+        : 'templates/orderModal.html';
     const templateUrl = resolveTemplateUrl(relativeTemplatePath);
-
-    const templateUrl = resolveTemplateUrl('templates/orderModal.html');
     try {
         const tmplResp = await fetch(templateUrl);
         if (!tmplResp.ok) {
