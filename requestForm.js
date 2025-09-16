@@ -73,142 +73,294 @@ function resolveTemplateUrl(relativePath) {
     return relativePath;
 }
 
-async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", marketplace = "") {
-    const schedule =
-        typeof scheduleOrId === 'object'
-            ? scheduleOrId
-            : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
-    const relativeTemplatePath = window.location.pathname.includes('/client/')
-        ? '/client/templates/orderModal.html'
-        : 'templates/orderModal.html';
-    const templateUrl = resolveTemplateUrl(relativeTemplatePath);
-    try {
-        const tmplResp = await fetch(templateUrl);
-        if (!tmplResp.ok) {
-            console.error(`Не удалось загрузить шаблон формы заявки (${templateUrl}): ${tmplResp.status} ${tmplResp.statusText}`);
-            if (tmplResp.status === 404) {
-                throw new Error('Шаблон формы заявки не найден');
-            }
-            throw new Error('Ошибка загрузки шаблона формы заявки');
-        }
-        const tmplHtml = await tmplResp.text();
-        const wrap = document.createElement('div');
-        wrap.innerHTML = tmplHtml.trim();
-        const modal = wrap.firstElementChild;
-        if (!modal) {
-            throw new Error('Шаблон формы заявки не содержит модальное окно');
-        }
+const LEGACY_TEMPLATE_PATHS = [
+    '/client/templates/customOrderModal.html',
+    'client/templates/customOrderModal.html',
+    'templates/customOrderModal.html'
+];
+
+let legacyFormScriptPromise = null;
+let yandexMapsPromise = null;
+
+function ensureLegacyFormScript() {
+    if (typeof window.initializeForm === 'function') {
+        return Promise.resolve();
+    }
+    if (legacyFormScriptPromise) {
+        return legacyFormScriptPromise;
+    }
+    const scriptUrl = resolveTemplateUrl('/form.js');
+    legacyFormScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = scriptUrl;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Не удалось загрузить скрипт формы (${scriptUrl})`));
+        document.head.appendChild(script);
+    });
+    return legacyFormScriptPromise;
+}
+
+function ensureYandexMaps() {
+    if (typeof window.ymaps !== 'undefined') {
+        return Promise.resolve();
+    }
+    if (yandexMapsPromise) {
+        return yandexMapsPromise;
+    }
+    yandexMapsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://api-maps.yandex.ru/2.1/?lang=ru_RU';
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Не удалось загрузить Яндекс.Карты'));
+        document.head.appendChild(script);
+    });
+    return yandexMapsPromise;
+}
+
+function ensureRequestModalContainer() {
+    let modal = document.getElementById('requestModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'requestModal';
+        modal.className = 'modal';
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.id = 'requestModalContent';
+        modal.appendChild(content);
         document.body.appendChild(modal);
+    } else if (!modal.querySelector('#requestModalContent')) {
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.id = 'requestModalContent';
+        modal.appendChild(content);
+    }
+    return modal;
+}
 
-        const closeBtn = modal.querySelector('#closeOrderModal');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => modal.remove());
-        }
-        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-        const scheduleIdInput = modal.querySelector('#orderScheduleId');
-        if (scheduleIdInput) scheduleIdInput.value = schedule.id || '';
-        const cityInput = modal.querySelector('#orderCity');
-        const whInput = modal.querySelector('#orderWarehouse');
-        if (cityInput) cityInput.value = schedule.city || '';
-        if (whInput) whInput.value = schedule.warehouses || schedule.warehouse || '';
-
-        const costInput = modal.querySelector('#orderCost');
-        if (costInput && schedule.city && (schedule.warehouses || schedule.warehouse)) {
-            const cost = await calculateCost({
-                ...schedule,
-                warehouses: schedule.warehouses || schedule.warehouse
-            });
-            costInput.value = cost ? window.utils.formatCurrency(cost) : '';
-        }
-
-        const itemsContainer = modal.querySelector('#itemsContainer');
-        const addItemBtn = modal.querySelector('#addItemBtn');
-        if (itemsContainer && addItemBtn) {
-            addItemBtn.addEventListener('click', () => {
-                const row = document.createElement('div');
-                row.className = 'item-row';
-                row.innerHTML = `
-              <input type="text" class="item-barcode" placeholder="Штрихкод" required>
-              <input type="number" class="item-qty" min="1" value="1" required>
-              <button type="button" class="remove-item">&times;</button>`;
-                itemsContainer.appendChild(row);
-            });
-            itemsContainer.addEventListener('click', (ev) => {
-                if (ev.target.classList.contains('remove-item')) {
-                    const row = ev.target.closest('.item-row');
-                    if (row) row.remove();
-                }
-            });
-        }
-
-        const form = modal.querySelector('#createOrderForm');
-        if (form) {
-            form.addEventListener('submit', submitOrderForm);
-        } else {
-            console.error('Форма создания заказа не найдена в шаблоне');
-        }
-    } catch (err) {
-        console.error('Ошибка открытия формы заявки:', err);
-        if (templateUrl) {
-            console.error('Форма заявки не была открыта. Попытка загрузить шаблон по адресу:', templateUrl);
-        }
-        alert(err.message || 'Не удалось открыть форму заявки');
+function setupGlobalLoadOrdersFallback() {
+    if (typeof window.loadOrders === 'function') return;
+    const manager = window.OrdersManager;
+    if (manager && typeof manager.loadOrders === 'function') {
+        window.loadOrders = manager.loadOrders.bind(manager);
     }
 }
 
-function submitOrderForm(e) {
-    e.preventDefault();
-    const form = e.target;
+function normalizeSchedule(scheduleOrId, fallbackCity = '', fallbackWarehouse = '', fallbackMarketplace = '') {
+    const schedule = typeof scheduleOrId === 'object' && scheduleOrId !== null
+        ? scheduleOrId
+        : { id: scheduleOrId, city: fallbackCity, warehouses: fallbackWarehouse, marketplace: fallbackMarketplace };
 
-    const packagingMap = { box: 'Box', pallet: 'Pallet' };
-    const packagingValue = form.elements.packaging_type?.value || 'box';
-    const packaging_type = packagingMap[packagingValue] || packagingValue;
+    const city = schedule.city || schedule.city_name || schedule.route_city || fallbackCity || '';
+    const warehouse = schedule.warehouses || schedule.warehouse || schedule.route_warehouse || fallbackWarehouse || '';
+    const acceptDate = schedule.accept_date || schedule.acceptDate || schedule.departure_date || schedule.departureDate || '';
+    const deliveryDate = schedule.delivery_date || schedule.deliveryDate || '';
+    const acceptTime = schedule.accept_time || schedule.acceptTime || '';
+    const driverName = schedule.driver_name || schedule.driverName || '';
+    const driverPhone = schedule.driver_phone || schedule.driverPhone || '';
+    const carNumber = schedule.car_number || schedule.carNumber || '';
+    const carBrand = schedule.car_brand || schedule.carBrand || '';
+    const sender = schedule.sender || schedule.company_name || '';
+    const marketplace = schedule.marketplace || fallbackMarketplace || '';
 
-    const marketplace_wildberries = form.elements.marketplace_wildberries?.checked ? 1 : 0;
-    const marketplace_ozon = form.elements.marketplace_ozon?.checked ? 1 : 0;
+    return {
+        id: schedule.id ?? schedule.schedule_id ?? '',
+        city,
+        warehouse,
+        acceptDate,
+        deliveryDate,
+        acceptTime,
+        driverName,
+        driverPhone,
+        carNumber,
+        carBrand,
+        sender,
+        marketplace
+    };
+}
 
-    const items = [];
-    form.querySelectorAll('#itemsContainer .item-row').forEach(row => {
-        const barcode = row.querySelector('.item-barcode')?.value.trim();
-        const qty = parseInt(row.querySelector('.item-qty')?.value, 10) || 0;
-        if (barcode && qty > 0) {
-            items.push({ barcode, total_qty: qty });
+function fillLegacyFormFields(container, scheduleData) {
+    if (!container || !scheduleData) return;
+
+    const {
+        id,
+        city,
+        warehouse,
+        acceptDate,
+        deliveryDate,
+        acceptTime,
+        driverName,
+        driverPhone,
+        carNumber,
+        carBrand,
+        sender
+    } = scheduleData;
+
+    const directionDisplay = container.querySelector('#legacyDirection');
+    if (directionDisplay) {
+        if (city || warehouse) {
+            const left = city || '—';
+            const right = warehouse || '—';
+            directionDisplay.textContent = `${left} → ${right}`;
+        } else {
+            directionDisplay.textContent = '—';
         }
-    });
+    }
 
-    const payload = {
-        schedule_id: form.elements.schedule_id?.value || '',
-        company_name: form.elements.company_name?.value.trim() || '',
-        store_name: form.elements.store_name?.value.trim() || '',
-        comment: form.elements.comment?.value.trim() || '',
-        packaging_type,
-        marketplace_wildberries,
-        marketplace_ozon,
-        items
+    const datesDisplay = container.querySelector('#legacyDates');
+    if (datesDisplay) {
+        if (acceptDate && deliveryDate) {
+            datesDisplay.textContent = `${acceptDate} → ${deliveryDate}`;
+        } else if (acceptDate || deliveryDate) {
+            datesDisplay.textContent = acceptDate || deliveryDate;
+        } else {
+            datesDisplay.textContent = '—';
+        }
+    }
+
+    const setValue = (selector, value = '') => {
+        const el = container.querySelector(selector);
+        if (el) el.value = value;
     };
 
-    const createOrderUrl = resolveTemplateUrl('/create_order.php');
+    setValue('#formScheduleId', id || '');
+    setValue('#acceptDateField', acceptDate || '');
+    setValue('#deliveryDateField', deliveryDate || '');
+    setValue('#deliveryDateAlias', deliveryDate || '');
+    setValue('#acceptTimeField', acceptTime || '');
+    setValue('#directionField', warehouse || '');
+    setValue('#city', city || '');
+    setValue('#warehouses', warehouse || '');
+    setValue('#driver_name', driverName || '');
+    setValue('#driver_phone', driverPhone || '');
+    setValue('#car_number', carNumber || '');
+    setValue('#car_brand', carBrand || '');
+    setValue('#sender', sender || '');
 
-    fetch(createOrderUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        credentials: 'include'
-    })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert('Заказ успешно создан!');
-                const modal = form.closest('.modal');
-                if (modal) modal.remove();
-            } else {
-                alert(data.message || 'Ошибка создания заказа');
+    const status = container.querySelector('#status');
+    if (status) {
+        status.textContent = '';
+        status.removeAttribute('style');
+    }
+}
+
+async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", marketplace = "") {
+    const scheduleData = normalizeSchedule(scheduleOrId, city, warehouse, marketplace);
+
+    let templateHtml = '';
+    let lastError = null;
+    let templateUrlUsed = '';
+
+    for (const path of LEGACY_TEMPLATE_PATHS) {
+        const url = resolveTemplateUrl(path);
+        try {
+            const response = await fetch(url, { credentials: 'include' });
+            if (!response.ok) {
+                lastError = new Error(`Не удалось загрузить шаблон (${url}): ${response.status}`);
+                continue;
             }
-        })
-        .catch(err => {
-            alert('Ошибка сети: ' + err.message);
-        });
+            templateHtml = await response.text();
+            templateUrlUsed = url;
+            break;
+        } catch (err) {
+            lastError = err;
+        }
+    }
+
+    if (!templateHtml) {
+        console.error('Шаблон формы заявки не был загружен', lastError);
+        alert('Не удалось загрузить форму заявки. Попробуйте обновить страницу.');
+        return;
+    }
+
+    const modal = ensureRequestModalContainer();
+    const contentHost = modal.querySelector('#requestModalContent');
+    if (!contentHost) {
+        console.error('Контейнер модального окна не найден.');
+        alert('Не удалось открыть форму заявки.');
+        return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = templateHtml.trim();
+    const contentRoot = wrapper.firstElementChild;
+    if (!contentRoot) {
+        console.error('Загруженный шаблон пуст', templateUrlUsed);
+        alert('Шаблон формы заявки повреждён.');
+        return;
+    }
+
+    contentHost.innerHTML = '';
+    contentHost.appendChild(contentRoot);
+
+    fillLegacyFormFields(contentHost, scheduleData);
+    setupGlobalLoadOrdersFallback();
+
+    let closed = false;
+    const escHandler = (event) => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeModal();
+        }
+    };
+
+    const closeModal = () => {
+        if (closed) return;
+        closed = true;
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        if (contentHost) {
+            contentHost.innerHTML = '';
+        }
+        document.body.classList.remove('modal-open');
+        document.removeEventListener('keydown', escHandler);
+        modal.removeEventListener('click', backdropHandler);
+        if (modal._legacyCleanup === closeModal) {
+            modal._legacyCleanup = null;
+        }
+    };
+
+    const backdropHandler = (event) => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    };
+
+    const closeBtn = modal.querySelector('[data-close-modal]');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal, { once: true });
+    }
+
+    modal.addEventListener('click', backdropHandler);
+    document.addEventListener('keydown', escHandler);
+    modal._legacyCleanup = closeModal;
+
+    modal.classList.add('show');
+    modal.style.display = '';
+    document.body.classList.add('modal-open');
+
+    ensureYandexMaps().catch((err) => {
+        console.warn('Не удалось загрузить Яндекс.Карты:', err);
+    });
+
+    try {
+        await ensureLegacyFormScript();
+        if (typeof window.initializeForm === 'function') {
+            window.initializeForm();
+        } else {
+            throw new Error('Функция инициализации формы недоступна');
+        }
+    } catch (error) {
+        console.error('Ошибка инициализации формы заявки:', error);
+        const status = contentHost.querySelector('#status');
+        if (status) {
+            status.textContent = error.message || 'Не удалось инициализировать форму заявки';
+            status.style.color = 'red';
+        } else {
+            alert(error.message || 'Не удалось инициализировать форму заявки');
+        }
+    }
 }
 
 window.openRequestFormModal = openRequestFormModal;
