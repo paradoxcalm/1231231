@@ -27,15 +27,50 @@ async function calculateCost(schedule) {
     }
 }
 
+function resolveTemplateUrl(relativePath) {
+    if (typeof relativePath !== 'string') return relativePath;
+    // Сначала пытаемся вычислить путь относительно текущей страницы
+    try {
+        return new URL(relativePath, window.location.href).toString();
+    } catch (err) {
+        console.warn('Не удалось вычислить путь относительно текущей страницы:', err);
+    }
+
+    // Если не удалось, пробуем относительно самого скрипта requestForm.js
+    try {
+        const currentScript = document?.currentScript;
+        if (currentScript?.src) {
+            return new URL(relativePath, currentScript.src).toString();
+        }
+
+        const scripts = document?.querySelectorAll?.('script[src]');
+        if (scripts) {
+            for (const script of scripts) {
+                if (script.src?.includes('requestForm.js')) {
+                    return new URL(relativePath, script.src).toString();
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Не удалось вычислить путь относительно скрипта requestForm.js:', err);
+    }
+
+    return relativePath;
+}
+
 async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", marketplace = "") {
     const schedule =
         typeof scheduleOrId === 'object'
             ? scheduleOrId
             : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
-
+    const relativeTemplatePath = window.location.pathname.includes('/client/')
+        ? 'templates/orderModal.html'
+        : 'client/templates/orderModal.html';
+    const templateUrl = resolveTemplateUrl(relativeTemplatePath);
     try {
-        const tmplResp = await fetch('/client/templates/orderModal.html');
+        const tmplResp = await fetch(templateUrl);
         if (!tmplResp.ok) {
+            console.error(`Не удалось загрузить шаблон формы заявки (${templateUrl}): ${tmplResp.status} ${tmplResp.statusText}`);
             if (tmplResp.status === 404) {
                 throw new Error('Шаблон формы заявки не найден');
             }
@@ -97,6 +132,9 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         }
     } catch (err) {
         console.error('Ошибка открытия формы заявки:', err);
+        if (templateUrl) {
+            console.error('Форма заявки не была открыта. Попытка загрузить шаблон по адресу:', templateUrl);
+        }
         alert(err.message || 'Не удалось открыть форму заявки');
     }
 }
