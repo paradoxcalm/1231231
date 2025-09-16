@@ -79,7 +79,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
                 <i class="fas fa-money-bill"></i> Тарифы
             </button>
 
-        <button class="icon-button" onclick="scheduleReady.then(() => window.schedule.loadSchedule())"><i class="fas fa-calendar"></i> Расписание</button>
+        <button class="icon-button" onclick="loadSchedule()"><i class="fas fa-calendar"></i> Расписание</button>
 
         <?php if ($role === 'admin' || $role === 'manager'): ?>
             <button class="icon-button" onclick="loadStatistics()"><i class="fas fa-chart-pie"></i> Статистика</button>
@@ -129,7 +129,7 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
     <?php endif; ?>
 
     <!-- Расписание -->
-    <button onclick="scheduleReady.then(() => window.schedule.loadSchedule())" title="Расписание">
+    <button onclick="loadSchedule()" title="Расписание">
         <i class="fas fa-calendar"></i>
     </button>
 
@@ -236,12 +236,12 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <script src="auto_company_from_fio.js?v=<?php echo $version; ?>"></script>
 <script src="processing.js?v=<?php echo $version; ?>"></script>
 <script src="main.js?v=<?php echo $version; ?>"></script>
+<script src="table.js?v=<?php echo $version; ?>"></script>
 <script src="form.js?v=<?php echo $version; ?>"></script>
-<script src="acceptance/acceptanceForm.js?v=<?php echo $version; ?>"></script>
 <script src="clients.js?v=<?php echo $version; ?>"></script>
 <script src="tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
 <script src="autofill_user_fields.js?v=<?php echo $version; ?>"></script>
-<script type="module" src="schedules/index.js?v=<?php echo $version; ?>"></script>
+<script src="schedule.js?v=<?php echo $version; ?>"></script>
 <script src="fbs/fbs.js?v=<?php echo $version; ?>"></script>
 <script src="fbs/fbs_pdf.js?v=<?php echo $version; ?>"></script>
 <script src="requestForm.js?v=<?php echo $version; ?>"></script>
@@ -277,10 +277,6 @@ function toggleMobileProfileMenu() {
     if (!menu || window.innerWidth > 768) return;
     menu.classList.toggle("visible");
 }
-
-function loadTable() {
-    window.location.href = '/table/index.html';
-}
 document.addEventListener('click', function (e) {
     const menu = document.getElementById("mobileProfileMenu");
     if (!menu) return;
@@ -308,23 +304,11 @@ function updateNotificationBadge(count) {
 }
 function fetchLiveNotifications() {
     fetch('fetch_notifications.php')
-        .then(r => {
-            if (!r.ok) {
-                console.error('Ошибка сети при получении уведомлений:', r.status, r.statusText);
-                return null;
-            }
-            return r
-                .json()
-                .catch(err => {
-                    console.error('Ошибка парсинга JSON уведомлений:', err);
-                    return null;
-                });
-        })
+        .then(r => r.json())
         .then(data => {
             if (!Array.isArray(data)) return;
             updateNotificationBadge(data.length);
-        })
-        .catch(err => console.error('Ошибка при запросе уведомлений:', err));
+        });
 }
 document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById("notificationsBtn");
@@ -334,19 +318,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 setInterval(fetchLiveNotifications, 30000);
 window.onload = function () {
-    scheduleReady.then(() => {
-        switch (userRole) {
-            case 'admin':
-                window.schedule.loadSchedule();
-                break;
-            case 'manager':
-                loadForm();
-                break;
-            default:
-                window.schedule.loadSchedule();
-                break;
-        }
-    });
+    switch (userRole) {
+        case 'admin': loadTable(); break;
+        case 'manager': loadForm(); break;
+        default: loadSchedule(); break;
+    }
 };
 
 

@@ -1,564 +1,607 @@
-/*
- * scheduleList.js
- *
- * Этот модуль отвечает за вкладку «Ближайшие отправления» и фильтры
- * расписания. Здесь находятся функции для загрузки и отображения
- * предстоящих отправлений, формирования фильтров по маркетплейсам,
- * городам и складам, а также вспомогательные методы форматирования
- * дат и кликов по городу.
- *
- * Большая часть кода взята из исходного файла schedule.js без
- * изменения логики. Переменные и функции экспортируются через
- * глобальный объект window, чтобы ими могли пользоваться другие
- * модули без системы сборки.
- */
-
-// Глобальные переменные для фильтров и прав. Они привязываются к window,
-// чтобы сохранять совместимость с остальным кодом, который ожидал
-// видеть их в глобальной области видимости.
-window.calendarCurrentDate = new Date();
-window.canCreateSchedule = false;
-window.canCreateOrder = false;
-window.activeCityFilter = "";
-window.activeWarehouseFilter = "";
-window.activeDestinationWarehouseFilter = "";
-window.archiveView = false;
-window.activeMarketplaceFilter = "";
-
-/**
- * Основная функция для загрузки страницы расписания. Она формирует
- * разметку пошагового интерфейса и запускает начальную загрузку
- * предстоящих отправлений и календаря.
- */
-function loadSchedule() {
-    const dynamicContent = document.getElementById("dynamicContent");
+// 📄 main.js
+// Функция для отображения раздела «Приёмка»
+function loadForm() {
+    const dynamicContent = document.getElementById('dynamicContent');
     if (!dynamicContent) return;
 
-    // Определяем, является ли пользователь администратором или менеджером
-    window.canCreateSchedule = (userRole === "admin" || userRole === "manager");
-    const isAdminOrManager = (userRole === "admin" || userRole === "manager");
+    dynamicContent.style.display = 'block';
 
-    // Шаблон HTML для раздела расписания с пошаговым интерфейсом
-    const html = `
-        <div class="schedule-header">
-            <h1>Расписание отправлений</h1>
-            <p class="schedule-subtitle">Выберите параметры отправления пошагово</p>
+    // Разметка вкладок и двух секций
+    dynamicContent.innerHTML = `
+      <div class="section-container" style="padding-top: 20px;">
+        <div class="tabs">
+          <button class="tab-button active" onclick="switchReceptionTab('scanSection')">QR Приёмка</button>
+          <button class="tab-button" onclick="switchReceptionTab('formSection'); loadOldReception()">Приёмка</button>
         </div>
-        
-        <!-- Пошаговый интерфейс -->
-        <div class="step-wizard">
-            <div class="step-indicator">
-                <div class="step active" data-step="1">
-                    <div class="step-number">1</div>
-                    <div class="step-label">Город</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="2">
-                    <div class="step-number">2</div>
-                    <div class="step-label">Маркетплейс</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="3">
-                    <div class="step-number">3</div>
-                    <div class="step-label">Склад</div>
-                </div>
-                <div class="step-line"></div>
-                <div class="step" data-step="4">
-                    <div class="step-number">4</div>
-                    <div class="step-label">Результат</div>
-                </div>
-            </div>
+        <!-- Секция QR‑приёмки (по умолчанию видима) -->
+        <div id="scanSection">
+          <h2>Сканирование QR‑кода</h2>
+          <button class="icon-button" onclick="startScanner()">🚀 Запустить сканер</button>
+          <button class="icon-button" onclick="stopScanner()">⛔ Остановить сканер</button>
+          <div id="reader" style="width: 100%; max-width: 400px; margin: auto; padding-top: 20px;"></div>
         </div>
+        <!-- Секция ручной приёмки (пока пустая, видимость отключена) -->
+        <div id="formSection" style="display: none;">
+          <!-- Сюда позже будет вставлена старая форма из папки OLDWORL -->
+          <div id="manualReceptionContainer"></div>
+        </div>
+      </div>
+    `;
+}
 
-        <!-- Шаг 1: Выбор города -->
-        <div class="step-content active" id="step-1">
-            <div class="step-card">
-                <h2>Выберите город отправления</h2>
-                <div class="city-grid" id="cityGrid">
-                    <!-- Города загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
 
-        <!-- Шаг 2: Выбор маркетплейса -->
-        <div class="step-content" id="step-2">
-            <div class="step-card">
-                <h2>Выберите маркетплейс</h2>
-                <div class="selected-info">
-                    <span class="info-label">Город:</span>
-                    <span class="info-value" id="selectedCity">—</span>
-                    <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                </div>
-                <div class="marketplace-grid" id="marketplaceGrid">
-                    <!-- Маркетплейсы загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(1)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
+// 🔘 Ручной запуск сканера
+function startScanner() {
+    if (typeof initScanner === 'function') {
+        initScanner();
+    } else {
+        console.error("❌ initScanner() не найден — проверь подключение scan.js");
+    }
+}
 
-        <!-- Шаг 3: Выбор склада -->
-        <div class="step-content" id="step-3">
-            <div class="step-card">
-                <h2>Выберите склад назначения</h2>
-                <div class="selected-info">
-                    <div class="info-row">
-                        <span class="info-label">Город:</span>
-                        <span class="info-value" id="selectedCity2">—</span>
-                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Маркетплейс:</span>
-                        <span class="info-value" id="selectedMarketplace">—</span>
-                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
-                    </div>
-                </div>
-                <div class="warehouse-grid" id="warehouseGrid">
-                    <!-- Склады загружаются динамически -->
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(2)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Сбросить</button>
-                </div>
-            </div>
-        </div>
+// ⛔ Остановка сканера
+function stopScanner() {
+    if (typeof stopScan === 'function') {
+        stopScan();
+        console.log("⛔ Сканер остановлен вручную");
+    } else {
+        console.error("❌ stopScan() не найден — проверь подключение scan.js");
+    }
+}
 
-        <!-- Шаг 4: Результаты -->
-        <div class="step-content" id="step-4">
-            <div class="step-card">
-                <h2>Доступные отправления</h2>
-                <div class="selected-info">
-                    <div class="info-row">
-                        <span class="info-label">Город:</span>
-                        <span class="info-value" id="selectedCity3">—</span>
-                        <button class="change-btn" onclick="goToStep(1)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Маркетплейс:</span>
-                        <span class="info-value" id="selectedMarketplace2">—</span>
-                        <button class="change-btn" onclick="goToStep(2)">Изменить</button>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Склад:</span>
-                        <span class="info-value" id="selectedWarehouse">—</span>
-                        <button class="change-btn" onclick="goToStep(3)">Изменить</button>
-                    </div>
-                </div>
-                <div class="results-container">
-                    <div id="scheduleResults" class="schedule-results">
-                        <!-- Результаты загружаются динамически -->
-                    </div>
-                </div>
-                <div class="step-actions">
-                    <button class="btn-secondary" onclick="goToStep(3)">Назад</button>
-                    <button class="btn-secondary" onclick="resetSteps()">Начать заново</button>
-                </div>
-            </div>
-        </div>
+// Переключение между вкладками "Форма / Скан"
+function switchReceptionTab(tabId) {
+    const sections = ['formSection', 'scanSection'];
+    sections.forEach(id => {
+        const tab = document.getElementById(id);
+        const btn = document.querySelector(`.tab-button[onclick*="${id}"]`);
+        if (tab) tab.style.display = (id === tabId) ? 'block' : 'none';
+        if (btn) btn.classList.toggle('active', id === tabId);
+    });
 
-        <div class="schedule-tabs">
-          <button id="tab-upcoming" class="active" onclick="switchTab('upcoming')" style="display:none;">Ближайшие отправления</button>
-          ${isAdminOrManager ? `<button id="tab-calendar" onclick="switchTab('calendar')">Календарь</button>` : `<button id="tab-calendar" onclick="switchTab('calendar')">Календарь</button>`}
-        </div>
-        <div id="tabContent-upcoming" style="display:block;">
-          <div class="filter-actions" style="display:none;">
-            <button id="toggleArchiveBtn">Показать архив</button>
-            ${window.canCreateSchedule ? `
-              <button id="createScheduleBtn" onclick="showCreateForm()">Создать отправление</button>
-              <div class="excel-dropdown">
-                <button id="excelDropdownBtn" onclick="toggleExcelMenu()">📤 Excel <span id="excelArrow">▼</span></button>
-                <div id="excelMenu" class="dropdown-content">
-                  <a href="#" onclick="exportSchedule()">📤 Экспорт данных</a>
-                  <a href="#" onclick="openImportModal()">📥 Импорт расписания</a>
-                  <a href="/templates/Расписание_шаблон.xlsx">📄 Скачать шаблон</a>
-                  <a href="#" onclick="openScheduleManagementModal()">⚙️ Управление</a>
-                  <a href="#" onclick="showShipmentReport()">📄Список Отправлений</a>
-                </div>
-              </div>
-            ` : ``}
-          </div>
-            <!-- Фильтры загружаются ниже -->
-          </div>
-          <div id="upcomingList" class="upcoming-list"></div>
-        </div>
-        <div id="tabContent-calendar" style="display:none;">
-          ${isAdminOrManager ? `
-            <div id="calendarControls" class="calendar-controls">
-              <!-- Управление отображением месяца здесь -->
-            </div>
-            <div id="calendarFilters" class="calendar-filters">
-              <!-- Фильтры календаря здесь -->
-            </div>
-            <div id="calendarView" class="calendar-view">
-              <div id="currentMonthYear"></div>
-              <div id="calendarGrid" class="calendar-grid"></div>
-            </div>
-            <div id="calendarNoAccess" style="display:none;">Нет прав для просмотра календаря</div>
-          ` : `<div id="calendarNoAccess">Нет прав для просмотра календаря</div>`}
+    if (tabId === 'formSection') {
+        console.log("🔄 Переключено на Приёмку");
+    } else if (tabId === 'scanSection') {
+        if (typeof initScanner === 'function') {
+            initScanner();
+        } else {
+            console.error("❌ initScanner() не найден — проверь подключение scan.js");
+        }
+    }
+}
+
+// Функция для отображения раздела "Таблица"
+function loadTable() {
+    const dynamicContent = document.getElementById('dynamicContent');
+    if (!dynamicContent) return;
+    dynamicContent.style.display = 'block';
+    dynamicContent.innerHTML = `
+        <h2>Таблица отправлений</h2>
+        <div id="tableContainer"></div>
+        <div id="paginationContainer"></div>
+        <button class="icon-button" onclick="exportAllDataToExcel()" style="margin-top: 10px;">
+            <i class="fas fa-download"></i> Выгрузить в Excel
+        </button>
+    `;
+    fetchDataAndDisplayTable();
+}
+// Выгрузка всех данных таблицы в Excel
+function exportAllDataToExcel() {
+    fetch('export_to_excel.php')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'exported_data.xls';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Ошибка при экспорте данных:', error);
+            alert('Не удалось выгрузить данные. Попробуйте позже.');
+        });
+}
+
+// Функция для отображения раздела "Расписание"
+function loadChart() {
+    const scheduleSection = document.getElementById('scheduleSection');
+    if (!scheduleSection) return;
+
+    document.getElementById('dynamicContent').style.display = 'none';
+    const tableSection = document.getElementById('tableSection');
+    if (tableSection) tableSection.style.display = 'none';
+
+    scheduleSection.style.display = 'block';
+
+    const scheduleContainer = document.getElementById('scheduleContainer');
+    scheduleContainer.innerHTML = '';
+
+    const tableContainer = document.createElement('div');
+    tableContainer.id = 'scheduleTable';
+    tableContainer.classList.add('schedule-container');
+    tableContainer.innerHTML = generateScheduleTable();
+
+    scheduleContainer.appendChild(tableContainer);
+}
+
+function generateScheduleTable(weekOffset = 0) {
+    const today = new Date();
+    today.setDate(today.getDate() + weekOffset * 7);
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - today.getDay() + 1);
+    const monthNames = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+    let tableHTML = `<h2 class="schedule-title">Расписание отправок</h2>`;
+    tableHTML += `<table class="schedule-table"><thead><tr>`;
+    for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(firstDayOfWeek);
+        currentDate.setDate(firstDayOfWeek.getDate() + i);
+        const dayNames = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+        const dayName = dayNames[i];
+        const day = currentDate.getDate();
+        const month = monthNames[currentDate.getMonth()];
+        tableHTML += `<th>${dayName} <br> ${day} ${month}</th>`;
+    }
+    tableHTML += `</tr></thead><tbody><tr>`;
+    for (let i = 0; i < 7; i++) {
+        tableHTML += `<td class="schedule-cell"></td>`;
+    }
+    tableHTML += `</tr></tbody></table>`;
+    tableHTML += `
+        <div class="schedule-controls">
+            <button onclick="changeWeek(-1)">← Предыдущая неделя</button>
+            <button onclick="changeWeek(1)">Следующая неделя →</button>
         </div>
     `;
-    dynamicContent.innerHTML = html;
+    return tableHTML;
+}
 
-    // --- Фильтры ---
-    const filterBlock = document.getElementById("filterBlock");
-    if (filterBlock) {
-        filterBlock.innerHTML = `
-          <label for="marketplaceFilter">Маркетплейс</label>
-          <select id="marketplaceFilter" name="marketplaceFilter"></select>
-          <label for="cityDropdown">Город</label>
-          <select id="cityDropdown" name="cityDropdown"></select>
-          <label for="destinationWarehouseFilter">Склад</label>
-          <select id="destinationWarehouseFilter" name="destinationWarehouseFilter"></select>
-        `;
+let currentWeekOffset = 0;
+function changeWeek(offset) {
+    currentWeekOffset += offset;
+    const scheduleTable = document.getElementById('scheduleTable');
+    if (scheduleTable) {
+        scheduleTable.innerHTML = generateScheduleTable(currentWeekOffset);
     }
+}
 
-    // --- Уведомление для фильтров ---
-    function showFilterNotice(msg) {
-        let n = document.getElementById('filterNotice');
-        if (!n) {
-            n = document.createElement('div');
-            n.id = 'filterNotice';
-            n.style = "color:#b70000;font-size:1em;padding:7px 0 3px 0;";
-            filterBlock.appendChild(n);
-        }
-        n.textContent = msg;
-        setTimeout(() => { n.textContent = ""; }, 3000);
-    }
+function toggleMobileProfileMenu() {
+  const menu = document.getElementById("mobileProfileMenu");
+  if (!menu) return;
+  menu.classList.toggle("visible");
+  menu.classList.toggle("hidden");
+}
+/**
+ * Загружает старую форму приёмки во вторую вкладку.
+ * Форма берётся из старого проекта (OLDWORL) и отправляет данные на log_data.php.
+ * Вызов происходит только один раз — при первом открытии вкладки.
+ */
+function loadOldReception() {
+  const container = document.getElementById('manualReceptionContainer');
+  if (!container || container.dataset.loaded) return;
+  container.dataset.loaded = 'true';
 
-    // Сбрасываем фильтры
-    window.activeMarketplaceFilter = "";
-    window.activeCityFilter = "";
-    window.activeDestinationWarehouseFilter = "";
+  // Форма ручной приёмки
+  container.innerHTML = `
+    <h3>Ручная приёмка</h3>
+    <div id="statusOld"></div>
+    <form id="manualReceptionForm" enctype="multipart/form-data">
+      <div class="form-group">
+        <label for="citySelect">Город отправления:</label>
+        <select id="citySelect" name="city" required>
+          <option value="">Загрузка...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="warehouseSelect">Склад (направление):</label>
+        <select id="warehouseSelect" name="warehouses" disabled required>
+          <option value="">Выберите город сначала</option>
+        </select>
+      </div>
+      <div class="form-group" id="dateGroup" style="display:none;">
+        <label for="dateSelect">Дата сдачи:</label>
+        <select id="dateSelect" name="date"></select>
+      </div>
 
-    const marketplaceSelect = document.getElementById("marketplaceFilter");
-    const citySelect = document.getElementById("cityDropdown");
-    const warehouseSelect = document.getElementById("destinationWarehouseFilter");
+      <!-- Скрытые поля -->
+      <input type="hidden" id="scheduleId" name="schedule_id">
+      <input type="hidden" id="directionInput" name="direction">
+      <input type="hidden" id="dateOfDeliveryInput" name="date_of_delivery">
 
-    // Загружаем список маркетплейсов
-    fetch("filter_options.php?action=marketplaces")
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                marketplaceSelect.innerHTML = `<option value="">Все</option>` +
-                    data.marketplaces.map(mp => `<option value="${mp}">${mp}</option>`).join('');
-            }
-        });
+      <div class="form-group">
+        <label for="ipInput">ИП:</label>
+        <input type="text" id="ipInput" name="ip" required>
+      </div>
+      <div class="form-group">
+        <label for="commentInput">Комментарий:</label>
+        <textarea id="commentInput" name="comment" rows="3"></textarea>
+      </div>
 
-    // Подгружаем все города (по всем маркетплейсам)
-    function loadAllCities(selectedCity) {
-        fetch("filter_options.php?action=all_cities")
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    citySelect.innerHTML = `<option value="">Все</option>` +
-                        data.cities.map(c => `<option value="${c}">${c}</option>`).join('');
-                }
-            });
-    }
+      <div class="form-group">
+        <label for="senderPhone">Телефон отправителя:</label>
+        <input type="tel" id="senderPhone" name="sender" pattern="[0-9]{10,15}" required>
+      </div>
 
-    // Подгружаем все склады (по всем маркетплейсам и городам)
-    function loadAllWarehouses(selectedCity, selectedWarehouse) {
-        let url = "filter_options.php?action=all_warehouses";
-        if (selectedCity) url += "&city=" + encodeURIComponent(selectedCity);
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                        data.warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-                }
-            });
-    }
+      <div class="form-group">
+        <label for="shipmentType">Тип отправки:</label>
+        <select id="shipmentType" name="packaging_type" required>
+          <option value="">Выберите тип</option>
+          <option value="Box">Короба</option>
+          <option value="Pallet">Паллеты</option>
+        </select>
+      </div>
 
-    // Изначально подгружаем все города и склады
-    loadAllCities();
-    loadAllWarehouses();
+      <div class="form-group">
+        <label for="boxes">Количество мест/паллет:</label>
+        <input type="number" id="boxes" name="boxes" min="1" required>
+      </div>
 
-    // --- Логика изменения фильтров ---
-    marketplaceSelect.onchange = function () {
-        window.activeMarketplaceFilter = this.value;
-        const prevCity = window.activeCityFilter;
-        const prevWarehouse = window.activeDestinationWarehouseFilter;
+      <div class="form-group">
+        <label for="paymentAmount">Сумма оплаты (₽):</label>
+        <input type="number" id="paymentAmount" name="payment"
+               step="0.01" min="0" inputmode="decimal" required>
+      </div>
 
-        let cityPromise;
-        if (!window.activeMarketplaceFilter) {
-            cityPromise = fetch("filter_options.php?action=all_cities")
-                .then(r => r.json())
-                .then(data => data.cities || []);
-        } else {
-            cityPromise = fetch(`filter_options.php?action=cities&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`)
-                .then(r => r.json())
-                .then(data => data.cities || []);
-        }
+      <div class="form-group">
+        <label for="paymentType">Способ оплаты:</label>
+        <select id="paymentType" name="payment_type" required>
+          <option value="">Выберите способ оплаты</option>
+          <option value="Наличные">Наличные</option>
+          <option value="ТБанк">Т-Банк</option>
+          <option value="Долг">Долг</option>
+        </select>
+      </div>
 
-        cityPromise.then(cities => {
-            const cityValid = !prevCity || cities.includes(prevCity);
-            if (!cityValid) {
-                showFilterNotice("Нет отправлений по выбранному маркетплейсу и городу.");
-                window.activeCityFilter = "";
-                window.activeDestinationWarehouseFilter = "";
-            } else {
-                window.activeCityFilter = prevCity;
-            }
-            citySelect.innerHTML = `<option value="">Все</option>` +
-                cities.map(c => `<option value="${c}">${c}</option>`).join('');
-            citySelect.disabled = false;
+      <div class="form-group" id="qrImage" style="display:none;">
+        <img id="qrPreview" alt="QR code preview">
+      </div>
 
-            let whPromise;
-            if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
-                whPromise = fetch("filter_options.php?action=all_warehouses")
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
-                whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
-                whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
-                    .then(r => r.json())
-                    .then(data => data.warehouses || []);
-            } else {
-                whPromise = Promise.resolve([]);
-            }
+      <!-- Фото: галерея + камера (оба как photos[]) -->
+      <div class="form-group">
+        <label>Фотографии:</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" id="btnPickGallery">📁 Выбрать из галереи</button>
+          <button type="button" id="btnTakePhoto">📷 Сделать фото</button>
+          <span id="photoHint" style="opacity:.7;">(можно и выбрать, и сфотографировать)</span>
+        </div>
+        <input type="file" id="fileGallery" name="photos[]" accept="image/*" multiple style="display:none">
+        <input type="file" id="fileCamera"  name="photos[]" accept="image/*" capture="environment" style="display:none">
+        <div id="photoCounter" style="margin-top:6px; font-size:.9em; opacity:.8;"></div>
+      </div>
 
-            whPromise.then(warehouses => {
-                const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
-                if (!whValid && prevWarehouse) {
-                    showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
-                    window.activeDestinationWarehouseFilter = "";
-                } else {
-                    window.activeDestinationWarehouseFilter = prevWarehouse;
-                }
-                warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                    warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-                warehouseSelect.disabled = false;
-                fetchAndDisplayUpcoming();
-            });
-        });
-    };
+      <button type="submit">Отправить заявку</button>
+    </form>
+  `;
 
-    citySelect.onchange = function () {
-        window.activeCityFilter = this.value;
-        const prevWarehouse = window.activeDestinationWarehouseFilter;
+  // --- Тарифы ---
+  let tariffsData = {};
+  fetch('tariffs/fetch_tariffs.php')
+    .then(res => res.json())
+    .then(data => { if (data.success) tariffsData = data.data || {}; })
+    .catch(err => console.error('Ошибка загрузки тарифов:', err));
 
-        let whPromise;
-        if (!window.activeMarketplaceFilter && !window.activeCityFilter) {
-            whPromise = fetch("filter_options.php?action=all_warehouses")
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else if (!window.activeMarketplaceFilter && window.activeCityFilter) {
-            whPromise = fetch(`filter_options.php?action=all_warehouses&city=${encodeURIComponent(window.activeCityFilter)}`)
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else if (window.activeMarketplaceFilter && window.activeCityFilter) {
-            whPromise = fetch(`filter_options.php?action=warehouses&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}&city=${encodeURIComponent(window.activeCityFilter)}`)
-                .then(r => r.json())
-                .then(data => data.warehouses || []);
-        } else {
-            whPromise = Promise.resolve([]);
-        }
-
-        whPromise.then(warehouses => {
-            const whValid = !prevWarehouse || warehouses.includes(prevWarehouse);
-            if (!whValid && prevWarehouse) {
-                showFilterNotice("Нет отправлений по выбранному складу для текущих фильтров.");
-                window.activeDestinationWarehouseFilter = "";
-            } else {
-                window.activeDestinationWarehouseFilter = prevWarehouse;
-            }
-            warehouseSelect.innerHTML = `<option value="">Все</option>` +
-                warehouses.map(w => `<option value="${w}">${w}</option>`).join('');
-            warehouseSelect.disabled = false;
-            fetchAndDisplayUpcoming();
-        });
-    };
-
-    warehouseSelect.onchange = function () {
-        window.activeDestinationWarehouseFilter = this.value;
-        fetchAndDisplayUpcoming();
-    };
-
-    document.getElementById("toggleArchiveBtn").addEventListener("click", () => {
-        window.archiveView = !window.archiveView;
-        document.getElementById("toggleArchiveBtn").textContent = window.archiveView ? "Показать активные" : "Показать архив";
-        fetchAndDisplayUpcoming();
+  // --- Города ---
+  fetch('filter_options.php?action=all_cities')
+    .then(res => res.json())
+    .then(data => {
+      const citySelect = document.getElementById('citySelect');
+      const cities = Array.isArray(data) ? data : (data && data.cities ? data.cities : []);
+      citySelect.innerHTML = '<option value="">Выберите город</option>';
+      cities.forEach(city => {
+        const opt = document.createElement('option');
+        opt.value = city;
+        opt.textContent = city;
+        citySelect.appendChild(opt);
+      });
+    })
+    .catch(err => {
+      console.error('Ошибка загрузки городов:', err);
+      document.getElementById('citySelect').innerHTML = '<option value="">Ошибка загрузки</option>';
     });
 
-    // Функция переключения вкладок. Добавляем в window, чтобы ею пользовались
-    window.switchTab = function(tab) {
-        document.getElementById('tab-upcoming').classList.remove('active');
-        document.getElementById('tab-calendar').classList.remove('active');
-        document.getElementById('tabContent-upcoming').style.display = 'none';
-        document.getElementById('tabContent-calendar').style.display = 'none';
-        if (tab === 'upcoming') {
-            document.getElementById('tab-upcoming').classList.add('active');
-            document.getElementById('tabContent-upcoming').style.display = 'block';
-        } else if (tab === 'calendar') {
-            document.getElementById('tab-calendar').classList.add('active');
-            document.getElementById('tabContent-calendar').style.display = 'block';
-            if (!isAdminOrManager) {
-                document.getElementById("calendarNoAccess").style.display = "block";
-                document.getElementById("calendarControls").style.display = "none";
-                document.getElementById("calendarFilters").style.display = "none";
-                document.getElementById("calendarView").style.display = "none";
-            } else {
-                document.getElementById("calendarNoAccess").style.display = "none";
-                document.getElementById("calendarControls").style.display = "";
-                document.getElementById("calendarFilters").style.display = "";
-                document.getElementById("calendarView").style.display = "";
-            }
-        }
-    };
+  // --- Ручной ввод суммы ---
+  const sumField = document.getElementById('paymentAmount');
+  sumField.addEventListener('input', () => {
+    if (sumField.value === '') delete sumField.dataset.manual;
+    else sumField.dataset.manual = '1';
+  });
 
-    // Инициализация календаря при первой загрузке
-    if (typeof renderStaticCalendar === 'function') renderStaticCalendar();
-    if (typeof fetchDataAndUpdateCalendar === 'function') fetchDataAndUpdateCalendar();
+  // --- Фото ---
+  const fileGallery = document.getElementById('fileGallery');
+  const fileCamera  = document.getElementById('fileCamera');
+  const btnPickGallery = document.getElementById('btnPickGallery');
+  const btnTakePhoto   = document.getElementById('btnTakePhoto');
+  const photoCounter   = document.getElementById('photoCounter');
 
-    // Загружаем список отправлений
-    fetchAndDisplayUpcoming();
-}
+  btnPickGallery.addEventListener('click', () => fileGallery.click());
+  btnTakePhoto.addEventListener('click',   () => fileCamera.click());
 
-/**
- * Загрузка предстоящих отправлений и отображение их на вкладке
- * «Ближайшие отправления». Фильтрация по выбранным параметрам,
- * группировка по дате приёмки и построение элементов списка. Взята
- * без изменений из schedule.js.
- * @param {boolean} showArchived - показывать ли архивированные записи
- */
-function fetchAndDisplayUpcoming(showArchived = false) {
-    const container = document.getElementById("upcomingList");
-    if (!container) return;
-    container.innerHTML = "Загрузка…";
-    // Формируем URL с учётом фильтров
-    let url = `schedule.php?archived=${showArchived ? 1 : 0}`;
-    if (window.activeMarketplaceFilter) {
-        url += `&marketplace=${encodeURIComponent(window.activeMarketplaceFilter)}`;
+  function updatePhotoCounter() {
+    const count = (fileGallery.files?.length || 0) + (fileCamera.files?.length || 0);
+    photoCounter.textContent = count ? `Выбрано файлов: ${count}` : '';
+  }
+  fileGallery.addEventListener('change', updatePhotoCounter);
+  fileCamera.addEventListener('change',  updatePhotoCounter);
+
+  // --- Кэш расписаний ---
+  let schedulesCache = [];
+
+  // Выбор города
+  document.getElementById('citySelect').addEventListener('change', function () {
+    const city = this.value;
+    const warehouseSelect = document.getElementById('warehouseSelect');
+    const dateSelect = document.getElementById('dateSelect');
+    const dateGroup = document.getElementById('dateGroup');
+
+    warehouseSelect.innerHTML = '';
+    dateSelect.innerHTML = '';
+    document.getElementById('scheduleId').value = '';
+    document.getElementById('directionInput').value = '';
+    document.getElementById('dateOfDeliveryInput').value = '';
+
+    sumField.value = '';
+    delete sumField.dataset.manual;
+
+    if (!city) {
+      warehouseSelect.disabled = true;
+      dateGroup.style.display = 'none';
+      return;
     }
-    if (window.activeCityFilter) {
-        url += `&city=${encodeURIComponent(window.activeCityFilter)}`;
-    }
-    if (window.activeDestinationWarehouseFilter) {
-        url += `&warehouse=${encodeURIComponent(window.activeDestinationWarehouseFilter)}`;
-    }
-    fetch(url)
-        .then(r => {
-            if (!r.ok) throw new Error("Ошибка загрузки: " + r.status);
-            return r.json();
-        })
-        .then(data => {
-            // В некоторых ответах backend либо возвращает массив, либо объект {schedules: []}
-            const list = Array.isArray(data.schedules) ? data.schedules : data;
-            if (!Array.isArray(list) || !list.length) {
-                container.innerHTML = "Нет расписаний.";
-                return;
-            }
-            const now = new Date();
-            const isClient = window.userRole === 'client';
-            // Фильтрация: исключаем прошедшие и записи, по которым клиент уже не может создать заявку
-            const filtered = list.filter(item => {
-                const delivery = new Date(item.delivery_date);
-                if (delivery < now) {
-                    return false; // уже отправились
-                }
-                if (isClient) {
-                    return typeof canCreateOrderForSchedule === 'function'
-                        ? canCreateOrderForSchedule(item)
-                        : true;
-                }
-                return true;
-            });
-            // Группировка по дате приёмки (accept_date)
-            const grouped = {};
-            filtered.forEach(sh => {
-                const d = sh.accept_date;
-                if (!grouped[d]) grouped[d] = [];
-                grouped[d].push(sh);
-            });
-            // Очищаем контейнер и заполняем блоками
-            container.innerHTML = "";
-            Object.keys(grouped)
-                .sort((a, b) => new Date(a) - new Date(b))
-                .forEach(d => {
-                    grouped[d].forEach(sh => {
-                        const formattedDelivery = typeof formatDeliveryDate === 'function'
-                            ? formatDeliveryDate(sh.delivery_date)
-                            : sh.delivery_date;
-                        let mpClass = '';
-                        if (sh.marketplace === 'Ozon') {
-                            mpClass = 'mp-ozon';
-                        } else if (sh.marketplace === 'Wildberries') {
-                            mpClass = 'mp-wb';
-                        } else if (sh.marketplace === 'YandexMarket') {
-                            mpClass = 'mp-yandex';
-                        }
-                        const div = document.createElement("div");
-                        div.className = "upcoming-item styled-upcoming-item";
-                        div.innerHTML = `
-                            <div class="shipment-info">
-                              <div class="shipment-header">
-                                <span class="route">${sh.city || '—'} → ${sh.warehouses || '—'}</span>
-                                <span class="marketplace ${mpClass}">${sh.marketplace || ''}</span>
-                              </div>
-                              <div class="shipment-dates">
-                                <span class="delivery-date">${formattedDelivery}</span>
-                              </div>
-                            </div>
-                        `;
-                        // При клике открываем карточку отправления
-                        div.addEventListener("click", () => {
-                            if (typeof openSingleShipmentModal === 'function') openSingleShipmentModal(sh);
-                        });
-                        container.appendChild(div);
-                    });
-                });
-            if (!container.innerHTML.trim()) {
-                container.innerHTML = "Нет отправлений по выбранным условиям.";
-            }
-        })
-        .catch(err => {
-            console.error("Ошибка fetchAndDisplayUpcoming:", err);
-            container.innerHTML = `Ошибка загрузки: ${err.message}`;
+
+    fetch('schedule.php?archived=0&city=' + encodeURIComponent(city))
+      .then(res => res.json())
+      .then(data => {
+        const schedules = Array.isArray(data) ? data : [];
+        const today = new Date(); today.setHours(0,0,0,0);
+
+        schedulesCache = schedules.filter(s => {
+          const d = new Date(s.accept_date); d.setHours(0,0,0,0);
+          return d >= today;
         });
+
+        if (schedulesCache.length === 0) {
+          warehouseSelect.innerHTML = '<option value="">Нет доступных складов</option>';
+          warehouseSelect.disabled = true;
+          dateGroup.style.display = 'none';
+          return;
+        }
+
+        const warehouses = [...new Set(schedulesCache.map(s => s.warehouses))];
+        warehouseSelect.innerHTML = '<option value="">Выберите склад</option>';
+        warehouses.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w;
+          opt.textContent = w;
+          warehouseSelect.appendChild(opt);
+        });
+        warehouseSelect.disabled = false;
+        dateGroup.style.display = 'none';
+      })
+      .catch(err => {
+        console.error('Ошибка загрузки расписания:', err);
+        warehouseSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+        warehouseSelect.disabled = true;
+        dateGroup.style.display = 'none';
+      });
+  });
+
+  // Выбор склада
+  document.getElementById('warehouseSelect').addEventListener('change', function () {
+    const city = document.getElementById('citySelect').value;
+    const warehouse = this.value;
+    const dateSelect = document.getElementById('dateSelect');
+    const dateGroup = document.getElementById('dateGroup');
+
+    document.getElementById('scheduleId').value = '';
+    document.getElementById('directionInput').value = warehouse;
+    document.getElementById('dateOfDeliveryInput').value = '';
+
+    sumField.value = '';
+    delete sumField.dataset.manual;
+
+    if (!warehouse) {
+      dateGroup.style.display = 'none';
+      updateCost();
+      return;
+    }
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const filtered = schedulesCache.filter(
+      s => s.city === city && s.warehouses === warehouse && new Date(s.accept_date) >= today
+    );
+
+    if (!filtered || filtered.length === 0) {
+      dateGroup.style.display = 'none';
+      updateCost();
+      return;
+    }
+
+    const dates = [...new Set(filtered.map(s => s.accept_date))];
+    if (dates.length <= 1) {
+      dateGroup.style.display = 'none';
+      document.getElementById('scheduleId').value = filtered[0].id;
+      document.getElementById('dateOfDeliveryInput').value = filtered[0].accept_date;
+      updateCost();
+    } else {
+      dateGroup.style.display = 'block';
+      dateSelect.innerHTML = '<option value="">Выберите дату</option>';
+      dates.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.textContent = d;
+        dateSelect.appendChild(opt);
+      });
+      updateCost();
+    }
+  });
+
+  // Выбор даты
+  document.getElementById('dateSelect').addEventListener('change', function () {
+    const city      = document.getElementById('citySelect').value;
+    const warehouse = document.getElementById('warehouseSelect').value;
+    const date      = this.value;
+    const schedule = schedulesCache.find(s =>
+      s.city === city && s.warehouses === warehouse && s.accept_date === date
+    );
+    document.getElementById('scheduleId').value = schedule ? schedule.id : '';
+    document.getElementById('dateOfDeliveryInput').value = date || '';
+    updateCost();
+  });
+
+  // Показ/скрытие QR
+  document.getElementById('paymentType').addEventListener('change', function () {
+    const qrImage = document.getElementById('qrImage');
+    const qrPreview = document.getElementById('qrPreview');
+    if (this.value === 'ТБанк') {
+      qrImage.style.display = 'block';
+      qrPreview.src = './QR/1IP.jpg';
+    } else {
+      qrImage.style.display = 'none';
+      qrPreview.src = '';
+    }
+  });
+
+  // Расчёт суммы (не перезаписывает ручной ввод)
+  function updateCost({ force = false } = {}) {
+    const city      = document.getElementById('citySelect').value;
+    const warehouse = document.getElementById('warehouseSelect').value;
+    const type      = document.getElementById('shipmentType').value;
+    const qty       = parseInt(document.getElementById('boxes').value, 10) || 0;
+
+    if (!force && sumField.dataset.manual === '1') return;
+
+    let value = '';
+
+    if (tariffsData[city] && tariffsData[city][warehouse] && qty > 0) {
+      const prices = tariffsData[city][warehouse];
+      const pricePerUnit =
+        type === 'Box'    ? prices.box_price   :
+        type === 'Pallet' ? prices.pallet_price : null;
+
+      if (pricePerUnit != null) {
+        value = (qty * pricePerUnit).toFixed(2);
+      }
+    }
+
+    sumField.value = value;
+    if (value !== '') delete sumField.dataset.manual;
+  }
+
+  document.getElementById('shipmentType').addEventListener('change', updateCost);
+  document.getElementById('boxes').addEventListener('input', updateCost);
+
+  // ОТПРАВКА ФОРМЫ: собираем FormData ВРУЧНУЮ и склеиваем файлы
+  document.getElementById('manualReceptionForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const statusEl  = document.getElementById('statusOld');
+    const submitBtn = this.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    submitBtn.style.backgroundColor = '#ccc';
+    submitBtn.textContent = 'Создание...';
+
+    // Собираем FormData вручную: поля формы + оба FileList в один массив.
+    const fd = new FormData();
+
+    // Текстовые поля
+    fd.append('city',               document.getElementById('citySelect').value || '');
+    fd.append('warehouses',         document.getElementById('warehouseSelect').value || '');
+    fd.append('date',               document.getElementById('dateSelect').value || '');
+    fd.append('schedule_id',        document.getElementById('scheduleId').value || '');
+    fd.append('direction',          document.getElementById('directionInput').value || '');
+    fd.append('date_of_delivery',   document.getElementById('dateOfDeliveryInput').value || '');
+    fd.append('sender',             document.getElementById('senderPhone').value || '');
+    fd.append('packaging_type',     document.getElementById('shipmentType').value || '');
+    fd.append('boxes',              document.getElementById('boxes').value || '');
+    fd.append('payment',            document.getElementById('paymentAmount').value || '');
+    fd.append('payment_type',       document.getElementById('paymentType').value || '');
+    fd.append('ip',                 document.getElementById('ipInput').value || '');
+    fd.append('comment',            document.getElementById('commentInput').value || '');
+
+    // Файлы: склеиваем галерею и камеру
+    const allFiles = [];
+    if (fileGallery.files && fileGallery.files.length) {
+      for (const f of fileGallery.files) allFiles.push(f);
+    }
+    if (fileCamera.files && fileCamera.files.length) {
+      for (const f of fileCamera.files) allFiles.push(f);
+    }
+
+    // Отправляем под ДВУМЯ именами — для совместимости со старым сервером:
+    // 1) photos[] — как новая логика
+    // 2) photo[]  — на случай, если сервер ждёт старое имя
+    for (const f of allFiles) {
+      fd.append('photos[]', f, f.name);
+      fd.append('photo[]',  f, f.name);
+    }
+
+    try {
+      const res = await fetch('log_data.php', { method: 'POST', body: fd });
+      const result = await res.json();
+
+      if (result.status === 'success') {
+        statusEl.textContent = '✅ Заявка успешно создана';
+        statusEl.style.color = 'green';
+
+        window.lastReceptionData = {
+          city:         document.getElementById('citySelect').value || '',
+          warehouse:    document.getElementById('directionInput').value || '',
+          acceptDate:   new Date().toISOString().split('T')[0],
+          deliveryDate: document.getElementById('dateOfDeliveryInput').value || '',
+          boxCount:     document.getElementById('boxes').value || 1,
+          phone:        document.getElementById('senderPhone').value || '',
+          company:      ''
+        };
+
+        this.reset();
+        document.getElementById('warehouseSelect').disabled = true;
+        document.getElementById('dateGroup').style.display = 'none';
+        delete document.getElementById('paymentAmount').dataset.manual;
+        photoCounter.textContent = '';
+
+        submitBtn.disabled = false;
+        submitBtn.style.backgroundColor = '';
+        submitBtn.textContent = 'Отправить заявку';
+
+        let printBtn = document.getElementById('receptionPrintBtn');
+        if (!printBtn) {
+          printBtn = document.createElement('button');
+          printBtn.id = 'receptionPrintBtn';
+          printBtn.type = 'button';
+          printBtn.textContent = '📄 Скачать акт приёмки';
+          printBtn.style.marginLeft = '10px';
+          printBtn.addEventListener('click', () => {
+            if (typeof downloadReceptionPdf === 'function') {
+              downloadReceptionPdf();
+            } else {
+              console.error('downloadReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+            }
+          });
+          statusEl.after(printBtn);
+        }
+      } else {
+        statusEl.textContent = `Ошибка: ${result.message}`;
+        statusEl.style.color = 'red';
+        submitBtn.disabled = false;
+        submitBtn.style.backgroundColor = '';
+        submitBtn.textContent = 'Отправить заявку';
+      }
+    } catch (err) {
+      statusEl.textContent = 'Ошибка отправки заявки';
+      statusEl.style.color = 'red';
+      submitBtn.disabled = false;
+      submitBtn.style.backgroundColor = '';
+      submitBtn.textContent = 'Отправить заявку';
+    }
+  });
 }
 
-/**
- * Форматирование даты сдачи для отображения (добавляет номер дня недели).
- * Используется в списке ближайших отправлений. Взята из schedule.js.
- * @param {string} dateStr
- */
-function formatDeliveryDate(dateStr) {
-    if (!dateStr) return "";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const days = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-    const dayName = days[d.getDay()];
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}.${mm}.${yyyy} ${dayName}`;
-}
-
-/**
- * Применение фильтра по городу (используется в списке городов, если есть
- * горизонтальная навигация). Включает выбранный таб и обновляет список.
- * @param {string} cityName
- */
-function filterByCity(cityName) {
-    window.activeCityFilter = cityName;
-    document.querySelectorAll(".city-tab-header .tab-button").forEach(btn => {
-        btn.classList.toggle("active", btn.textContent === cityName || (cityName === "" && btn.textContent === "Все"));
-    });
-    fetchAndDisplayUpcoming(window.archiveView);
-}
-
-// Экспортируем функции в глобальный объект window, чтобы они
-// были доступны в других модулях без систем сборки
-window.loadSchedule = loadSchedule;
-window.fetchAndDisplayUpcoming = fetchAndDisplayUpcoming;
-window.formatDeliveryDate = formatDeliveryDate;
-window.filterByCity = filterByCity;
+ 
