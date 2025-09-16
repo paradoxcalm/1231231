@@ -531,16 +531,37 @@ function setupPalletFieldsTrigger() {
     update();
 }
 // 12️⃣ Модальное окно успешной заявки
-function showSuccessModal(qrText, paymentAmount) {
-    const modal = document.getElementById('requestModal');
+function showSuccessModal(qrText, paymentAmount, modalIdOverride) {
+    const lastModalId = typeof modalIdOverride === 'string' && modalIdOverride
+        ? modalIdOverride
+        : (typeof window !== 'undefined' && window.__lastRequestFormModalId) || 'requestModal';
+    const modal = lastModalId ? document.getElementById(lastModalId) : null;
+
     if (modal) {
         if (typeof modal._legacyCleanup === 'function') {
-            modal._legacyCleanup();
-        } else {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            const content = modal.querySelector('#requestModalContent');
-            if (content) content.innerHTML = '';
+            try {
+                modal._legacyCleanup();
+            } catch (cleanupError) {
+                console.warn('showSuccessModal: ошибка при выполнении _legacyCleanup', cleanupError);
+            }
+        }
+
+        modal.classList.remove('active', 'show', 'open', 'modal-open');
+        modal.style.display = 'none';
+
+        const { requestFormContentId } = modal.dataset || {};
+        let content = null;
+        if (requestFormContentId) {
+            const datasetContent = document.getElementById(requestFormContentId);
+            if (datasetContent && modal.contains(datasetContent)) {
+                content = datasetContent;
+            }
+        }
+        if (!content) {
+            content = modal.querySelector('#requestModalContent');
+        }
+        if (content) {
+            content.innerHTML = '';
         }
     }
 
