@@ -19,7 +19,9 @@ class ProfileManager {
         try {
             const response = await fetch('../fetch_user_data.php', { credentials: 'include' });
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+                console.error('fetch_user_data.php вернул ошибку:', response.status);
+                window.location.href = '../auth_form.php';
+                return false;
             }
 
             const data = await response.json();

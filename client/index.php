@@ -1,3 +1,13 @@
+<?php
+require_once __DIR__ . '/../session_init.php';
+
+session_start();
+
+if (empty($_SESSION['user_id'])) {
+    header('Location: ../auth_form.php');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
