@@ -736,6 +736,10 @@ function initializeForm() {
         return;
     }
 
+    if (form.dataset?.initialized === 'true') {
+        return;
+    }
+
     // 1) Предзаполнение и настройка переключателей
     preloadUserDataIntoForm();
     setupPackagingToggle();
@@ -895,6 +899,8 @@ function initializeForm() {
             }
         }
     }
+
+    form.dataset.initialized = 'true';
 }
 
 
