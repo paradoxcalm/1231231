@@ -686,6 +686,7 @@
   transform: translateY(-50%) !important;
   color: var(--auth-text-muted) !important;
   font-size: 1rem !important;
+  line-height: 1 !important;
   transition: var(--auth-transition) !important;
   z-index: 1 !important;
 }
@@ -699,6 +700,7 @@
   right: 1rem !important;
   cursor: pointer !important;
   padding: 0.5rem !important;
+  line-height: 1 !important;
   border-radius: 50% !important;
   transition: var(--auth-transition) !important;
 }
