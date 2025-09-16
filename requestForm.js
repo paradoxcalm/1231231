@@ -12,6 +12,10 @@ async function calculateCost(schedule) {
         const resp = await fetch(
             `/get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
         );
+        if (!resp.ok) {
+            console.error('get_tariff.php вернул статус', resp.status);
+            return 0;
+        }
         const data = await resp.json();
         if (!data.success) return 0;
 
@@ -24,7 +28,7 @@ async function calculateCost(schedule) {
 
         return basePrice * (multipliers[schedule.marketplace] || 1.0);
     } catch (err) {
-        console.error('Ошибка расчёта стоимости:', err);
+        console.error('Ошибка расчёта стоимости:', err?.message || err);
         return 0;
     }
 }
