@@ -1,6 +1,55 @@
 // ===== form.js =====
 
 function resolveFormPath(relativePath) {
+    if (typeof relativePath !== 'string' || !relativePath) {
+        return relativePath;
+    }
+
+    // Не преобразуем уже абсолютные адреса и схемы data:
+    if (/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(relativePath) || relativePath.startsWith('data:')) {
+        return relativePath;
+    }
+
+    // Если путь начинается с "/" — этого достаточно для fetch, возвращаем как есть.
+    if (relativePath.startsWith('/')) {
+        return relativePath;
+    }
+
+    const pickFormScriptSrc = () => {
+        try {
+            const current = document?.currentScript;
+            if (current?.src && current.src.includes('form.js')) {
+                return current.src;
+            }
+            const scripts = document?.querySelectorAll?.('script[src]');
+            if (scripts) {
+                for (const script of scripts) {
+                    if (script.src?.includes('form.js')) {
+                        return script.src;
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('resolveFormPath: не удалось найти form.js в DOM', err);
+        }
+        return null;
+    };
+
+    const scriptSrc = pickFormScriptSrc();
+    if (scriptSrc) {
+        try {
+            const scriptUrl = new URL(scriptSrc, window.location.href);
+            return new URL(relativePath, scriptUrl).toString();
+        } catch (err) {
+            console.warn('resolveFormPath: ошибка при расчёте относительно form.js', err);
+        }
+    }
+
+    try {
+        return new URL(relativePath, window.location.href).toString();
+    } catch (err) {
+        console.warn('resolveFormPath: не удалось вычислить путь относительно страницы', err);
+
     if (typeof relativePath !== 'string') return relativePath;
 
     try {
