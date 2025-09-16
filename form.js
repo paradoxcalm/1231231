@@ -49,6 +49,30 @@ function resolveFormPath(relativePath) {
         return new URL(relativePath, window.location.href).toString();
     } catch (err) {
         console.warn('resolveFormPath: не удалось вычислить путь относительно страницы', err);
+
+    if (typeof relativePath !== 'string') return relativePath;
+
+    try {
+        return new URL(relativePath, window.location.href).toString();
+    } catch (err) {
+        console.warn('resolveFormPath: не удалось вычислить путь относительно страницы', err);
+    }
+
+    try {
+        const currentScript = document?.currentScript;
+        if (currentScript?.src) {
+            return new URL(relativePath, currentScript.src).toString();
+        }
+        const scripts = document?.querySelectorAll?.('script[src]');
+        if (scripts) {
+            for (const script of scripts) {
+                if (script.src?.includes('form.js')) {
+                    return new URL(relativePath, script.src).toString();
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('resolveFormPath: не удалось вычислить путь относительно form.js', err);
     }
 
     return relativePath;
