@@ -601,6 +601,11 @@ class ScheduleManager {
 
         if (typeof window.openRequestFormModal === 'function') {
             window.openRequestFormModal(schedule);
+        } else {
+            console.error('openRequestFormModal is not loaded');
+            if (window.app && typeof window.app.showError === 'function') {
+                window.app.showError('Не удалось загрузить форму заявки');
+            }
         }
     }
 }
