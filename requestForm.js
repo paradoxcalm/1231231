@@ -10,7 +10,7 @@ async function calculateCost(schedule) {
 
     try {
         const resp = await fetch(
-            `get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
+            `/get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
         );
         const data = await resp.json();
         if (!data.success) return 0;
