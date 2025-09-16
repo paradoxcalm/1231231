@@ -308,7 +308,7 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     const closeModal = () => {
         if (closed) return;
         closed = true;
-        modal.classList.remove('show');
+        modal.classList.remove('active');
         modal.style.display = 'none';
         if (contentHost) {
             contentHost.innerHTML = '';
@@ -336,8 +336,8 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     document.addEventListener('keydown', escHandler);
     modal._legacyCleanup = closeModal;
 
-    modal.classList.add('show');
-    modal.style.display = '';
+    modal.classList.add('active');
+    modal.style.display = 'flex';
     document.body.classList.add('modal-open');
 
     ensureYandexMaps().catch((err) => {
