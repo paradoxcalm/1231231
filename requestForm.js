@@ -30,6 +30,16 @@ async function calculateCost(schedule) {
 function resolveTemplateUrl(relativePath) {
     if (typeof relativePath !== 'string') return relativePath;
 
+    // Сначала пытаемся вычислить путь относительно текущей страницы
+    try {
+        return new URL(relativePath, window.location.href).toString();
+    } catch (err) {
+        console.warn('Не удалось вычислить путь относительно текущей страницы:', err);
+    }
+
+    // Если не удалось, пробуем относительно самого скрипта requestForm.js
+
+
     try {
         const currentScript = document?.currentScript;
         if (currentScript?.src) {
@@ -62,6 +72,10 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
         typeof scheduleOrId === 'object'
             ? scheduleOrId
             : { id: scheduleOrId, city, warehouses: warehouse, marketplace };
+    const relativeTemplatePath = window.location.pathname.includes('/client/')
+        ? 'templates/orderModal.html'
+        : 'client/templates/orderModal.html';
+    const templateUrl = resolveTemplateUrl(relativeTemplatePath);
 
     const templateUrl = resolveTemplateUrl('templates/orderModal.html');
     try {
