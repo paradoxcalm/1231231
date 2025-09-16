@@ -27,6 +27,22 @@ window.activeMarketplaceFilter = "";
 
 let lastRenderedSchedules = [];
 
+function canCreateOrderForSchedule(schedule) {
+    if (!schedule) return false;
+    if (schedule.status === 'Завершено' || schedule.status === 'Товар отправлен') return false;
+
+    const deadline = schedule?.accept_deadline;
+    if (!deadline) return true;
+
+    const deadlineDate = new Date(deadline);
+    if (Number.isNaN(deadlineDate.getTime())) {
+        return true;
+    }
+
+    const now = new Date();
+    return now <= deadlineDate;
+}
+
 function escapeHtmlAttribute(value) {
     if (value === null || value === undefined) return "";
     return String(value)
