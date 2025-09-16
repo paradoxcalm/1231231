@@ -9,6 +9,12 @@ class OrdersManager {
 
     init() {
         this.setupTabs();
+        const btn = document.getElementById('createOrderBtn');
+        btn?.addEventListener('click', () => {
+            if (typeof window.openRequestFormModal === 'function') {
+                window.openRequestFormModal({});
+            }
+        });
         this.loadOrders();
     }
 
