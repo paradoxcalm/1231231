@@ -46,10 +46,22 @@ class App {
         // Профильное меню
         const profileBtn = document.querySelector('.profile-btn');
         const profileDropdown = document.querySelector('.profile-dropdown');
-        
+
         if (profileBtn && profileDropdown) {
             profileBtn.addEventListener('click', () => {
                 profileDropdown.classList.toggle('active');
+            });
+
+            const dropdownItems = profileDropdown.querySelectorAll('.dropdown-item');
+            dropdownItems.forEach(item => {
+                item.addEventListener('click', (event) => {
+                    profileDropdown.classList.remove('active');
+
+                    if (item.dataset.action === 'logout') {
+                        event.preventDefault();
+                        this.logout();
+                    }
+                });
             });
 
             // Закрытие при клике вне меню
@@ -59,6 +71,10 @@ class App {
                 }
             });
         }
+    }
+
+    logout() {
+        window.location.href = '../logout.php';
     }
 
     switchSection(sectionName) {
