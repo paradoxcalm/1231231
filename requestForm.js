@@ -308,7 +308,7 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     const closeModal = () => {
         if (closed) return;
         closed = true;
-        modal.classList.remove('active');
+        modal.classList.remove('active', 'show');
         modal.style.display = 'none';
         if (contentHost) {
             contentHost.innerHTML = '';
@@ -336,7 +336,7 @@ async function openRequestFormModal(scheduleOrId, city = "", warehouse = "", mar
     document.addEventListener('keydown', escHandler);
     modal._legacyCleanup = closeModal;
 
-    modal.classList.add('active');
+    modal.classList.add('active', 'show');
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
 
