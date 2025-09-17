@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($user['role'] === 'client') {
-            header('Location: /client/index.html');
+            header('Location: /client/index.php');
             exit();
         }
 
