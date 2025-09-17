@@ -11,15 +11,25 @@ class OrdersManager {
         this.setupTabs();
         const btn = document.getElementById('createOrderBtn');
         btn?.addEventListener('click', () => {
-            if (typeof window.openClientRequestFormModal === 'function') {
-                window.openClientRequestFormModal({});
-            } else if (typeof window.openRequestFormModal === 'function') {
-                window.openRequestFormModal({}, '', '', '', {
-                    modalId: 'clientRequestModal',
-                    contentId: 'clientRequestModalContent'
-                });
+            // Создаём пустое расписание для новой заявки
+            const emptySchedule = {
+                id: '',
+                city: '',
+                warehouse: '',
+                marketplace: '',
+                acceptDate: '',
+                deliveryDate: '',
+                driverName: '',
+                driverPhone: '',
+                carNumber: '',
+                carBrand: ''
+            };
+            
+            if (window.ScheduleManager) {
+                window.ScheduleManager.openOrderModal(emptySchedule);
             } else {
-                console.error('openRequestFormModal is not loaded');
+                console.error('ScheduleManager не найден');
+                window.app.showError('Не удалось открыть форму заявки');
             }
         });
         this.loadOrders();

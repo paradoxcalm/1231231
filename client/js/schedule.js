@@ -1,4 +1,4 @@
-import { fetchMarketplaces, populateSelect } from './filterOptions.js';
+import { fetchMarketplaces, fetchWarehouses, populateSelect } from './filterOptions.js';
 
 // Управление расписанием отправлений
 class ScheduleManager {
@@ -9,9 +9,9 @@ class ScheduleManager {
         this.currentMonth = new Date();
         this.filters = {
             marketplace: '',
-            city: '',
             warehouse: ''
         };
+        this.selectedCity = localStorage.getItem('selectedCity') || '';
         this.marketplaceFilterElement = null;
         this.warehouseFilterElement = null;
 
@@ -63,7 +63,6 @@ class ScheduleManager {
             return;
         }
 
-        this.filters.city = '';
         this.marketplaceFilterElement = marketplaceFilter;
         this.warehouseFilterElement = warehouseFilter;
 
@@ -73,7 +72,8 @@ class ScheduleManager {
             try {
                 const marketplaces = await fetchMarketplaces({ baseUrl });
                 const marketplaceValue = populateSelect(marketplaceFilter, marketplaces, {
-                    selectedValue: this.filters.marketplace
+                    selectedValue: this.filters.marketplace,
+                    placeholder: 'Выберите маркетплейс'
                 });
 
                 this.filters.marketplace = marketplaceValue;
@@ -124,14 +124,14 @@ class ScheduleManager {
         }
 
         const warehouses = this.collectWarehouses(this.filters.marketplace);
-        const placeholder = this.filters.marketplace ? 'Все склады' : 'Все';
+        const placeholder = this.filters.marketplace ? 'Выберите склад' : 'Сначала выберите маркетплейс';
         const selectedValue = populateSelect(warehouseFilter, warehouses, {
             selectedValue: this.filters.warehouse,
             placeholder
         });
 
         const hasWarehouses = warehouses.length > 0;
-        warehouseFilter.disabled = !hasWarehouses;
+        warehouseFilter.disabled = !hasWarehouses || !this.filters.marketplace;
         this.filters.warehouse = hasWarehouses ? selectedValue : '';
 
         if (!hasWarehouses && this.filters.marketplace) {
@@ -219,6 +219,11 @@ class ScheduleManager {
                 city,
                 warehouses,
                 status,
+                marketplace,
+                driver_name,
+                driver_phone,
+                car_brand,
+                car_number,
                 ...rest
             }) => ({
                 ...rest,
@@ -226,7 +231,12 @@ class ScheduleManager {
                 deliveryDate: delivery_date,
                 city,
                 warehouse: warehouses,
-                status
+                status,
+                marketplace,
+                driverName: driver_name,
+                driverPhone: driver_phone,
+                carBrand: car_brand,
+                carNumber: car_number
             }));
 
             this.updateWarehouseOptions();
@@ -269,53 +279,96 @@ class ScheduleManager {
             return;
         }
 
-        grid.innerHTML = this.filteredSchedules.map(schedule => `
-            <div class="schedule-card" data-id="${schedule.id}">
-                <div class="schedule-header">
-                    <div class="schedule-route">${schedule.city} → ${schedule.warehouse}</div>
-                    <div class="schedule-marketplace marketplace-${schedule.marketplace.toLowerCase()}">
-                        ${schedule.marketplace}
+        grid.innerHTML = this.filteredSchedules.map(schedule => {
+            const canCreateOrder = this.canCreateOrderForSchedule(schedule);
+            const statusClass = this.getStatusClass(schedule.status);
+            
+            return `
+                <div class="schedule-card ${canCreateOrder ? 'can-create-order' : 'cannot-create-order'}" data-id="${schedule.id}">
+                    <div class="schedule-header">
+                        <div class="schedule-route">${schedule.city} → ${schedule.warehouse}</div>
+                        <div class="schedule-marketplace marketplace-${schedule.marketplace.toLowerCase()}">
+                            ${schedule.marketplace}
+                        </div>
                     </div>
-                </div>
-                
-                <div class="schedule-dates">
-                    <div class="date-item">
-                        <span class="date-label">Приёмка:</span>
-                        <span class="date-value">${window.utils.formatDate(schedule.acceptDate)}</span>
+                    
+                    <div class="schedule-dates">
+                        <div class="date-item">
+                            <span class="date-label">Приёмка:</span>
+                            <span class="date-value">${window.utils.formatDate(schedule.acceptDate)}</span>
+                        </div>
+                        <div class="date-item">
+                            <span class="date-label">Сдача:</span>
+                            <span class="date-value">${window.utils.formatDate(schedule.deliveryDate)}</span>
+                        </div>
+                        <div class="date-item">
+                            <span class="date-label">Водитель:</span>
+                            <span class="date-value">${schedule.driverName || '—'}</span>
+                        </div>
                     </div>
-                    <div class="date-item">
-                        <span class="date-label">Сдача:</span>
-                        <span class="date-value">${window.utils.formatDate(schedule.deliveryDate)}</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Водитель:</span>
-                        <span class="date-value">${schedule.driverName}</span>
-                    </div>
-                </div>
 
-                <div class="schedule-status status-${schedule.status.toLowerCase().replace(/\s+/g, '-')}">
-                    <i class="fas fa-circle"></i>
-                    ${schedule.status}
-                </div>
+                    <div class="schedule-status ${statusClass}">
+                        <i class="fas fa-circle"></i>
+                        ${schedule.status}
+                    </div>
 
-                <div class="schedule-action">
-                    <button class="create-order-small" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
-                    </button>
+                    <div class="schedule-action">
+                        ${canCreateOrder ? `
+                            <button class="create-order-btn" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
+                                <i class="fas fa-plus"></i>
+                                Создать заявку
+                            </button>
+                        ` : `
+                            <div class="order-closed">
+                                <i class="fas fa-lock"></i>
+                                Приём заявок закрыт
+                            </div>
+                        `}
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         // Добавляем обработчики кликов
         grid.querySelectorAll('.schedule-card').forEach(card => {
             card.addEventListener('click', (e) => {
-                if (!e.target.closest('.create-order-small')) {
+                if (!e.target.closest('.create-order-btn')) {
                     const scheduleId = parseInt(card.dataset.id);
                     this.showScheduleDetails(scheduleId);
                 }
             });
         });
+    }
+
+    canCreateOrderForSchedule(schedule) {
+        if (!schedule) return false;
+        
+        // Проверяем статус
+        const closedStatuses = ['Завершено', 'Товар отправлен', 'Отменено'];
+        if (closedStatuses.includes(schedule.status)) return false;
+
+        // Проверяем дедлайн приёмки
+        const deadline = schedule.acceptance_end || schedule.accept_deadline;
+        if (deadline) {
+            const now = new Date();
+            const deadlineDate = new Date(deadline);
+            if (now > deadlineDate) return false;
+        }
+
+        return true;
+    }
+
+    getStatusClass(status) {
+        const statusMap = {
+            'Приём заявок': 'status-open',
+            'Ожидает отправки': 'status-waiting',
+            'Готов к отправке': 'status-ready',
+            'В пути': 'status-transit',
+            'Завершено': 'status-completed',
+            'Отменено': 'status-cancelled'
+        };
+        
+        return statusMap[status] || 'status-unknown';
     }
 
     renderCalendar() {
@@ -425,83 +478,46 @@ class ScheduleManager {
         content.innerHTML = `
             <h4>Отправления на ${window.utils.formatDate(date)}</h4>
             <div class="day-schedules">
-                ${schedules.map(schedule => `
-                    <div class="day-schedule-item" data-id="${schedule.id}">
-                        <div class="schedule-item-header">
-                            <span class="route">${schedule.city} → ${schedule.warehouse}</span>
-                            <span class="marketplace marketplace-${schedule.marketplace.toLowerCase()}">
-                                ${schedule.marketplace}
-                            </span>
+                ${schedules.map(schedule => {
+                    const canCreateOrder = this.canCreateOrderForSchedule(schedule);
+                    return `
+                        <div class="day-schedule-item" data-id="${schedule.id}">
+                            <div class="schedule-item-header">
+                                <span class="route">${schedule.city} → ${schedule.warehouse}</span>
+                                <span class="marketplace marketplace-${schedule.marketplace.toLowerCase()}">
+                                    ${schedule.marketplace}
+                                </span>
+                            </div>
+                            <div class="schedule-item-info">
+                                <div class="info-row">
+                                    <span>Водитель:</span>
+                                    <span>${schedule.driverName || '—'}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span>Автомобиль:</span>
+                                    <span>${schedule.carBrand || '—'} ${schedule.carNumber || ''}</span>
+                                </div>
+                                <div class="info-row">
+                                    <span>Статус:</span>
+                                    <span class="${this.getStatusClass(schedule.status)}">${schedule.status}</span>
+                                </div>
+                            </div>
+                            ${canCreateOrder ? `
+                                <button class="create-order-small" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
+                                    <i class="fas fa-plus"></i>
+                                    Создать заявку
+                                </button>
+                            ` : `
+                                <div class="order-closed-small">
+                                    <i class="fas fa-lock"></i>
+                                    Приём закрыт
+                                </div>
+                            `}
                         </div>
-                        <div class="schedule-item-info">
-                            <div class="info-row">
-                                <span>Водитель:</span>
-                                <span>${schedule.driverName}</span>
-                            </div>
-                            <div class="info-row">
-                                <span>Автомобиль:</span>
-                                <span>${schedule.carBrand} ${schedule.carNumber}</span>
-                            </div>
-                            <div class="info-row">
-                                <span>Заявок:</span>
-                                <span>${schedule.ordersCount}</span>
-                            </div>
-                        </div>
-                        <button class="create-order-small" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                            Создать заявку
-                        </button>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
-
-        // Добавляем стили для day-schedules
-        if (!document.getElementById('daySchedulesStyles')) {
-            const styles = document.createElement('style');
-            styles.id = 'daySchedulesStyles';
-            styles.textContent = `
-                .day-schedules {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                    margin-top: 16px;
-                }
-                .day-schedule-item {
-                    border: 1px solid var(--border);
-                    border-radius: var(--radius);
-                    padding: 16px;
-                    background: var(--bg-secondary);
-                }
-                .schedule-item-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 12px;
-                }
-                .schedule-item-header .route {
-                    font-weight: 600;
-                    color: var(--text-primary);
-                }
-                .schedule-item-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                    margin-bottom: 12px;
-                }
-                .info-row {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 0.9rem;
-                }
-                .info-row span:first-child {
-                    color: var(--text-secondary);
-                }
-                .info-row span:last-child {
-                    font-weight: 500;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
 
         window.app.openModal(modal);
     }
@@ -514,6 +530,8 @@ class ScheduleManager {
         const content = document.getElementById('scheduleDetailsContent');
         
         if (!content) return;
+
+        const canCreateOrder = this.canCreateOrderForSchedule(schedule);
 
         content.innerHTML = `
             <div class="schedule-details">
@@ -548,7 +566,7 @@ class ScheduleManager {
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Статус:</span>
-                            <span class="detail-value status-${schedule.status.toLowerCase().replace(/\s+/g, '-')}">${schedule.status}</span>
+                            <span class="detail-value ${this.getStatusClass(schedule.status)}">${schedule.status}</span>
                         </div>
                     </div>
                 </div>
@@ -558,72 +576,34 @@ class ScheduleManager {
                     <div class="details-grid">
                         <div class="detail-item">
                             <span class="detail-label">Водитель:</span>
-                            <span class="detail-value">${schedule.driverName}</span>
+                            <span class="detail-value">${schedule.driverName || '—'}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Телефон:</span>
-                            <span class="detail-value">${schedule.driverPhone}</span>
+                            <span class="detail-value">${schedule.driverPhone || '—'}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Автомобиль:</span>
-                            <span class="detail-value">${schedule.carBrand} ${schedule.carNumber}</span>
+                            <span class="detail-value">${schedule.carBrand || '—'} ${schedule.carNumber || ''}</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="modal-actions">
-                    <button class="action-btn action-btn-primary" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
-                    </button>
+                    ${canCreateOrder ? `
+                        <button class="action-btn action-btn-primary" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
+                    ` : `
+                        <div class="order-closed-message">
+                            <i class="fas fa-info-circle"></i>
+                            Приём заявок для этого отправления закрыт
+                        </div>
+                    `}
                 </div>
             </div>
         `;
-
-        // Добавляем стили
-        if (!document.getElementById('scheduleDetailsStyles')) {
-            const styles = document.createElement('style');
-            styles.id = 'scheduleDetailsStyles';
-            styles.textContent = `
-                .schedule-details {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-                .details-section h4 {
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    color: var(--text-primary);
-                    margin-bottom: 12px;
-                    padding-bottom: 8px;
-                    border-bottom: 1px solid var(--border-light);
-                }
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                }
-                .detail-item {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 8px 0;
-                }
-                .detail-label {
-                    color: var(--text-secondary);
-                    font-size: 0.9rem;
-                }
-                .detail-value {
-                    font-weight: 500;
-                    color: var(--text-primary);
-                }
-                .modal-actions {
-                    display: flex;
-                    justify-content: center;
-                    margin-top: 20px;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
 
         window.app.openModal(modal);
     }
@@ -632,22 +612,484 @@ class ScheduleManager {
         const schedule = this.schedules.find(s => s.id === scheduleId);
         if (!schedule) return;
 
+        // Проверяем, можно ли создать заявку
+        if (!this.canCreateOrderForSchedule(schedule)) {
+            window.app.showError('Приём заявок для этого отправления закрыт');
+            return;
+        }
+
+        // Закрываем модальное окно деталей, если оно открыто
         const detailsModal = document.getElementById('scheduleDetailsModal');
         if (detailsModal) {
             window.app.closeModal(detailsModal);
         }
 
-        if (typeof window.openClientRequestFormModal === 'function') {
-            window.openClientRequestFormModal(schedule);
-        } else if (typeof window.openRequestFormModal === 'function') {
-            window.openRequestFormModal(schedule, '', '', '', {
-                modalId: 'clientRequestModal',
-                contentId: 'clientRequestModalContent'
+        // Открываем модальное окно создания заявки
+        this.openOrderModal(schedule);
+    }
+
+    openOrderModal(schedule) {
+        const modal = document.getElementById('clientRequestModal');
+        const content = document.getElementById('clientRequestModalContent');
+        
+        if (!modal || !content) {
+            console.error('Модальное окно заявки не найдено');
+            return;
+        }
+
+        // Загружаем шаблон формы заявки
+        this.loadOrderFormTemplate(content, schedule);
+        
+        // Показываем модальное окно
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    async loadOrderFormTemplate(container, schedule) {
+        try {
+            const response = await fetch('templates/customOrderModal.html');
+            const template = await response.text();
+            
+            container.innerHTML = template;
+            
+            // Инициализируем форму с данными расписания
+            this.initializeOrderForm(container, schedule);
+            
+        } catch (error) {
+            console.error('Ошибка загрузки шаблона формы:', error);
+            container.innerHTML = `
+                <div class="error-message">
+                    <h3>Ошибка загрузки формы</h3>
+                    <p>Не удалось загрузить форму создания заявки. Попробуйте обновить страницу.</p>
+                    <button onclick="window.app.closeModal(document.getElementById('clientRequestModal'))">
+                        Закрыть
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    initializeOrderForm(container, schedule) {
+        // Заполняем скрытые поля данными расписания
+        const setValue = (selector, value) => {
+            const element = container.querySelector(selector);
+            if (element) element.value = value || '';
+        };
+
+        setValue('#formScheduleId', schedule.id);
+        setValue('#acceptDateField', schedule.acceptDate);
+        setValue('#deliveryDateField', schedule.deliveryDate);
+        setValue('#acceptTimeField', schedule.accept_time || '');
+        setValue('#directionField', schedule.warehouse);
+        setValue('#warehouses', schedule.warehouse);
+        setValue('#driver_name', schedule.driverName || '');
+        setValue('#driver_phone', schedule.driverPhone || '');
+        setValue('#car_number', schedule.carNumber || '');
+        setValue('#car_brand', schedule.carBrand || '');
+
+        // Отображаем информацию о выбранном расписании
+        const directionElement = container.querySelector('#legacyDirection');
+        if (directionElement) {
+            directionElement.textContent = `${schedule.city} → ${schedule.warehouse}`;
+        }
+
+        const datesElement = container.querySelector('#legacyDates');
+        if (datesElement) {
+            datesElement.textContent = `${window.utils.formatDate(schedule.acceptDate)} → ${window.utils.formatDate(schedule.deliveryDate)}`;
+        }
+
+        const marketplaceElement = container.querySelector('#legacyMarketplace');
+        if (marketplaceElement) {
+            marketplaceElement.textContent = schedule.marketplace;
+        }
+
+        const warehouseElement = container.querySelector('#legacyWarehouse');
+        if (warehouseElement) {
+            warehouseElement.textContent = schedule.warehouse;
+        }
+
+        // Настраиваем выбор города
+        this.setupCitySelection(container);
+        
+        // Настраиваем обработчики формы
+        this.setupFormHandlers(container, schedule);
+        
+        // Настраиваем кнопку закрытия
+        const closeBtn = container.querySelector('[data-close-modal]');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeOrderModal();
             });
+        }
+    }
+
+    async setupCitySelection(container) {
+        const citySelect = container.querySelector('#city');
+        if (!citySelect) return;
+
+        try {
+            // Загружаем список городов
+            const response = await fetch('../filter_options.php?action=all_cities');
+            const data = await response.json();
+            const cities = data.cities || data || [];
+
+            // Заполняем селект городов
+            citySelect.innerHTML = '<option value="" disabled selected>Выберите город</option>';
+            cities.forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                citySelect.appendChild(option);
+            });
+
+            // Устанавливаем сохранённый город, если есть
+            if (this.selectedCity && cities.includes(this.selectedCity)) {
+                citySelect.value = this.selectedCity;
+                this.enableFormFields(container);
+            } else {
+                this.disableFormFields(container);
+            }
+
+            // Обработчик изменения города
+            citySelect.addEventListener('change', () => {
+                const selectedCity = citySelect.value;
+                if (selectedCity) {
+                    this.selectedCity = selectedCity;
+                    localStorage.setItem('selectedCity', selectedCity);
+                    setValue('#sender', this.selectedCity); // Автозаполнение отправителя
+                    this.enableFormFields(container);
+                    this.showCityConfirmation(container, selectedCity);
+                } else {
+                    this.disableFormFields(container);
+                }
+            });
+
+        } catch (error) {
+            console.error('Ошибка загрузки городов:', error);
+            citySelect.innerHTML = '<option value="">Ошибка загрузки городов</option>';
+            citySelect.disabled = true;
+        }
+    }
+
+    showCityConfirmation(container, cityName) {
+        // Создаём оверлей подтверждения города
+        const overlay = document.createElement('div');
+        overlay.className = 'city-confirm-overlay city-confirm-overlay--visible';
+        
+        overlay.innerHTML = `
+            <div class="city-confirm-dialog city-confirm-dialog--visible">
+                <button class="city-confirm-close" aria-label="Закрыть"></button>
+                <div class="city-confirm-icon">📍</div>
+                <h3 class="city-confirm-title">Подтвердите город отправления</h3>
+                <p class="city-confirm-message">
+                    Вы выбрали город <span class="city-confirm-city">${cityName}</span>. 
+                    Это правильно?
+                </p>
+                <div class="city-confirm-actions">
+                    <button class="city-confirm-button city-confirm-continue">
+                        Да, продолжить
+                    </button>
+                    <button class="city-confirm-button city-confirm-edit">
+                        Изменить город
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        document.body.classList.add('city-confirm-open');
+
+        // Обработчики
+        const closeBtn = overlay.querySelector('.city-confirm-close');
+        const continueBtn = overlay.querySelector('.city-confirm-continue');
+        const editBtn = overlay.querySelector('.city-confirm-edit');
+
+        const closeConfirmation = () => {
+            overlay.classList.add('city-confirm-overlay--closing');
+            overlay.querySelector('.city-confirm-dialog').classList.add('city-confirm-dialog--closing');
+            
+            setTimeout(() => {
+                document.body.removeChild(overlay);
+                document.body.classList.remove('city-confirm-open');
+            }, 250);
+        };
+
+        closeBtn.addEventListener('click', closeConfirmation);
+        
+        continueBtn.addEventListener('click', () => {
+            closeConfirmation();
+            // Город подтверждён, форма остаётся активной
+        });
+
+        editBtn.addEventListener('click', () => {
+            closeConfirmation();
+            // Возвращаем фокус на селект города
+            const citySelect = container.querySelector('#city');
+            if (citySelect) {
+                citySelect.focus();
+            }
+        });
+
+        // Закрытие по клику на оверлей
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeConfirmation();
+            }
+        });
+
+        // Закрытие по Escape
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeConfirmation();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
+    }
+
+    enableFormFields(container) {
+        // Включаем все поля формы
+        const fields = container.querySelectorAll('input:not([type="hidden"]), select:not(#city), textarea');
+        fields.forEach(field => {
+            field.disabled = false;
+        });
+
+        // Скрываем сообщение о необходимости выбора города
+        const warningMessage = container.querySelector('.city-warning');
+        if (warningMessage) {
+            warningMessage.style.display = 'none';
+        }
+
+        // Показываем кнопку отправки
+        const submitBtn = container.querySelector('.request-form__submit');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+        }
+    }
+
+    disableFormFields(container) {
+        // Отключаем все поля формы кроме выбора города
+        const fields = container.querySelectorAll('input:not([type="hidden"]):not(#city), select:not(#city), textarea');
+        fields.forEach(field => {
+            field.disabled = true;
+        });
+
+        // Показываем предупреждение
+        let warningMessage = container.querySelector('.city-warning');
+        if (!warningMessage) {
+            warningMessage = document.createElement('div');
+            warningMessage.className = 'city-warning';
+            warningMessage.innerHTML = `
+                <div class="warning-content">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <h4>Выберите город отправления</h4>
+                        <p>Пожалуйста, выберите город отправления, чтобы продолжить оформление заявки.</p>
+                    </div>
+                </div>
+            `;
+            
+            // Вставляем после селекта города
+            const cityGroup = container.querySelector('.request-form__city-group');
+            if (cityGroup) {
+                cityGroup.parentNode.insertBefore(warningMessage, cityGroup.nextSibling);
+            }
+        }
+        warningMessage.style.display = 'block';
+
+        // Отключаем кнопку отправки
+        const submitBtn = container.querySelector('.request-form__submit');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+        }
+    }
+
+    setupFormHandlers(container, schedule) {
+        const form = container.querySelector('#dataForm');
+        if (!form) return;
+
+        // Автозаполнение данных пользователя
+        this.loadUserDataIntoForm(container);
+
+        // Обработчик отправки формы
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!this.selectedCity) {
+                window.app.showError('Выберите город отправления');
+                return;
+            }
+
+            await this.submitOrderForm(form, schedule);
+        });
+
+        // Обработчик изменения типа упаковки
+        const packagingRadios = container.querySelectorAll('input[name="packaging_type"]');
+        packagingRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                this.handlePackagingTypeChange(container);
+            });
+        });
+
+        // Обработчик изменения количества
+        const boxesInput = container.querySelector('#boxes');
+        if (boxesInput) {
+            boxesInput.addEventListener('input', () => {
+                this.calculateCost(container, schedule);
+            });
+        }
+
+        // Инициализируем расчёт стоимости
+        this.calculateCost(container, schedule);
+    }
+
+    async loadUserDataIntoForm(container) {
+        try {
+            const response = await fetch('../fetch_user_data.php');
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                const user = data.data;
+                
+                // Автозаполнение полей
+                const setValue = (selector, value) => {
+                    const element = container.querySelector(selector);
+                    if (element && value) element.value = value;
+                };
+
+                setValue('#sender', user.company_name);
+                setValue('#clientPhone', user.phone);
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки данных пользователя:', error);
+        }
+    }
+
+    handlePackagingTypeChange(container) {
+        const selectedType = container.querySelector('input[name="packaging_type"]:checked')?.value;
+        const palletBlock = container.querySelector('#palletInputBlock');
+        const boxTypeBlock = container.querySelector('#boxTypeBlock');
+        const boxSizeBlock = container.querySelector('#boxSizeBlock');
+
+        if (selectedType === 'Pallet') {
+            if (palletBlock) palletBlock.classList.remove('request-form__hidden');
+            if (boxTypeBlock) boxTypeBlock.classList.add('request-form__hidden');
+            if (boxSizeBlock) boxSizeBlock.classList.add('request-form__hidden');
         } else {
-            console.error('openRequestFormModal is not loaded');
-            if (window.app && typeof window.app.showError === 'function') {
-                window.app.showError('Не удалось загрузить форму заявки');
+            if (palletBlock) palletBlock.classList.add('request-form__hidden');
+            if (boxTypeBlock) boxTypeBlock.classList.remove('request-form__hidden');
+            if (boxSizeBlock) boxSizeBlock.classList.remove('request-form__hidden');
+        }
+    }
+
+    async calculateCost(container, schedule) {
+        const boxesInput = container.querySelector('#boxes');
+        const paymentInput = container.querySelector('#payment');
+        const volumeDisplay = container.querySelector('#box_volume');
+        const tariffDisplay = container.querySelector('#tariff_rate');
+
+        if (!boxesInput || !paymentInput) return;
+
+        const quantity = parseInt(boxesInput.value) || 0;
+        const packagingType = container.querySelector('input[name="packaging_type"]:checked')?.value || 'Box';
+
+        if (quantity <= 0) {
+            if (paymentInput) paymentInput.value = '';
+            if (volumeDisplay) volumeDisplay.textContent = '—';
+            if (tariffDisplay) tariffDisplay.textContent = '—';
+            return;
+        }
+
+        try {
+            // Получаем тариф
+            const response = await fetch(`../get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(schedule.warehouse)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const unitPrice = packagingType === 'Pallet' ? data.pallet_price : data.base_price;
+                const totalCost = unitPrice * quantity;
+
+                if (paymentInput) paymentInput.value = totalCost.toFixed(2);
+                if (tariffDisplay) tariffDisplay.textContent = window.utils.formatCurrency(unitPrice) + ' за ' + (packagingType === 'Pallet' ? 'паллету' : 'коробку');
+
+                // Расчёт объёма для коробок
+                if (packagingType === 'Box' && volumeDisplay) {
+                    const volume = quantity * 0.096; // стандартная коробка 60x40x40 см = 0.096 м³
+                    volumeDisplay.textContent = volume.toFixed(3) + ' м³';
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка расчёта стоимости:', error);
+        }
+    }
+
+    async submitOrderForm(form, schedule) {
+        const submitBtn = form.querySelector('.request-form__submit');
+        const statusElement = form.querySelector('#status');
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Отправка...';
+        }
+
+        try {
+            const formData = new FormData(form);
+            
+            // Добавляем данные расписания
+            formData.append('schedule_id', schedule.id);
+            formData.append('city', this.selectedCity);
+            formData.append('warehouses', schedule.warehouse);
+            formData.append('accept_date', schedule.acceptDate);
+            formData.append('delivery_date', schedule.deliveryDate);
+
+            const response = await fetch('../log_data.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // Успешно создана заявка
+                this.closeOrderModal();
+                window.app.showSuccess('Заявка успешно создана!');
+                
+                // Обновляем список заказов, если доступен
+                if (window.OrdersManager && typeof window.OrdersManager.loadOrders === 'function') {
+                    window.OrdersManager.loadOrders();
+                }
+            } else {
+                throw new Error(result.message || 'Ошибка создания заявки');
+            }
+
+        } catch (error) {
+            console.error('Ошибка отправки заявки:', error);
+            window.app.showError(error.message || 'Не удалось создать заявку');
+            
+            if (statusElement) {
+                statusElement.textContent = error.message || 'Ошибка отправки заявки';
+                statusElement.style.color = 'red';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="button__label">Отправить</span>';
+            }
+        }
+    }
+
+    closeOrderModal() {
+        const modal = document.getElementById('clientRequestModal');
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            
+            // Очищаем содержимое
+            const content = document.getElementById('clientRequestModalContent');
+            if (content) {
+                content.innerHTML = '';
             }
         }
     }

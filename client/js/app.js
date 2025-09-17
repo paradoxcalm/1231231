@@ -171,6 +171,15 @@ class App {
         if (modal) {
             modal.classList.add('active');
             document.body.style.overflow = 'hidden';
+            
+            // Добавляем обработчик закрытия по Escape
+            const escapeHandler = (e) => {
+                if (e.key === 'Escape') {
+                    this.closeModal(modal);
+                    document.removeEventListener('keydown', escapeHandler);
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
         }
     }
 
@@ -178,6 +187,15 @@ class App {
         if (modal) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
+            
+            // Очищаем содержимое модального окна
+            const content = modal.querySelector('.modal-content');
+            if (content && modal.id === 'clientRequestModal') {
+                const contentContainer = content.querySelector('#clientRequestModalContent');
+                if (contentContainer) {
+                    contentContainer.innerHTML = '';
+                }
+            }
         }
     }
 
