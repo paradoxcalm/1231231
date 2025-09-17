@@ -117,14 +117,14 @@ function renderFormHTML(scheduleData = {}) {
         <input type="hidden" name="accept_time" id="acceptTimeField" value="${accept_time}">
         <input type="hidden" name="direction" id="directionField" value="${warehouses}">
 
-        <div class="form-group">
+        <div class="form-group request-form__group">
           <label>Направление:</label>
-          <div class="static-field request-modal__static-field">${city || '—'} → ${warehouses || '—'}</div>
+          <div class="static-field request-modal__static-field request-form__static-field">${city || '—'} → ${warehouses || '—'}</div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group request-form__group">
           <label>Выезд → Сдача:</label>
-          <div class="static-field request-modal__static-field">${combinedDates || '—'}</div>
+          <div class="static-field request-modal__static-field request-form__static-field">${combinedDates || '—'}</div>
         </div>
 
         <input type="hidden" id="city" name="city" value="${city}">
@@ -135,88 +135,88 @@ function renderFormHTML(scheduleData = {}) {
         <input type="hidden" id="car_brand" name="car_brand" value="${car_brand}">
         <input type="hidden" id="sender" name="sender" value="${sender}">
 
-        <div class="form-group">
+        <div class="form-group request-form__group">
           <label class="section-label">Тип упаковки:</label>
-          <div class="request-modal__option-group">
-            <label class="request-modal__option"><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
-            <label class="request-modal__option"><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
+          <div class="request-modal__option-group request-form__radio-row">
+            <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
+            <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group request-form__group">
           <label for="boxes">Количество:</label>
           <input type="number" id="boxes" name="boxes" min="1" required>
         </div>
 
-        <div id="palletInputBlock" class="form-group request-modal__custom-box" style="display:none;">
+        <div id="palletInputBlock" class="form-group request-form__group request-modal__custom-box request-form__pallet-group request-form__hidden">
           <label>Параметры палет:</label>
-          <div id="palletFields" class="request-modal__pallet-fields"></div>
-          <p id="palletWarning" class="request-modal__warning" style="display:none;">Максимум 20 палет</p>
+          <div id="palletFields" class="request-modal__pallet-fields request-form__pallet-grid"></div>
+          <p id="palletWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Максимум 20 палет</p>
         </div>
 
-        <div class="form-group" id="boxTypeBlock">
+        <div class="form-group request-form__group" id="boxTypeBlock">
           <label class="section-label">Тип коробки:</label>
-          <div class="request-modal__option-group">
-            <label class="request-modal__option"><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
-            <label class="request-modal__option"><input type="radio" name="box_type" value="custom"> Свои размеры</label>
+          <div class="request-modal__option-group request-form__radio-row">
+            <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
+            <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="custom"> Свои размеры</label>
           </div>
         </div>
 
-        <div class="form-group" id="boxSizeBlock">
+        <div class="form-group request-form__group request-form__box-dimensions" id="boxSizeBlock">
           <label>Габариты одной коробки (см):</label>
-          <div class="request-modal__dimensions">
-            <input type="number" id="box_length" name="box_length" placeholder="Длина" class="request-modal__dimension-input">
-            <input type="number" id="box_width" name="box_width" placeholder="Ширина" class="request-modal__dimension-input">
-            <input type="number" id="box_height" name="box_height" placeholder="Высота" class="request-modal__dimension-input">
+          <div class="request-modal__dimensions request-form__dimensions">
+            <input type="number" id="box_length" name="box_length" placeholder="Длина" class="request-modal__dimension-input request-form__dimension-input">
+            <input type="number" id="box_width" name="box_width" placeholder="Ширина" class="request-modal__dimension-input request-form__dimension-input">
+            <input type="number" id="box_height" name="box_height" placeholder="Высота" class="request-modal__dimension-input request-form__dimension-input">
           </div>
         </div>
 
-        <div class="form-group request-modal__custom-box" id="customBoxFieldsBlock" style="display:none;">
+        <div class="form-group request-form__group request-modal__custom-box request-form__custom-box request-form__hidden" id="customBoxFieldsBlock">
           <label>Свои группы коробов:</label>
-          <input type="number" id="customBoxGroupCount" min="1" max="10" placeholder="Кол-во групп" class="request-modal__group-count">
-          <div id="customBoxFields" class="request-modal__custom-fields"></div>
-          <p id="customBoxWarning" class="request-modal__warning" style="display:none;">Сумма количеств в группах не должна превышать общее количество коробов</p>
+          <input type="number" id="customBoxGroupCount" min="1" max="10" placeholder="Кол-во групп" class="request-modal__group-count request-form__group-count">
+          <div id="customBoxFields" class="request-modal__custom-fields request-form__custom-fields"></div>
+          <p id="customBoxWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Сумма количеств в группах не должна превышать общее количество коробов</p>
         </div>
 
-        <div class="form-group"><label>Общий объём:</label><span id="box_volume">—</span></div>
-        <div class="form-group"><label>Тариф:</label><span id="tariff_rate">—</span></div>
-        <div class="form-group"><label for="payment">Сумма оплаты:</label>
+        <div class="form-group request-form__group request-form__summary"><label>Общий объём:</label><span id="box_volume" class="request-form__summary-value">—</span></div>
+        <div class="form-group request-form__group request-form__summary"><label>Тариф:</label><span id="tariff_rate" class="request-form__summary-value">—</span></div>
+        <div class="form-group request-form__group"><label for="payment">Сумма оплаты:</label>
           <input type="number" id="payment" name="payment" readonly>
         </div>
 
-        <div class="form-group">
+        <div class="form-group request-form__group request-form__checkbox">
           <label>
             <input type="checkbox" id="pickupCheckbox" name="pickup_checkbox">
             Забрать груз с адреса отправителя
           </label>
         </div>
 
-        <div id="pickupAddressFields" class="request-modal__pickup" style="display:none;">
-          <div id="pickupMap" class="request-modal__map"></div>
+        <div id="pickupAddressFields" class="request-modal__pickup request-form__pickup request-form__hidden">
+          <div id="pickupMap" class="request-modal__map request-form__map"></div>
 
           <input type="hidden" id="pickupLat" name="pickup_lat">
           <input type="hidden" id="pickupLng" name="pickup_lng">
 
-          <label for="clientPhone" class="request-modal__pickup-label">Номер для связи:</label>
-          <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-modal__pickup-phone">
+          <label for="clientPhone" class="request-modal__pickup-label request-form__pickup-label">Номер для связи:</label>
+          <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-modal__pickup-phone request-form__pickup-input">
 
-          <div id="routeBlock" class="request-modal__route" style="display:none;">
-            <span class="request-modal__route-label">Ссылка для навигатора:</span>
-            <div class="request-modal__route-links">
-              <a id="routeLinkYandex" href="#" target="_blank" class="request-modal__route-link"></a>
-              <a id="routeLinkGoogle" href="#" target="_blank" class="request-modal__route-link"></a>
-              <button type="button" id="routeCopyBtn" class="request-modal__route-copy">Копировать</button>
+          <div id="routeBlock" class="request-modal__route request-form__route request-form__hidden">
+            <span class="request-modal__route-label request-form__route-label">Ссылка для навигатора:</span>
+            <div class="request-modal__route-links request-form__route-links">
+              <a id="routeLinkYandex" href="#" target="_blank" class="request-modal__route-link request-form__route-link"></a>
+              <a id="routeLinkGoogle" href="#" target="_blank" class="request-modal__route-link request-form__route-link"></a>
+              <button type="button" id="routeCopyBtn" class="request-modal__route-copy request-form__route-copy">Копировать</button>
             </div>
           </div>
         </div>
 
-        <div class="form-group">
+        <div class="form-group request-form__group">
           <label for="comment">Комментарий:</label>
           <textarea id="comment" name="comment" rows="3" placeholder="Введите комментарий"></textarea>
         </div>
-        <button type="submit">Отправить</button>
+        <button type="submit" class="request-form__submit">Отправить</button>
       </form>
-      <p id="status"></p>
+      <p id="status" class="request-form__status"></p>
     </div>
   </section>
 </div>`;
@@ -226,18 +226,44 @@ function renderFormHTML(scheduleData = {}) {
 window.renderFormHTML = renderFormHTML;
 
 
+const REQUEST_FORM_HIDDEN_CLASS = 'request-form__hidden';
+
+function hideRequestFormElement(element) {
+    if (!element) return;
+    element.classList.add(REQUEST_FORM_HIDDEN_CLASS);
+}
+
+function showRequestFormElement(element) {
+    if (!element) return;
+    element.classList.remove(REQUEST_FORM_HIDDEN_CLASS);
+}
+
+
 
 
 
 
 // 3️⃣ Показ/скрытие блоков по типу упаковки
 function updatePackaging() {
-    const pack = document.querySelector('input[name="packaging_type"]:checked').value;
-    document.getElementById('boxTypeBlock').style.display = pack === 'Box' ? '' : 'none';
-    document.getElementById('boxSizeBlock').style.display = pack === 'Box' ? '' : 'none';
-    document.getElementById('customBoxFieldsBlock').style.display = 'none';
-    document.getElementById('palletInputBlock').style.display = pack === 'Pallet' ? '' : 'none';
-    if (pack === 'Box') updateBoxType();
+    const selected = document.querySelector('input[name="packaging_type"]:checked');
+    const pack = selected ? selected.value : 'Box';
+    const boxTypeBlock = document.getElementById('boxTypeBlock');
+    const boxSizeBlock = document.getElementById('boxSizeBlock');
+    const customBlock = document.getElementById('customBoxFieldsBlock');
+    const palletBlock = document.getElementById('palletInputBlock');
+
+    if (pack === 'Box') {
+        showRequestFormElement(boxTypeBlock);
+        showRequestFormElement(boxSizeBlock);
+        hideRequestFormElement(customBlock);
+        hideRequestFormElement(palletBlock);
+        updateBoxType();
+    } else {
+        hideRequestFormElement(boxTypeBlock);
+        hideRequestFormElement(boxSizeBlock);
+        hideRequestFormElement(customBlock);
+        showRequestFormElement(palletBlock);
+    }
 }
 
 // 4️⃣ Тип коробки: стандарт или свои
@@ -246,16 +272,16 @@ function updateBoxType() {
     const sizeBlock = document.getElementById('boxSizeBlock');
     const customBlock = document.getElementById('customBoxFieldsBlock');
     if (type === 'standard') {
-        sizeBlock.style.display = 'none';
-        customBlock.style.display = 'none';
+        hideRequestFormElement(sizeBlock);
+        hideRequestFormElement(customBlock);
         ['box_length','box_width','box_height','customBoxGroupCount'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
         document.getElementById('customBoxFields').innerHTML = '';
     } else {
-        sizeBlock.style.display = 'none';
-        customBlock.style.display = '';
+        hideRequestFormElement(sizeBlock);
+        showRequestFormElement(customBlock);
     }
 }
 
@@ -272,17 +298,17 @@ function setupPackagingToggle() {
 function generateBoxFields(count) {
     const block = document.getElementById("customBoxFields");
     if (count < 1 || count > 10) {
-        block.innerHTML = '<p class="request-modal__warning">Укажите от 1 до 10 групп</p>';
+        block.innerHTML = '<p class="request-modal__warning request-form__warning form-error text-danger">Укажите от 1 до 10 групп</p>';
         return;
     }
     const html = Array.from({ length: count }, (_, i) => `
-      <div class="request-modal__box-group">
-        <strong class="request-modal__box-group-title">Группа ${i + 1}:</strong>
-        <div class="request-modal__box-group-inputs">
-          <input type="number" name="box_length[]" placeholder="Длина, см" required class="request-modal__dimension-input">
-          <input type="number" name="box_width[]"  placeholder="Ширина, см" required class="request-modal__dimension-input">
-          <input type="number" name="box_height[]" placeholder="Высота, см" required class="request-modal__dimension-input">
-          <input type="number" name="box_count[]"  placeholder="Кол-во"    required class="request-modal__dimension-input">
+      <div class="request-modal__box-group request-form__box-group box-group-item">
+        <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${i + 1}:</strong>
+        <div class="request-modal__box-group-inputs request-form__box-group-inputs">
+          <input type="number" name="box_length[]" placeholder="Длина, см" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_width[]"  placeholder="Ширина, см" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_height[]" placeholder="Высота, см" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_count[]"  placeholder="Кол-во"    required class="request-modal__dimension-input request-form__dimension-input">
         </div>
       </div>
     `).join('');
@@ -325,12 +351,12 @@ function setupVolumeCalculator(basePrice = 500, coef = 1, palletPrice = 1000, bo
             const sumGroups = Array.from(document.getElementsByName('box_count[]'))
                 .reduce((sum, el) => sum + (parseInt(el.value)||0), 0);
             if (sumGroups > totalBoxes) {
-                warning.style.display = '';
+                showRequestFormElement(warning);
                 Vol.textContent = '—';
                 Pay.value = '';
                 return;
             } else {
-                warning.style.display = 'none';
+                hideRequestFormElement(warning);
             }
         }
 
@@ -485,13 +511,17 @@ function setupPalletFieldsTrigger() {
         const qty      = parseInt(qtyInput.value, 10) || 0;
 
         if (selected === "Pallet" && qty > 0 && qty <= 20) {
-            palletBlock.style.display = "";
-            warn.style.display        = "none";
+            showRequestFormElement(palletBlock);
+            hideRequestFormElement(warn);
             generatePalletFields(qty);
             calculatePalletCost();
         } else {
-            palletBlock.style.display = "none";
-            warn.style.display        = (selected === "Pallet" && qty > 20) ? "" : "none";
+            hideRequestFormElement(palletBlock);
+            if (selected === "Pallet" && qty > 20) {
+                showRequestFormElement(warn);
+            } else {
+                hideRequestFormElement(warn);
+            }
         }
     }
 
@@ -670,7 +700,7 @@ function initPickupMap() {
       yLink.textContent = 'Открыть в Яндекс.Картах';
       gLink.href = gUrl;
       gLink.textContent = 'Открыть в Google Maps';
-      routeBlock.style.display = '';
+      showRequestFormElement(routeBlock);
 
       copyBtn.onclick = () => {
         navigator.clipboard.writeText(yUrl).then(() => {
@@ -827,13 +857,13 @@ function initializeForm() {
         if (lngInput) lngInput.value = '';
         // routeBlock просто скрываем — ссылки пересчитаются при следующем клике по карте
         const rb = document.getElementById('routeBlock');
-        if (rb) rb.style.display = 'none';
+        if (rb) hideRequestFormElement(rb);
     };
 
     if (pickupCheckbox) {
         pickupCheckbox.addEventListener('change', () => {
             if (pickupCheckbox.checked) {
-                if (addressFields) addressFields.style.display = '';
+                if (addressFields) showRequestFormElement(addressFields);
                 if (phoneInput) phoneInput.required = true;
                 // инициализация карты — только один раз
                 if (!window.__pickupMapInited) {
@@ -846,7 +876,7 @@ function initializeForm() {
                     }, 0);
                 }
             } else {
-                if (addressFields) addressFields.style.display = 'none';
+                if (addressFields) hideRequestFormElement(addressFields);
                 if (phoneInput) phoneInput.required = false;
                 resetMapFields();
             }
@@ -854,7 +884,7 @@ function initializeForm() {
 
         // если галочка уже была выставлена при рендере — сразу покажем блок и инициализируем карту
         if (pickupCheckbox.checked) {
-            if (addressFields) addressFields.style.display = '';
+            if (addressFields) showRequestFormElement(addressFields);
             if (phoneInput) phoneInput.required = true;
             if (!window.__pickupMapInited) {
                 window.__pickupMapInited = true;
