@@ -693,8 +693,37 @@ function waitForYmapsGlobal(timeoutMs = YMAPS_READY_TIMEOUT, intervalMs = YMAPS_
 }
 
 async function initPickupMap() {
+  const mapElement = document.getElementById('pickupMap');
+  if (!mapElement) {
+    throw new Error('Контейнер карты забора не найден в DOM');
+  }
+
+  const currentContainer = pickupMapInstance
+    && pickupMapInstance.container
+    && typeof pickupMapInstance.container.getElement === 'function'
+    ? pickupMapInstance.container.getElement()
+    : null;
+
+  if (pickupMapInstance && currentContainer !== mapElement) {
+    try {
+      if (typeof pickupMapInstance.destroy === 'function') {
+        pickupMapInstance.destroy();
+      }
+    } catch (err) {
+      console.warn('Ошибка при уничтожении предыдущего экземпляра карты забора:', err);
+    }
+    pickupMapInstance = null;
+    pickupPlacemark = null;
+    pickupMapInitPromise = null;
+    if (typeof window !== 'undefined') {
+      window.__pickupMapInited = false;
+    }
+  }
+
   if (pickupMapInstance) {
-    window.__pickupMapInited = true;
+    if (typeof window !== 'undefined') {
+      window.__pickupMapInited = true;
+    }
     return pickupMapInstance;
   }
 
@@ -707,9 +736,16 @@ async function initPickupMap() {
       ymaps.ready(() => {
         try {
           if (pickupMapInstance) {
-            window.__pickupMapInited = true;
+            if (typeof window !== 'undefined') {
+              window.__pickupMapInited = true;
+            }
             resolve(pickupMapInstance);
             return;
+          }
+
+          const targetElement = document.getElementById('pickupMap');
+          if (!targetElement) {
+            throw new Error('Контейнер карты забора не найден в DOM');
           }
 
           const latEl      = document.getElementById('pickupLat');
@@ -719,7 +755,7 @@ async function initPickupMap() {
           const gLink      = document.getElementById('routeLinkGoogle');
           const copyBtn    = document.getElementById('routeCopyBtn');
 
-          pickupMapInstance = new ymaps.Map('pickupMap', {
+          pickupMapInstance = new ymaps.Map(targetElement, {
             center: [43.251900, 46.603400], // центр по умолчанию
             zoom: 12,
             controls: ['zoomControl']
@@ -779,7 +815,9 @@ async function initPickupMap() {
             updateLinks(coords);
           });
 
-          window.__pickupMapInited = true;
+          if (typeof window !== 'undefined') {
+            window.__pickupMapInited = true;
+          }
           resolve(pickupMapInstance);
         } catch (innerErr) {
           reject(innerErr);
@@ -799,7 +837,9 @@ async function initPickupMap() {
     return await pickupMapInitPromise;
   } catch (err) {
     pickupMapInitPromise = null;
-    window.__pickupMapInited = false;
+    if (typeof window !== 'undefined') {
+      window.__pickupMapInited = false;
+    }
     throw err;
   }
 }
