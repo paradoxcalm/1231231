@@ -105,22 +105,28 @@
         </div>
 
         <div id="pickupAddressFields" class="request-modal__pickup request-form__pickup request-form__hidden">
-          <div id="pickupMap" class="request-modal__map request-form__map"></div>
+          <div class="request-card">
+            <div class="request-card__body">
+              <div id="pickupMap" class="request-card__map request-modal__map request-form__map"></div>
 
-          <input type="hidden" id="pickupLat" name="pickup_lat">
-          <input type="hidden" id="pickupLng" name="pickup_lng">
+              <input type="hidden" id="pickupLat" name="pickup_lat">
+              <input type="hidden" id="pickupLng" name="pickup_lng">
 
-          <label for="clientPhone" class="request-modal__pickup-label request-form__pickup-label">Номер для связи:</label>
-          <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-modal__pickup-phone request-form__pickup-input">
+              <div class="request-card__field">
+                <label for="clientPhone" class="request-card__label request-modal__pickup-label request-form__pickup-label">Номер для связи:</label>
+                <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-card__input request-modal__pickup-phone request-form__pickup-input">
+              </div>
 
-          <div id="routeBlock" class="request-modal__route request-form__route request-form__hidden">
-            <span class="request-modal__route-label request-form__route-label">Ссылка для навигатора:</span>
-            <div class="request-modal__route-links request-form__route-links">
-              <a id="routeLinkYandex" href="#" target="_blank" class="request-modal__route-link request-form__route-link"></a>
-              <a id="routeLinkGoogle" href="#" target="_blank" class="request-modal__route-link request-form__route-link"></a>
-              <button type="button" id="routeCopyBtn" class="secondary-button button--ghost request-modal__route-copy request-form__route-copy">
-                <span class="button__label">Копировать</span>
-              </button>
+              <div id="routeBlock" class="request-card__route request-modal__route request-form__route request-form__hidden">
+                <span class="request-card__route-label request-modal__route-label request-form__route-label">Ссылка для навигатора:</span>
+                <div class="request-card__routes request-modal__route-links request-form__route-links">
+                  <div class="request-card__route-group">
+                    <a id="routeLinkYandex" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
+                    <button type="button" id="routeCopyBtn" class="ghost-button request-card__copy request-modal__route-copy request-form__route-copy">Копировать</button>
+                  </div>
+                  <a id="routeLinkGoogle" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
+                </div>
+              </div>
             </div>
           </div>
         </div>

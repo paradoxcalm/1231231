@@ -239,11 +239,77 @@
 .request-form__pickup {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 16px;
+}
+
+.request-card {
+  width: 100%;
   border: 1px solid var(--border, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--bg-primary, #ffffff);
+  box-shadow: var(--shadow-lg, 0 10px 20px rgba(15, 23, 42, 0.08));
+  overflow: hidden;
+}
+
+.request-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.request-card__map {
+  width: 100%;
   border-radius: var(--radius, 8px);
-  background: var(--bg-secondary, #f9fafb);
+  overflow: hidden;
+}
+
+.request-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.request-card__label {
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.request-card__input {
+  width: 100%;
+}
+
+.request-card__route {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.request-card__route-label {
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+}
+
+.request-card__routes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.request-card__route-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.request-card__route-group .request-card__link {
+  flex: 1 1 auto;
+}
+
+.request-card__route-group .request-card__copy {
+  flex: 0 0 auto;
 }
 
 .request-form__map {
@@ -262,34 +328,66 @@
 .request-form__route-links {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: 12px;
-  align-items: center;
 }
 
 .request-form__route-link {
-  color: var(--primary, #28C76F);
+  color: inherit;
   font-weight: 600;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
-.request-form__route-copy {
+.request-form__route-link:hover,
+.request-form__route-link:focus-visible {
+  text-decoration: none;
+}
+
+.link-button,
+.ghost-button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius, 8px);
+  font-weight: 600;
+  transition: var(--transition, all 0.3s ease);
+  cursor: pointer;
 }
 
-.secondary-button.button--ghost {
-  background: transparent;
+.link-button {
+  background: var(--bg-tertiary, #f3f4f6);
+  border: 1px solid rgba(40, 199, 111, 0.35);
   color: var(--primary, #28C76F);
-  border: 1px solid rgba(40, 199, 111, 0.4);
+  text-decoration: none;
 }
 
-.secondary-button.button--ghost:hover,
-.secondary-button.button--ghost:focus-visible {
+.link-button:hover,
+.link-button:focus-visible {
+  background: rgba(40, 199, 111, 0.08);
+  border-color: rgba(40, 199, 111, 0.45);
+  color: var(--primary, #28C76F);
+  text-decoration: none;
+}
+
+.link-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.2);
+}
+
+.ghost-button {
+  background: transparent;
+  border: 1px solid rgba(40, 199, 111, 0.35);
+  color: var(--primary, #28C76F);
+}
+
+.ghost-button:hover,
+.ghost-button:focus-visible {
   background: rgba(40, 199, 111, 0.08);
 }
 
-.secondary-button.button--ghost:focus-visible {
+.ghost-button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.25);
 }
@@ -342,11 +440,17 @@
     align-items: flex-start;
   }
 
-  .request-form__route-links {
+  .request-form__route-links,
+  .request-card__route-group {
     flex-direction: column;
   }
 
-  .request-form__pickup {
-    padding: 12px;
+  .request-card__routes .link-button,
+  .request-card__routes .ghost-button {
+    width: 100%;
+  }
+
+  .request-card__body {
+    padding: 16px;
   }
 }
