@@ -1185,47 +1185,65 @@ body {
     .desktop-nav {
         display: none;
     }
-    
+
     .mobile-nav {
         display: flex;
     }
-    
+
     .main-content {
         margin-top: 0;
         padding: 20px 16px 80px;
     }
-    
+
     .filters {
         flex-direction: column;
         gap: 12px;
     }
-    
+
     .filter-group {
         min-width: 0;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr 1fr;
     }
-    
+
     .schedule-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .orders-controls {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .notifications-panel {
         width: 100vw;
         right: -100vw;
     }
-    
+
+    .modal {
+        align-items: flex-start;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .modal-content {
+        width: 100vw;
+        height: 100vh;
+        min-height: 100dvh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        margin: 0;
+        padding: 16px;
+        overflow-x: hidden;
+    }
+
     .city-tabs {
         flex-direction: column;
     }
@@ -1244,9 +1262,21 @@ body {
         grid-template-columns: 1fr;
     }
     
+    .modal {
+        align-items: flex-start;
+        justify-content: center;
+    }
+
     .modal-content {
-        margin: 20px;
-        max-width: calc(100vw - 40px);
+        width: 100vw;
+        height: 100vh;
+        min-height: 100dvh;
+        max-width: none;
+        max-height: none;
+        border-radius: 0;
+        margin: 0;
+        padding: 12px;
+        overflow-x: hidden;
     }
     
     .calendar-grid {
