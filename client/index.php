@@ -98,16 +98,26 @@ if (empty($_SESSION['user_id'])) {
                                     <p class="filter-step-description">Выберите площадку отправки</p>
                                 </div>
                             </div>
-                            <button class="filter-step-action" type="button" data-target="marketplaceFilter">
+                            <button class="filter-step-action" type="button" data-target="marketplaceGrid">
                                 <i class="fas fa-store"></i>
                                 Сменить маркетплейс
                             </button>
                         </div>
-                        <div class="filter-group">
-                            <label for="marketplaceFilter">Маркетплейс</label>
-                            <select id="marketplaceFilter">
-                                <option value="">Все</option>
-                            </select>
+                        <div class="filter-step-body">
+                            <div class="selection-banner" id="marketplaceBanner" data-state="active">
+                                <div class="selection-banner__icon">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                                <div class="selection-banner__content">
+                                    <h4 class="selection-banner__title" data-banner-title>Выберите маркетплейс</h4>
+                                    <p class="selection-banner__description" data-banner-description>
+                                        Мы покажем подходящие склады и расписание после выбора площадки.
+                                    </p>
+                                </div>
+                                <div class="selection-banner__status" data-banner-status>Шаг 1 из 2</div>
+                            </div>
+
+                            <div class="selection-grid" id="marketplaceGrid" role="list"></div>
                         </div>
                     </div>
                     <div class="filter-step">
@@ -119,16 +129,26 @@ if (empty($_SESSION['user_id'])) {
                                     <p class="filter-step-description">Уточните точку приёма</p>
                                 </div>
                             </div>
-                            <button class="filter-step-action" type="button" data-target="warehouseFilter">
+                            <button class="filter-step-action" type="button" data-target="warehouseGrid">
                                 <i class="fas fa-warehouse"></i>
                                 Выбрать склад
                             </button>
                         </div>
-                        <div class="filter-group">
-                            <label for="warehouseFilter">Склад</label>
-                            <select id="warehouseFilter">
-                                <option value="">Все</option>
-                            </select>
+                        <div class="filter-step-body">
+                            <div class="selection-banner" id="warehouseBanner" data-state="locked">
+                                <div class="selection-banner__icon">
+                                    <i class="fas fa-warehouse"></i>
+                                </div>
+                                <div class="selection-banner__content">
+                                    <h4 class="selection-banner__title" data-banner-title>Сначала выберите маркетплейс</h4>
+                                    <p class="selection-banner__description" data-banner-description>
+                                        После выбора площадки мы покажем доступные склады и расписание приёмок.
+                                    </p>
+                                </div>
+                                <div class="selection-banner__status" data-banner-status>Шаг 2 из 2</div>
+                            </div>
+
+                            <div class="selection-grid selection-grid--warehouses" id="warehouseGrid" role="list"></div>
                         </div>
                     </div>
                 </div>
