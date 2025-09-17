@@ -547,12 +547,28 @@ function showCreateForm() {
                 <form id="createScheduleForm">
                     <div class="form-group">
                         <label>Город отправления:</label>
-                        <div style="display:flex; gap:10px;">
+                        <div class="modal-inline-row">
                             <select name="city" id="citySelect" required>
                                 ${cities.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
                             </select>
-                            <button type="button" onclick="addNewCity()">➕</button>
-                            <button type="button" onclick="deleteSelectedCity()">🗑</button>
+                            <button
+                                type="button"
+                                class="primary-button modal-action-button"
+                                onclick="addNewCity()"
+                                aria-label="Добавить новый город"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">➕</span>
+                                <span class="modal-action-button__text">Добавить город</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="danger-button modal-action-button"
+                                onclick="deleteSelectedCity()"
+                                aria-label="Удалить выбранный город"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">🗑️</span>
+                                <span class="modal-action-button__text">Удалить город</span>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -582,14 +598,54 @@ function showCreateForm() {
                               `).join("")
                             }
                         </div>
-                        <div style="display: flex; gap: 10px; margin-top: 8px;">
-                            <button type="button" onclick="addNewWarehouseAndRefresh()">➕ Добавить</button>
-                            <button type="button" onclick="enterWarehouseEditMode()">✏️ Редактировать</button>
-                            <button type="button" onclick="confirmWarehouseDelete()">🗑️ Удалить</button>
+                        <div class="modal-inline-actions">
+                            <button
+                                type="button"
+                                class="primary-button modal-action-button"
+                                onclick="addNewWarehouseAndRefresh()"
+                                aria-label="Добавить новый склад"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">➕</span>
+                                <span class="modal-action-button__text">Добавить склад</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="secondary-button modal-action-button"
+                                onclick="enterWarehouseEditMode()"
+                                aria-label="Редактировать список складов"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">✏️</span>
+                                <span class="modal-action-button__text">Редактировать</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="danger-button modal-action-button"
+                                onclick="confirmWarehouseDelete()"
+                                aria-label="Удалить выбранные склады"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">🗑️</span>
+                                <span class="modal-action-button__text">Удалить склады</span>
+                            </button>
                         </div>
-                        <div id="warehouseEditControls" style="margin-top:10px; display:none;">
-                            <button type="button" onclick="saveWarehouseEdits()">💾 Сохранить изменения</button>
-                            <button type="button" onclick="cancelWarehouseEdits()">✖️ Отмена</button>
+                        <div id="warehouseEditControls" class="modal-inline-actions" style="display:none;">
+                            <button
+                                type="button"
+                                class="primary-button modal-action-button"
+                                onclick="saveWarehouseEdits()"
+                                aria-label="Сохранить изменения складов"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">💾</span>
+                                <span class="modal-action-button__text">Сохранить изменения</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="secondary-button modal-action-button"
+                                onclick="cancelWarehouseEdits()"
+                                aria-label="Отменить редактирование складов"
+                            >
+                                <span class="modal-action-button__icon" aria-hidden="true">✖️</span>
+                                <span class="modal-action-button__text">Отмена</span>
+                            </button>
                         </div>
                     </div>
                     <div class="form-group">
