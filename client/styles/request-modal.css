@@ -4,6 +4,16 @@
   gap: 8px;
 }
 
+.section-subtitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #6b7280);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.2;
+}
+
 .request-form__radio-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
