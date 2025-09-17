@@ -108,7 +108,7 @@ function renderFormHTML(scheduleData = {}) {
   <section class="modal-body request-modal__body">
     <div class="section-container modal-section request-modal__content">
       <form id="dataForm" enctype="multipart/form-data">
-        <h1 class="section-title">ПРИЁМКА</h1>
+        <h3 class="section-subtitle">ПРИЁМКА</h3>
 
         <input type="hidden" name="schedule_id" id="formScheduleId" value="${id}">
         <input type="hidden" name="accept_date" id="acceptDateField" value="${accept_date}">
