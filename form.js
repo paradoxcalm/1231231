@@ -669,11 +669,18 @@ function renderFormHTML(scheduleData = {}) {
     const attrCity = escapeAttributeValue(city);
     const attrWarehouses = escapeAttributeValue(warehouses);
     const cityOptionText = escapeHtmlContent(city);
+    const marketplaceDisplay = marketplace ? escapeHtmlContent(marketplace) : '—';
+    const warehouseDisplay = warehouses ? escapeHtmlContent(warehouses) : '—';
+    const marketplaceTitle = marketplace ? escapeAttributeValue(marketplace) : '';
+    const warehouseTitle = warehouses ? escapeAttributeValue(warehouses) : '';
 
     // Склеиваем две даты в одну строку «выезд → сдача»
     const combinedDates = accept_date && delivery_date
         ? `${accept_date} → ${delivery_date}`
         : accept_date || delivery_date;
+    const combinedDatesDisplay = combinedDates ? escapeHtmlContent(combinedDates) : '—';
+    const directionLeft = city ? escapeHtmlContent(city) : '—';
+    const directionRight = warehouses ? escapeHtmlContent(warehouses) : '—';
 
     // назначаем tabindex и фокус для удобного перехода по форме
     setTimeout(() => {
@@ -702,13 +709,29 @@ function renderFormHTML(scheduleData = {}) {
         <div class="request-modal__summary">
           <div class="modal-row request-modal__summary-row">
             <span class="modal-label">Направление:</span>
-            <span class="modal-value">${city || '—'} → ${warehouses || '—'}</span>
+            <span class="modal-value">${directionLeft} → ${directionRight}</span>
           </div>
 
           <div class="modal-row request-modal__summary-row">
             <span class="modal-label">Выезд → Сдача:</span>
-            <span class="modal-value">${combinedDates || '—'}</span>
+            <span class="modal-value">${combinedDatesDisplay}</span>
           </div>
+        </div>
+
+        <div class="request-modal__selection" aria-live="polite">
+          <div class="request-modal__selection-info">
+            <div class="request-modal__selection-item">
+              <span class="request-modal__selection-label">Маркетплейс</span>
+              <span class="request-modal__selection-value" id="legacyMarketplace" title="${marketplaceTitle}">${marketplaceDisplay}</span>
+            </div>
+            <div class="request-modal__selection-item">
+              <span class="request-modal__selection-label">Склад</span>
+              <span class="request-modal__selection-value" id="legacyWarehouse" title="${warehouseTitle}">${warehouseDisplay}</span>
+            </div>
+          </div>
+          <button type="button" class="request-modal__selection-change" data-action="change-marketplace" aria-label="Изменить маркетплейс и склад">
+            Изменить
+          </button>
         </div>
 
         <div class="form-group request-form__group request-form__city-group">

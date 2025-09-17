@@ -164,6 +164,71 @@
     font-size: 0.875rem;
 }
 
+.request-modal__selection {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius);
+    border: 1px solid rgba(5, 150, 105, 0.15);
+    background: rgba(5, 150, 105, 0.08);
+}
+
+.request-modal__selection-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-lg);
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.request-modal__selection-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: clamp(140px, 45%, 220px);
+}
+
+.request-modal__selection-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.request-modal__selection-value {
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 1rem;
+    word-break: break-word;
+}
+
+.request-modal__selection-change {
+    flex-shrink: 0;
+    align-self: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.request-modal__selection-change:hover {
+    background: rgba(5, 150, 105, 0.12);
+    border-color: rgba(5, 150, 105, 0.25);
+}
+
+.request-modal__selection-change:focus-visible {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.25);
+}
+
 /* Группы форм */
 .form-group {
     display: flex;
@@ -664,11 +729,26 @@
     .request-modal__dimensions {
         grid-template-columns: 1fr;
     }
-    
+
     .request-modal__box-group-inputs {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
+    .request-modal__selection {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-md);
+    }
+
+    .request-modal__selection-item {
+        min-width: 100%;
+    }
+
+    .request-modal__selection-change {
+        width: 100%;
+        text-align: center;
+    }
+
     .request-card__route-links {
         flex-direction: column;
     }

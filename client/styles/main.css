@@ -329,6 +329,7 @@ body {
     flex-direction: column;
     gap: 16px;
     min-height: 100%;
+    scroll-margin-top: 120px;
 }
 
 .filter-step-header {
@@ -416,6 +417,21 @@ body {
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-secondary);
+}
+
+.filter-step.schedule-filter--highlight,
+.filter-group.schedule-filter--highlight {
+    outline: 3px solid rgba(40, 199, 111, 0.35);
+    outline-offset: 4px;
+    transition: outline 0.2s ease;
+}
+
+select.schedule-filter--highlight,
+.filter-group.schedule-filter--highlight select,
+.filter-step.schedule-filter--highlight select {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.25);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .filter-group select {

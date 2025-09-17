@@ -265,6 +265,28 @@ function fillLegacyFormFields(container, scheduleData) {
         }
     }
 
+    const marketplaceDisplay = container.querySelector('#legacyMarketplace');
+    if (marketplaceDisplay) {
+        const marketplaceText = marketplace || '—';
+        marketplaceDisplay.textContent = marketplaceText;
+        if (marketplace && typeof marketplaceDisplay.setAttribute === 'function') {
+            marketplaceDisplay.setAttribute('title', marketplace);
+        } else if (typeof marketplaceDisplay.removeAttribute === 'function') {
+            marketplaceDisplay.removeAttribute('title');
+        }
+    }
+
+    const warehouseDisplay = container.querySelector('#legacyWarehouse');
+    if (warehouseDisplay) {
+        const warehouseText = warehouse || '—';
+        warehouseDisplay.textContent = warehouseText;
+        if (warehouse && typeof warehouseDisplay.setAttribute === 'function') {
+            warehouseDisplay.setAttribute('title', warehouse);
+        } else if (typeof warehouseDisplay.removeAttribute === 'function') {
+            warehouseDisplay.removeAttribute('title');
+        }
+    }
+
     const setValue = (selector, value = '') => {
         const el = container.querySelector(selector);
         if (el) el.value = value;
@@ -413,6 +435,8 @@ async function openRequestFormModal(
     fillLegacyFormFields(contentHost, scheduleData);
     setupGlobalLoadOrdersFallback();
 
+    const changeContextButton = contentHost.querySelector('[data-action="change-marketplace"]');
+
     let closed = false;
     const escHandler = (event) => {
         if (event.key === 'Escape') {
@@ -463,6 +487,81 @@ async function openRequestFormModal(
         safeCall(onAfterClose, modal, reason, scheduleData);
     };
 
+    const focusScheduleFilters = () => {
+        const filterIds = ['marketplaceFilter', 'warehouseFilter'];
+        const candidates = filterIds
+            .map((id) => {
+                const el = typeof document !== 'undefined' ? document.getElementById(id) : null;
+                return el instanceof HTMLElement ? el : null;
+            })
+            .filter(Boolean);
+
+        if (!candidates.length) {
+            return false;
+        }
+
+        const firstVisible = candidates.find((element) => element.offsetParent !== null);
+        const focusTarget = firstVisible || candidates[0];
+        if (!focusTarget) {
+            return false;
+        }
+
+        const scrollAnchor = focusTarget.closest('.filter-step')
+            || focusTarget.closest('.filter-group')
+            || focusTarget;
+
+        if (scrollAnchor && typeof scrollAnchor.scrollIntoView === 'function') {
+            try {
+                scrollAnchor.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            } catch (err) {
+                scrollAnchor.scrollIntoView();
+            }
+        }
+
+        const highlightClass = 'schedule-filter--highlight';
+        const highlightTargets = new Set();
+        highlightTargets.add(focusTarget);
+        const group = focusTarget.closest('.filter-group');
+        if (group) {
+            highlightTargets.add(group);
+        }
+        const step = focusTarget.closest('.filter-step');
+        if (step) {
+            highlightTargets.add(step);
+        }
+
+        const applyFocusAndHighlight = () => {
+            if (typeof focusTarget.focus === 'function') {
+                try {
+                    focusTarget.focus({ preventScroll: true });
+                } catch (err) {
+                    focusTarget.focus();
+                }
+            }
+
+            highlightTargets.forEach((element) => {
+                try {
+                    element.classList.add(highlightClass);
+                } catch (err) {
+                    // ignore styling errors
+                }
+            });
+
+            setTimeout(() => {
+                highlightTargets.forEach((element) => {
+                    try {
+                        element.classList.remove(highlightClass);
+                    } catch (err) {
+                        // ignore styling errors
+                    }
+                });
+            }, 1600);
+        };
+
+        setTimeout(applyFocusAndHighlight, 250);
+        return true;
+    };
+
     const backdropHandler = (event) => {
         if (event.target === modal) {
             closeModal('backdrop');
@@ -481,6 +580,28 @@ async function openRequestFormModal(
     modal.classList.add('active', 'show');
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
+
+    if (changeContextButton) {
+        changeContextButton.addEventListener('click', (event) => {
+            event.preventDefault();
+
+            const focusAfterClose = () => {
+                if (typeof window === 'undefined') {
+                    return;
+                }
+                window.requestAnimationFrame(() => {
+                    window.requestAnimationFrame(() => {
+                        if (!focusScheduleFilters()) {
+                            console.warn('Не удалось найти фильтры расписания для изменения маркетплейса/склада.');
+                        }
+                    });
+                });
+            };
+
+            closeModal('change-marketplace');
+            focusAfterClose();
+        });
+    }
 
     try {
         await ensureLegacyFormScript();
