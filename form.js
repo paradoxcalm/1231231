@@ -80,6 +80,7 @@ function renderFormHTML(scheduleData = {}) {
         warehouses = '',
         accept_date = '',
         delivery_date = '',
+        accept_time = '',
         driver_name = '',
         driver_phone = '',
         car_number = '',
@@ -100,110 +101,89 @@ function renderFormHTML(scheduleData = {}) {
     }, 100);
 
     return `
-<div class="section-container">
-  <style>
-    /* стиль для статичных элементов направления и дат */
-    .static-field {
-      display: block;
-      width: 100%;
-      padding: 8px 12px;
-      margin-top: 4px;
-      margin-bottom: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #f5f5f5;
-      text-align: center;
-      font-weight: bold;
-    }
-  </style>
-  <form id="dataForm" enctype="multipart/form-data">
-    <h1 class="section-title">ПРИЁМКА</h1>
+<div class="request-modal request-modal--inline">
+  <header class="modal-header-with-close">
+    <h2 class="request-modal__title">Оформление заявки</h2>
+  </header>
+  <section class="modal-body request-modal__body">
+    <div class="section-container modal-section request-modal__content">
+      <form id="dataForm" enctype="multipart/form-data">
+        <h1 class="section-title">ПРИЁМКА</h1>
 
-    <!-- Скрытые поля для ID и дат для отправки на сервер -->
-    <input type="hidden" name="schedule_id" id="formScheduleId" value="${id}">
-    <input type="hidden" name="accept_date" value="${accept_date}">
-    <input type="hidden" name="delivery_date" value="${delivery_date}">
+        <input type="hidden" name="schedule_id" id="formScheduleId" value="${id}">
+        <input type="hidden" name="accept_date" id="acceptDateField" value="${accept_date}">
+        <input type="hidden" name="delivery_date" id="deliveryDateField" value="${delivery_date}">
+        <input type="hidden" name="date_of_delivery" id="deliveryDateAlias" value="${delivery_date}">
+        <input type="hidden" name="accept_time" id="acceptTimeField" value="${accept_time}">
+        <input type="hidden" name="direction" id="directionField" value="${warehouses}">
 
-    <!-- Направление: отображаем в виде статичного блока -->
-    <div class="form-group">
-      <label>Направление:</label>
-      <div class="static-field">${city} → ${warehouses}</div>
-    </div>
+        <div class="form-group">
+          <label>Направление:</label>
+          <div class="static-field request-modal__static-field">${city || '—'} → ${warehouses || '—'}</div>
+        </div>
 
-    <!-- Выезд → Сдача: объединённая строка -->
-    <div class="form-group">
-      <label>Выезд → Сдача:</label>
-      <div class="static-field">${combinedDates}</div>
-    </div>
+        <div class="form-group">
+          <label>Выезд → Сдача:</label>
+          <div class="static-field request-modal__static-field">${combinedDates || '—'}</div>
+        </div>
 
-    <!-- Скрытые поля для остальных данных (чтобы не потерялись при отправке) -->
-    <input type="hidden" id="city" name="city" value="${city}">
-    <input type="hidden" id="warehouses" name="warehouses" value="${warehouses}">
-    <input type="hidden" id="driver_name" name="driver_name" value="${driver_name}">
-    <input type="hidden" id="driver_phone" name="driver_phone" value="${driver_phone}">
-    <input type="hidden" id="car_number" name="car_number" value="${car_number}">
-    <input type="hidden" id="car_brand" name="car_brand" value="${car_brand}">
-    <input type="hidden" id="sender" name="sender" value="${sender}">
+        <input type="hidden" id="city" name="city" value="${city}">
+        <input type="hidden" id="warehouses" name="warehouses" value="${warehouses}">
+        <input type="hidden" id="driver_name" name="driver_name" value="${driver_name}">
+        <input type="hidden" id="driver_phone" name="driver_phone" value="${driver_phone}">
+        <input type="hidden" id="car_number" name="car_number" value="${car_number}">
+        <input type="hidden" id="car_brand" name="car_brand" value="${car_brand}">
+        <input type="hidden" id="sender" name="sender" value="${sender}">
 
-    <!-- Тип упаковки -->
-    <div class="form-group">
-      <label class="section-label">Тип упаковки:</label>
-      <div style="display:flex;gap:40px;justify-content:center;">
-        <label><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
-        <label><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
-      </div>
-    </div>
+        <div class="form-group">
+          <label class="section-label">Тип упаковки:</label>
+          <div class="request-modal__option-group">
+            <label class="request-modal__option"><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
+            <label class="request-modal__option"><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
+          </div>
+        </div>
 
-    <!-- Количество -->
-    <div class="form-group">
-      <label for="boxes">Количество:</label>
-      <input type="number" id="boxes" name="boxes" min="1" required>
-    </div>
+        <div class="form-group">
+          <label for="boxes">Количество:</label>
+          <input type="number" id="boxes" name="boxes" min="1" required>
+        </div>
 
-    <!-- Параметры палет -->
-    <div id="palletInputBlock" class="form-group" style="display:none;">
-      <label>Параметры палет:</label>
-      <div id="palletFields"></div>
-      <p id="palletWarning" style="color:red; display:none;">Максимум 20 палет</p>
-    </div>
+        <div id="palletInputBlock" class="form-group request-modal__custom-box" style="display:none;">
+          <label>Параметры палет:</label>
+          <div id="palletFields" class="request-modal__pallet-fields"></div>
+          <p id="palletWarning" class="request-modal__warning" style="display:none;">Максимум 20 палет</p>
+        </div>
 
-    <!-- Тип коробки -->
-    <div class="form-group" id="boxTypeBlock">
-      <label class="section-label">Тип коробки:</label>
-      <div style="display:flex;gap:40px;justify-content:center;">
-        <label><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
-        <label><input type="radio" name="box_type" value="custom"> Свои размеры</label>
-      </div>
-    </div>
+        <div class="form-group" id="boxTypeBlock">
+          <label class="section-label">Тип коробки:</label>
+          <div class="request-modal__option-group">
+            <label class="request-modal__option"><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
+            <label class="request-modal__option"><input type="radio" name="box_type" value="custom"> Свои размеры</label>
+          </div>
+        </div>
 
-    <!-- Габариты одной коробки -->
-    <div class="form-group" id="boxSizeBlock">
-      <label>Габариты одной коробки (см):</label>
-      <div style="display:flex;gap:10px;justify-content:center;">
-        <input type="number" id="box_length" name="box_length" placeholder="Длина" style="width:70px;">
-        <input type="number" id="box_width"  name="box_width"  placeholder="Ширина" style="width:70px;">
-        <input type="number" id="box_height" name="box_height" placeholder="Высота" style="width:70px;">
-      </div>
-    </div>
+        <div class="form-group" id="boxSizeBlock">
+          <label>Габариты одной коробки (см):</label>
+          <div class="request-modal__dimensions">
+            <input type="number" id="box_length" name="box_length" placeholder="Длина" class="request-modal__dimension-input">
+            <input type="number" id="box_width" name="box_width" placeholder="Ширина" class="request-modal__dimension-input">
+            <input type="number" id="box_height" name="box_height" placeholder="Высота" class="request-modal__dimension-input">
+          </div>
+        </div>
 
-    <!-- Свои группы коробов -->
-    <div class="form-group" id="customBoxFieldsBlock" style="display:none;">
-      <label>Свои группы коробов:</label>
-      <input type="number" id="customBoxGroupCount" min="1" max="10"
-             placeholder="Кол-во групп" style="width:100px;">
-      <div id="customBoxFields" style="margin-top:10px;"></div>
-      <p id="customBoxWarning" style="color:red; display:none;">
-        Сумма количеств в группах не должна превышать общее количество коробов
-      </p>
-    </div>
+        <div class="form-group request-modal__custom-box" id="customBoxFieldsBlock" style="display:none;">
+          <label>Свои группы коробов:</label>
+          <input type="number" id="customBoxGroupCount" min="1" max="10" placeholder="Кол-во групп" class="request-modal__group-count">
+          <div id="customBoxFields" class="request-modal__custom-fields"></div>
+          <p id="customBoxWarning" class="request-modal__warning" style="display:none;">Сумма количеств в группах не должна превышать общее количество коробов</p>
+        </div>
 
-    <!-- Итоги -->
-    <div class="form-group"><label>Общий объём:</label><span id="box_volume">—</span></div>
-    <div class="form-group"><label>Тариф:</label><span id="tariff_rate">—</span></div>
-    <div class="form-group"><label for="payment">Сумма оплаты:</label>
-      <input type="number" id="payment" name="payment" readonly>
-    </div>
-     <!-- Галочка «Забрать груз» -->
+        <div class="form-group"><label>Общий объём:</label><span id="box_volume">—</span></div>
+        <div class="form-group"><label>Тариф:</label><span id="tariff_rate">—</span></div>
+        <div class="form-group"><label for="payment">Сумма оплаты:</label>
+          <input type="number" id="payment" name="payment" readonly>
+        </div>
+
         <div class="form-group">
           <label>
             <input type="checkbox" id="pickupCheckbox" name="pickup_checkbox">
@@ -211,43 +191,34 @@ function renderFormHTML(scheduleData = {}) {
           </label>
         </div>
 
-<!-- Блок выбора точки на карте (изначально скрыт) -->
-<div id="pickupAddressFields" style="display:none; padding:10px; border:1px solid #ddd; border-radius:4px;">
+        <div id="pickupAddressFields" class="request-modal__pickup" style="display:none;">
+          <div id="pickupMap" class="request-modal__map"></div>
 
-  <!-- Карта -->
-  <div id="pickupMap" style="width:100%; height:300px; border:1px solid #ccc; margin-bottom:8px;"></div>
+          <input type="hidden" id="pickupLat" name="pickup_lat">
+          <input type="hidden" id="pickupLng" name="pickup_lng">
 
-  <!-- Скрытые координаты -->
-  <input type="hidden" id="pickupLat" name="pickup_lat">
-  <input type="hidden" id="pickupLng" name="pickup_lng">
+          <label for="clientPhone" class="request-modal__pickup-label">Номер для связи:</label>
+          <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-modal__pickup-phone">
 
-  <!-- Телефон для связи -->
-  <label for="clientPhone">Номер для связи:</label>
-  <input type="tel" id="clientPhone" name="client_phone"
-         placeholder="+7 (999) 123-45-67"
-         style="width:100%; margin-bottom:8px;">
+          <div id="routeBlock" class="request-modal__route" style="display:none;">
+            <span class="request-modal__route-label">Ссылка для навигатора:</span>
+            <div class="request-modal__route-links">
+              <a id="routeLinkYandex" href="#" target="_blank" class="request-modal__route-link"></a>
+              <a id="routeLinkGoogle" href="#" target="_blank" class="request-modal__route-link"></a>
+              <button type="button" id="routeCopyBtn" class="request-modal__route-copy">Копировать</button>
+            </div>
+          </div>
+        </div>
 
-  <!-- Блок ссылки для проверки -->
-  <div id="routeBlock" style="display:none; margin-top:10px;">
-    <label>Ссылка для навигатора:</label><br>
-    <a id="routeLinkYandex" href="#" target="_blank" style="margin-right:10px;"></a>
-    <a id="routeLinkGoogle" href="#" target="_blank"></a>
-    <button type="button" id="routeCopyBtn" style="margin-left:10px;">Копировать</button>
-  </div>
-</div>
-
-
-
-
-    <!-- Комментарий -->
-    <div class="form-group">
-      <label for="comment">Комментарий:</label>
-      <textarea id="comment" name="comment" rows="3"
-                placeholder="Введите комментарий"></textarea>
+        <div class="form-group">
+          <label for="comment">Комментарий:</label>
+          <textarea id="comment" name="comment" rows="3" placeholder="Введите комментарий"></textarea>
+        </div>
+        <button type="submit">Отправить</button>
+      </form>
+      <p id="status"></p>
     </div>
-    <button type="submit">Отправить</button>
-  </form>
-  <p id="status"></p>
+  </section>
 </div>`;
 }
 
@@ -301,17 +272,17 @@ function setupPackagingToggle() {
 function generateBoxFields(count) {
     const block = document.getElementById("customBoxFields");
     if (count < 1 || count > 10) {
-        block.innerHTML = '<p style="color:red;">Укажите от 1 до 10 групп</p>';
+        block.innerHTML = '<p class="request-modal__warning">Укажите от 1 до 10 групп</p>';
         return;
     }
     const html = Array.from({ length: count }, (_, i) => `
-      <div class="box-group-item" style="margin-bottom:10px;border:1px solid #ccc;padding:8px;border-radius:4px;">
-        <strong>Группа ${i+1}:</strong>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <input type="number" name="box_length[]" placeholder="Длина, см" required style="width:70px;">
-          <input type="number" name="box_width[]"  placeholder="Ширина, см" required style="width:70px;">
-          <input type="number" name="box_height[]" placeholder="Высота, см" required style="width:70px;">
-          <input type="number" name="box_count[]"  placeholder="Кол-во"    required style="width:70px;">
+      <div class="request-modal__box-group">
+        <strong class="request-modal__box-group-title">Группа ${i + 1}:</strong>
+        <div class="request-modal__box-group-inputs">
+          <input type="number" name="box_length[]" placeholder="Длина, см" required class="request-modal__dimension-input">
+          <input type="number" name="box_width[]"  placeholder="Ширина, см" required class="request-modal__dimension-input">
+          <input type="number" name="box_height[]" placeholder="Высота, см" required class="request-modal__dimension-input">
+          <input type="number" name="box_count[]"  placeholder="Кол-во"    required class="request-modal__dimension-input">
         </div>
       </div>
     `).join('');
