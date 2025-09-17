@@ -330,6 +330,15 @@
     color: #000;
 }
 
+.request-form__hidden {
+    display: none !important;
+}
+
+.request-modal .form-error,
+.request-modal .text-danger {
+    color: var(--schedule-danger, #d64545);
+}
+
 .request-modal {
     display: flex;
     flex-direction: column;
