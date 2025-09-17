@@ -1,11 +1,10 @@
 import { fetchMarketplaces, fetchWarehouses } from './filterOptions.js';
 
-// Управление расписанием отправлений с пошаговым выбором
+// Управление расписанием отправлений в одноэкранном формате фильтрации
 class ScheduleManager {
     constructor() {
         this.schedules = [];
         this.filteredSchedules = [];
-        this.currentStep = 1; // 1 = маркетплейс, 2 = склад, 3 = расписание
         this.filters = {
             marketplace: '',
             warehouse: ''
@@ -16,215 +15,49 @@ class ScheduleManager {
         this.isLoadingWarehouses = false;
         this.isLoadingSchedules = false;
         this.schedulesCache = new Map();
+        this.elements = {
+            marketplaceSelect: document.getElementById('marketplaceFilter'),
+            warehouseSelect: document.getElementById('warehouseFilter'),
+            resetButton: document.getElementById('resetScheduleFilters'),
+            subtitle: document.getElementById('scheduleSubtitle')
+        };
 
         this.init();
     }
 
     init() {
-        this.setupStepNavigation();
-        this.updateMarketplaceBanner();
-        this.updateWarehouseBanner();
-        this.updateSelectionSummary();
-        this.loadMarketplaces();
-        this.showStep(1);
+        this.setupEventListeners();
         this.renderScheduleGrid();
+        this.renderWarehouses();
+        this.loadMarketplaces();
     }
 
-    setupStepNavigation() {
-        // Кнопки навигации между шагами
-        const backBtn = document.getElementById('stepBackBtn');
-        const nextBtn = document.getElementById('stepNextBtn');
+    setupEventListeners() {
+        const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
 
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                if (this.currentStep > 1) {
-                    this.showStep(this.currentStep - 1);
-                }
+        if (marketplaceSelect) {
+            marketplaceSelect.addEventListener('change', (event) => {
+                this.selectMarketplace(event.target.value);
             });
         }
 
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                if (this.currentStep < 3) {
-                    this.showStep(this.currentStep + 1);
-                }
+        if (warehouseSelect) {
+            warehouseSelect.addEventListener('change', (event) => {
+                this.selectWarehouse(event.target.value);
             });
         }
-    }
 
-    setBannerState(bannerId, { state = 'active', title = '', description = '', status = '' } = {}) {
-        const banner = document.getElementById(bannerId);
-        if (!banner) return;
-
-        banner.dataset.state = state;
-
-        const titleEl = banner.querySelector('[data-banner-title]');
-        if (titleEl) {
-            titleEl.textContent = title;
-        }
-
-        const descriptionEl = banner.querySelector('[data-banner-description]');
-        if (descriptionEl) {
-            descriptionEl.textContent = description;
-        }
-
-        const statusEl = banner.querySelector('[data-banner-status]');
-        if (statusEl) {
-            statusEl.textContent = status;
-        }
-    }
-
-    updateMarketplaceBanner() {
-        if (this.filters.marketplace) {
-            this.setBannerState('marketplaceBanner', {
-                state: 'completed',
-                title: `Выбран маркетплейс «${this.filters.marketplace}»`,
-                description: 'Можно перейти к следующему шагу и выбрать склад.',
-                status: 'Готово ✓'
+        if (resetButton) {
+            resetButton.addEventListener('click', () => {
+                this.resetFilters();
             });
-        } else {
-            this.setBannerState('marketplaceBanner', {
-                state: 'active',
-                title: 'Выберите маркетплейс',
-                description: 'После выбора площадки мы покажем подходящие склады и даты отправлений.',
-                status: 'Шаг 1 из 3'
-            });
-        }
-    }
-
-    updateWarehouseBanner() {
-        if (!this.filters.marketplace) {
-            this.setBannerState('warehouseBanner', {
-                state: 'locked',
-                title: 'Сначала выберите маркетплейс',
-                description: 'Как только выберете площадку, мы подгрузим доступные склады.',
-                status: 'Шаг 2 из 3'
-            });
-            return;
-        }
-
-        if (this.filters.warehouse) {
-            this.setBannerState('warehouseBanner', {
-                state: 'completed',
-                title: `Выбран склад «${this.filters.warehouse}»`,
-                description: 'Осталось выбрать дату отправления на следующем шаге.',
-                status: 'Готово ✓'
-            });
-        } else {
-            this.setBannerState('warehouseBanner', {
-                state: 'active',
-                title: `Выберите склад для «${this.filters.marketplace}»`,
-                description: 'Выберите точку приёма, которая вам подходит.',
-                status: 'Шаг 2 из 3'
-            });
-        }
-    }
-
-    updateSelectionSummary() {
-        const marketplaceLabel = document.getElementById('selectedMarketplace');
-        if (marketplaceLabel) {
-            marketplaceLabel.textContent = this.filters.marketplace || '—';
-        }
-
-        const marketplaceSummary = document.getElementById('summaryMarketplace');
-        if (marketplaceSummary) {
-            const hasMarketplace = Boolean(this.filters.marketplace);
-            marketplaceSummary.textContent = `Маркетплейс: ${this.filters.marketplace || '—'}`;
-            marketplaceSummary.dataset.filled = hasMarketplace ? 'true' : 'false';
-        }
-
-        const warehouseSummary = document.getElementById('summaryWarehouse');
-        if (warehouseSummary) {
-            const hasWarehouse = Boolean(this.filters.warehouse);
-            warehouseSummary.textContent = `Склад: ${this.filters.warehouse || '—'}`;
-            warehouseSummary.dataset.filled = hasWarehouse ? 'true' : 'false';
         }
     }
 
     updateScheduleSubtitle(message) {
-        const subtitle = document.getElementById('scheduleStepSubtitle');
+        const subtitle = this.elements.subtitle || document.getElementById('scheduleSubtitle');
         if (subtitle) {
             subtitle.textContent = message;
-        }
-    }
-
-    showStep(stepNumber) {
-        this.currentStep = stepNumber;
-
-        this.updateStepWizardProgress();
-        // Обновляем индикаторы шагов
-        this.updateStepIndicators();
-        
-        // Показываем соответствующий контент
-        const steps = document.querySelectorAll('.step-content');
-        steps.forEach(step => step.classList.remove('active'));
-        
-        const currentStepElement = document.getElementById(`step${stepNumber}`);
-        if (currentStepElement) {
-            currentStepElement.classList.add('active');
-        }
-
-        // Обновляем кнопки навигации
-        this.updateNavigationButtons();
-
-        // Загружаем данные для текущего шага
-        switch (stepNumber) {
-            case 1:
-                this.renderMarketplaces();
-                break;
-            case 2:
-                this.loadWarehouses();
-                break;
-            case 3:
-                this.loadSchedules();
-                break;
-        }
-    }
-
-    updateStepIndicators() {
-        for (let i = 1; i <= 3; i++) {
-            const indicator = document.querySelector(`.step-indicator[data-step="${i}"]`);
-            if (indicator) {
-                indicator.classList.remove('active', 'completed');
-
-                if (i < this.currentStep) {
-                    indicator.classList.add('completed');
-                } else if (i === this.currentStep) {
-                    indicator.classList.add('active');
-                }
-            }
-        }
-    }
-
-    updateStepWizardProgress() {
-        const wizard = document.querySelector('.step-wizard');
-        if (wizard) {
-            wizard.dataset.progress = String(this.currentStep);
-        }
-    }
-
-    updateNavigationButtons() {
-        const backBtn = document.getElementById('stepBackBtn');
-        const nextBtn = document.getElementById('stepNextBtn');
-
-        if (backBtn) {
-            backBtn.style.display = this.currentStep > 1 ? 'flex' : 'none';
-        }
-
-        if (nextBtn) {
-            const canProceed = this.canProceedToNextStep();
-            nextBtn.style.display = this.currentStep < 3 && canProceed ? 'flex' : 'none';
-        }
-    }
-
-    canProceedToNextStep() {
-        switch (this.currentStep) {
-            case 1:
-                return Boolean(this.filters.marketplace);
-            case 2:
-                return Boolean(this.filters.warehouse);
-            default:
-                return false;
         }
     }
 
@@ -242,9 +75,59 @@ class ScheduleManager {
         } catch (error) {
             console.error('Ошибка загрузки маркетплейсов:', error);
             this.showError('Не удалось загрузить список маркетплейсов');
+            this.marketplaceOptions = [];
         } finally {
             this.isLoadingMarketplaces = false;
             this.renderMarketplaces();
+        }
+    }
+
+    renderMarketplaces() {
+        const select = this.elements.marketplaceSelect;
+        if (!select) return;
+
+        select.innerHTML = '';
+
+        if (this.isLoadingMarketplaces) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Загрузка маркетплейсов...';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
+            return;
+        }
+
+        if (this.marketplaceOptions.length === 0) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Маркетплейсы недоступны';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
+            return;
+        }
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'Выберите маркетплейс';
+        select.appendChild(placeholderOption);
+
+        this.marketplaceOptions.forEach(optionData => {
+            const option = document.createElement('option');
+            option.value = optionData.value;
+            option.textContent = optionData.label;
+            if (optionData.description) {
+                option.title = optionData.description;
+            }
+            select.appendChild(option);
+        });
+
+        select.disabled = false;
+        const selected = this.filters.marketplace || '';
+        select.value = selected;
+        if (select.value !== selected) {
+            select.value = '';
         }
     }
 
@@ -257,103 +140,32 @@ class ScheduleManager {
         return descriptions[marketplace] || 'Торговая площадка';
     }
 
-    renderMarketplaces() {
-        const container = document.getElementById('marketplaceGrid');
-        if (!container) return;
-
-        container.classList.remove('is-empty');
-
-        if (this.isLoadingMarketplaces) {
-            container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Загружаем список маркетплейсов...
-                </div>
-            `;
-            return;
-        }
-
-        if (this.marketplaceOptions.length === 0) {
-            container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-store-slash"></i>
-                    <h3>Маркетплейсы недоступны</h3>
-                    <p>Попробуйте обновить страницу</p>
-                </div>
-            `;
-            return;
-        }
-
-        container.innerHTML = this.marketplaceOptions.map(option => {
-            const value = this.escapeHtml(option.value);
-            const label = this.escapeHtml(option.label);
-            const description = this.escapeHtml(option.description);
-            return `
-                <div class="marketplace-card ${this.filters.marketplace === option.value ? 'selected' : ''}"
-                     data-value="${value}">
-                    <div class="marketplace-icon">
-                        <i class="fas ${this.getMarketplaceIcon(option.value)}"></i>
-                    </div>
-                    <div class="marketplace-info">
-                        <h3>${label}</h3>
-                        <p>${description}</p>
-                    </div>
-                    <div class="marketplace-check">
-                        <i class="fas fa-check"></i>
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Добавляем обработчики кликов
-        container.querySelectorAll('.marketplace-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const value = card.dataset.value;
-                this.selectMarketplace(value);
-            });
-        });
-    }
-
-    getMarketplaceIcon(marketplace) {
-        const icons = {
-            'Wildberries': 'fa-shopping-bag',
-            'Ozon': 'fa-box',
-            'YandexMarket': 'fa-store'
-        };
-        return icons[marketplace] || 'fa-store';
-    }
-
     selectMarketplace(marketplace) {
         this.filters.marketplace = marketplace;
-        this.filters.warehouse = ''; // Сбрасываем выбор склада
+        this.filters.warehouse = '';
+
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = '';
+        }
+
+        this.warehouseOptions = [];
         this.schedules = [];
         this.filteredSchedules = [];
         this.isLoadingSchedules = false;
 
-        this.updateMarketplaceBanner();
-        this.updateWarehouseBanner();
-        this.updateSelectionSummary();
+        this.renderMarketplaces();
+        this.renderWarehouses();
         this.renderScheduleGrid();
 
-        // Обновляем визуальное состояние
-        document.querySelectorAll('.marketplace-card').forEach(card => {
-            card.classList.toggle('selected', card.dataset.value === marketplace);
-        });
-
-        this.warehouseOptions = [];
-        this.renderWarehouses();
-
-        // Автоматически переходим к следующему шагу
-        setTimeout(() => {
-            this.showStep(2);
-        }, 300);
+        if (marketplace) {
+            this.loadWarehouses();
+        }
     }
 
     async loadWarehouses() {
         if (!this.filters.marketplace) {
-            this.showStep(1);
+            this.warehouseOptions = [];
+            this.renderWarehouses();
             return;
         }
 
@@ -368,115 +180,83 @@ class ScheduleManager {
 
             this.warehouseOptions = warehouses.map(wh => ({
                 value: wh,
-                label: wh,
-                count: this.getWarehouseScheduleCount(wh)
+                label: wh
             }));
         } catch (error) {
             console.error('Ошибка загрузки складов:', error);
             this.showError('Не удалось загрузить список складов');
+            this.warehouseOptions = [];
         } finally {
             this.isLoadingWarehouses = false;
             this.renderWarehouses();
         }
     }
 
-    getWarehouseScheduleCount(warehouse) {
-        return this.schedules.filter(s => 
-            s.marketplace === this.filters.marketplace && 
-            s.warehouses === warehouse
-        ).length;
-    }
-
     renderWarehouses() {
-        const container = document.getElementById('warehouseGrid');
-        if (!container) return;
+        const select = this.elements.warehouseSelect;
+        if (!select) return;
 
-        container.classList.remove('is-empty');
+        select.innerHTML = '';
 
         if (!this.filters.marketplace) {
-            container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-store"></i>
-                    <h3>Сначала выберите маркетплейс</h3>
-                    <p>Мы покажем доступные склады после выбора площадки.</p>
-                </div>
-            `;
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Сначала выберите маркетплейс';
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
         if (this.isLoadingWarehouses) {
-            container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Загружаем склады...
-                </div>
-            `;
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Загрузка складов...';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
         if (this.warehouseOptions.length === 0) {
-            container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-warehouse"></i>
-                    <h3>Нет доступных складов</h3>
-                    <p>Для выбранного маркетплейса пока нет активных расписаний</p>
-                </div>
-            `;
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Нет доступных складов';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
-        // Создаем сетку складов
-        container.innerHTML = this.warehouseOptions.map(option => {
-            const value = this.escapeHtml(option.value);
-            const label = this.escapeHtml(option.label);
-            const count = Number(option.count) || 0;
-            return `
-                <div class="warehouse-card ${this.filters.warehouse === option.value ? 'selected' : ''}"
-                     data-value="${value}">
-                    <div class="warehouse-icon">
-                        <i class="fas fa-warehouse"></i>
-                    </div>
-                    <div class="warehouse-info">
-                        <h4>${label}</h4>
-                        <span class="warehouse-count">${count} отправлений</span>
-                    </div>
-                    <div class="warehouse-check">
-                        <i class="fas fa-check"></i>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'Выберите склад';
+        select.appendChild(placeholderOption);
 
-        // Добавляем обработчики кликов
-        container.querySelectorAll('.warehouse-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const value = card.dataset.value;
-                this.selectWarehouse(value);
-            });
+        this.warehouseOptions.forEach(optionData => {
+            const option = document.createElement('option');
+            option.value = optionData.value;
+            option.textContent = optionData.label;
+            select.appendChild(option);
         });
+
+        select.disabled = false;
+        const selected = this.filters.warehouse || '';
+        select.value = selected;
+        if (select.value !== selected) {
+            select.value = '';
+        }
     }
 
     selectWarehouse(warehouse) {
         this.filters.warehouse = warehouse;
 
-        this.updateWarehouseBanner();
-        this.updateSelectionSummary();
+        if (!warehouse) {
+            this.filteredSchedules = [];
+            this.renderScheduleGrid();
+            return;
+        }
 
-        // Обновляем визуальное состояние
-        document.querySelectorAll('.warehouse-card').forEach(card => {
-            card.classList.toggle('selected', card.dataset.value === warehouse);
-        });
-
-        this.isLoadingSchedules = true;
-        this.renderScheduleGrid();
-
-        // Автоматически переходим к расписанию
-        setTimeout(() => {
-            this.showStep(3);
-        }, 300);
+        this.loadSchedules();
     }
 
     async loadSchedules() {
@@ -525,9 +305,6 @@ class ScheduleManager {
     applyFilters() {
         if (!this.filters.marketplace || !this.filters.warehouse) {
             this.filteredSchedules = [];
-            this.updateSelectionSummary();
-            this.updateMarketplaceBanner();
-            this.updateWarehouseBanner();
             this.renderScheduleGrid();
             return;
         }
@@ -538,7 +315,6 @@ class ScheduleManager {
             return matchMarketplace && matchWarehouse;
         });
 
-        this.updateSelectionSummary();
         this.renderScheduleGrid();
     }
 
@@ -548,13 +324,24 @@ class ScheduleManager {
 
         container.classList.remove('is-empty');
 
-        if (!this.filters.marketplace || !this.filters.warehouse) {
+        if (!this.filters.marketplace) {
             this.updateScheduleSubtitle('Чтобы увидеть расписание, выберите маркетплейс и склад');
             container.classList.add('is-empty');
             container.innerHTML = this.renderEmptyState(
                 'fa-layer-group',
                 'Расписание недоступно',
-                'Выберите маркетплейс и склад, чтобы мы показали подходящие отправления.'
+                'Укажите маркетплейс и склад, чтобы мы показали подходящие отправления.'
+            );
+            return;
+        }
+
+        if (!this.filters.warehouse) {
+            this.updateScheduleSubtitle('Сначала выберите склад, чтобы увидеть доступные отправления');
+            container.classList.add('is-empty');
+            container.innerHTML = this.renderEmptyState(
+                'fa-warehouse',
+                'Не выбран склад',
+                'Выберите склад, чтобы показать подходящее расписание.'
             );
             return;
         }
@@ -577,7 +364,7 @@ class ScheduleManager {
             container.innerHTML = this.renderEmptyState(
                 'fa-calendar-times',
                 'Нет доступных отправлений',
-                'Попробуйте выбрать другую дату или склад, либо загляните позже.'
+                'Попробуйте выбрать другой склад или загляните позже.'
             );
             return;
         }
@@ -718,13 +505,11 @@ class ScheduleManager {
         const schedule = this.schedules.find(s => String(s.id) === String(scheduleId));
         if (!schedule) return;
 
-        // Закрываем модальное окно деталей
         const detailsModal = document.getElementById('scheduleDetailsModal');
         if (detailsModal) {
             window.app.closeModal(detailsModal);
         }
 
-        // Открываем форму создания заявки
         if (typeof window.openClientRequestFormModal === 'function') {
             window.openClientRequestFormModal(schedule);
         } else if (typeof window.openRequestFormModal === 'function') {
@@ -748,7 +533,6 @@ class ScheduleManager {
         }
     }
 
-    // Методы для внешнего вызова
     resetFilters() {
         this.filters = {
             marketplace: '',
@@ -756,30 +540,30 @@ class ScheduleManager {
         };
         this.schedules = [];
         this.filteredSchedules = [];
+        this.warehouseOptions = [];
         this.isLoadingSchedules = false;
 
-        this.updateMarketplaceBanner();
-        this.updateWarehouseBanner();
-        this.updateSelectionSummary();
+        if (this.elements.marketplaceSelect) {
+            this.elements.marketplaceSelect.value = '';
+        }
+
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = '';
+        }
 
         this.renderMarketplaces();
-        this.warehouseOptions = [];
         this.renderWarehouses();
         this.renderScheduleGrid();
-
-        this.showStep(1);
     }
 
     getCurrentSelection() {
         return {
             marketplace: this.filters.marketplace,
-            warehouse: this.filters.warehouse,
-            step: this.currentStep
+            warehouse: this.filters.warehouse
         };
     }
 }
 
-// Инициализация после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     window.ScheduleManager = new ScheduleManager();
 });
