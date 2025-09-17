@@ -1,4 +1,4 @@
-import { fetchMarketplaces, fetchCities, fetchWarehouses, populateSelect } from './filterOptions.js';
+import { fetchMarketplaces, populateSelect } from './filterOptions.js';
 
 // Управление расписанием отправлений
 class ScheduleManager {
@@ -12,7 +12,9 @@ class ScheduleManager {
             city: '',
             warehouse: ''
         };
-        
+        this.marketplaceFilterElement = null;
+        this.warehouseFilterElement = null;
+
         this.init();
     }
 
@@ -55,86 +57,40 @@ class ScheduleManager {
 
     setupFilters() {
         const marketplaceFilter = document.getElementById('marketplaceFilter');
-        const cityFilter = document.getElementById('cityFilter');
         const warehouseFilter = document.getElementById('warehouseFilter');
 
-        if (!marketplaceFilter || !cityFilter || !warehouseFilter) {
+        if (!marketplaceFilter || !warehouseFilter) {
             return;
         }
 
+        this.filters.city = '';
+        this.marketplaceFilterElement = marketplaceFilter;
+        this.warehouseFilterElement = warehouseFilter;
+
         const baseUrl = '../filter_options.php';
 
-        cityFilter.disabled = true;
-        warehouseFilter.disabled = true;
-
-        const updateCities = async (marketplaceValue, selectedCity = '') => {
-            const cities = await fetchCities({ marketplace: marketplaceValue, baseUrl });
-            const value = populateSelect(cityFilter, cities, { selectedValue: selectedCity });
-            cityFilter.disabled = cities.length === 0;
-            return value;
-        };
-
-        const updateWarehouses = async (marketplaceValue, cityValue, selectedWarehouse = '') => {
-            const warehouses = await fetchWarehouses({
-                marketplace: marketplaceValue,
-                city: cityValue,
-                baseUrl
-            });
-            const value = populateSelect(warehouseFilter, warehouses, { selectedValue: selectedWarehouse });
-            warehouseFilter.disabled = warehouses.length === 0;
-            return value;
-        };
-
         const initializeFilters = async () => {
-            const marketplaces = await fetchMarketplaces({ baseUrl });
-            const marketplaceValue = populateSelect(marketplaceFilter, marketplaces, {
-                selectedValue: this.filters.marketplace
-            });
-            this.filters.marketplace = marketplaceValue;
-            marketplaceFilter.disabled = marketplaces.length === 0;
+            try {
+                const marketplaces = await fetchMarketplaces({ baseUrl });
+                const marketplaceValue = populateSelect(marketplaceFilter, marketplaces, {
+                    selectedValue: this.filters.marketplace
+                });
 
-            const cityValue = await updateCities(this.filters.marketplace, this.filters.city);
-            this.filters.city = cityValue;
-
-            const warehouseValue = await updateWarehouses(
-                this.filters.marketplace,
-                this.filters.city,
-                this.filters.warehouse
-            );
-            this.filters.warehouse = warehouseValue;
+                this.filters.marketplace = marketplaceValue;
+                marketplaceFilter.disabled = marketplaces.length === 0;
+            } catch (error) {
+                console.error('Ошибка инициализации фильтров расписания:', error);
+                marketplaceFilter.disabled = true;
+            } finally {
+                this.updateWarehouseOptions();
+            }
         };
 
-        initializeFilters().catch(error => {
-            console.error('Ошибка инициализации фильтров расписания:', error);
-        });
+        initializeFilters();
 
-        marketplaceFilter.addEventListener('change', async (event) => {
+        marketplaceFilter.addEventListener('change', (event) => {
             this.filters.marketplace = event.target.value;
-            try {
-                const cityValue = await updateCities(this.filters.marketplace);
-                this.filters.city = cityValue;
-                const warehouseValue = await updateWarehouses(
-                    this.filters.marketplace,
-                    this.filters.city
-                );
-                this.filters.warehouse = warehouseValue;
-            } catch (error) {
-                console.error('Ошибка обновления фильтров при выборе маркетплейса:', error);
-            }
-            this.applyFilters();
-        });
-
-        cityFilter.addEventListener('change', async (event) => {
-            this.filters.city = event.target.value;
-            try {
-                const warehouseValue = await updateWarehouses(
-                    this.filters.marketplace,
-                    this.filters.city
-                );
-                this.filters.warehouse = warehouseValue;
-            } catch (error) {
-                console.error('Ошибка обновления складов при выборе города:', error);
-            }
+            this.updateWarehouseOptions();
             this.applyFilters();
         });
 
@@ -142,6 +98,89 @@ class ScheduleManager {
             this.filters.warehouse = event.target.value;
             this.applyFilters();
         });
+
+        document.querySelectorAll('.filter-step-action').forEach(button => {
+            const targetId = button.dataset.target;
+            if (!targetId) {
+                return;
+            }
+
+            button.addEventListener('click', () => {
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.focus();
+                    if (typeof targetElement.showPicker === 'function') {
+                        targetElement.showPicker();
+                    }
+                }
+            });
+        });
+    }
+
+    updateWarehouseOptions() {
+        const warehouseFilter = this.warehouseFilterElement || document.getElementById('warehouseFilter');
+        if (!warehouseFilter) {
+            return;
+        }
+
+        const warehouses = this.collectWarehouses(this.filters.marketplace);
+        const placeholder = this.filters.marketplace ? 'Все склады' : 'Все';
+        const selectedValue = populateSelect(warehouseFilter, warehouses, {
+            selectedValue: this.filters.warehouse,
+            placeholder
+        });
+
+        const hasWarehouses = warehouses.length > 0;
+        warehouseFilter.disabled = !hasWarehouses;
+        this.filters.warehouse = hasWarehouses ? selectedValue : '';
+
+        if (!hasWarehouses && this.filters.marketplace) {
+            warehouseFilter.title = 'Склады недоступны для выбранного маркетплейса';
+        } else {
+            warehouseFilter.removeAttribute('title');
+        }
+    }
+
+    collectWarehouses(marketplace) {
+        if (!Array.isArray(this.schedules) || this.schedules.length === 0) {
+            return [];
+        }
+
+        const values = [];
+
+        this.schedules.forEach(schedule => {
+            if (marketplace && schedule.marketplace !== marketplace) {
+                return;
+            }
+
+            const rawWarehouse = schedule.warehouse ?? schedule.warehouses;
+
+            if (Array.isArray(rawWarehouse)) {
+                rawWarehouse.forEach(item => {
+                    if (typeof item === 'string') {
+                        const trimmed = item.trim();
+                        if (trimmed) {
+                            values.push(trimmed);
+                        }
+                    }
+                });
+            } else if (typeof rawWarehouse === 'string') {
+                const trimmed = rawWarehouse.trim();
+                if (trimmed) {
+                    values.push(trimmed);
+                }
+            }
+        });
+
+        const uniqueWarehouses = Array.from(new Set(values)).sort((a, b) => {
+            try {
+                return a.localeCompare(b, 'ru', { sensitivity: 'base' });
+            } catch (error) {
+                return a.localeCompare(b);
+            }
+        });
+
+        return uniqueWarehouses.map(value => ({ value, label: value }));
     }
 
     setupCalendar() {
@@ -190,6 +229,7 @@ class ScheduleManager {
                 status
             }));
 
+            this.updateWarehouseOptions();
             this.applyFilters();
         } catch (error) {
             console.error('Ошибка загрузки расписания:', error);
@@ -199,14 +239,12 @@ class ScheduleManager {
 
     applyFilters() {
         this.filteredSchedules = this.schedules.filter(schedule => {
-            const matchMarketplace = !this.filters.marketplace || 
+            const matchMarketplace = !this.filters.marketplace ||
                                    schedule.marketplace === this.filters.marketplace;
-            const matchCity = !this.filters.city || 
-                             schedule.city === this.filters.city;
-            const matchWarehouse = !this.filters.warehouse || 
+            const matchWarehouse = !this.filters.warehouse ||
                                   schedule.warehouse === this.filters.warehouse;
-            
-            return matchMarketplace && matchCity && matchWarehouse;
+
+            return matchMarketplace && matchWarehouse;
         });
 
         if (this.currentTab === 'upcoming') {

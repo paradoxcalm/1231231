@@ -89,23 +89,47 @@ if (empty($_SESSION['user_id'])) {
             <!-- Вкладка ближайших отправлений -->
             <div class="tab-content active" id="upcomingTab">
                 <div class="filters">
-                    <div class="filter-group">
-                        <label>Маркетплейс</label>
-                        <select id="marketplaceFilter">
-                            <option value="">Все</option>
-                        </select>
+                    <div class="filter-step">
+                        <div class="filter-step-header">
+                            <div class="filter-step-info">
+                                <span class="filter-step-number">Шаг 1</span>
+                                <div>
+                                    <h3 class="filter-step-title">Маркетплейс</h3>
+                                    <p class="filter-step-description">Выберите площадку отправки</p>
+                                </div>
+                            </div>
+                            <button class="filter-step-action" type="button" data-target="marketplaceFilter">
+                                <i class="fas fa-store"></i>
+                                Сменить маркетплейс
+                            </button>
+                        </div>
+                        <div class="filter-group">
+                            <label for="marketplaceFilter">Маркетплейс</label>
+                            <select id="marketplaceFilter">
+                                <option value="">Все</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="filter-group">
-                        <label>Город</label>
-                        <select id="cityFilter">
-                            <option value="">Все</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label>Склад</label>
-                        <select id="warehouseFilter">
-                            <option value="">Все</option>
-                        </select>
+                    <div class="filter-step">
+                        <div class="filter-step-header">
+                            <div class="filter-step-info">
+                                <span class="filter-step-number">Шаг 2</span>
+                                <div>
+                                    <h3 class="filter-step-title">Склад</h3>
+                                    <p class="filter-step-description">Уточните точку приёма</p>
+                                </div>
+                            </div>
+                            <button class="filter-step-action" type="button" data-target="warehouseFilter">
+                                <i class="fas fa-warehouse"></i>
+                                Выбрать склад
+                            </button>
+                        </div>
+                        <div class="filter-group">
+                            <label for="warehouseFilter">Склад</label>
+                            <select id="warehouseFilter">
+                                <option value="">Все</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
