@@ -78,100 +78,145 @@ if (empty($_SESSION['user_id'])) {
         <section class="content-section active" id="scheduleSection">
             <div class="section-header">
                 <h2>Расписание отправлений</h2>
-                <p>Выберите подходящее расписание для создания заявки</p>
-            </div>
-            
-            <div class="schedule-tabs">
-                <button class="tab-btn active" data-tab="upcoming">Ближайшие</button>
-                <button class="tab-btn" data-tab="calendar">Календарь</button>
+                <p>Пошаговый выбор: маркетплейс → склад → дата отправления</p>
             </div>
 
-            <!-- Вкладка ближайших отправлений -->
-            <div class="tab-content active" id="upcomingTab">
-                <div class="filters">
-                    <div class="filter-step">
-                        <div class="filter-step-header">
-                            <div class="filter-step-info">
-                                <span class="filter-step-number">Шаг 1</span>
-                                <div>
-                                    <h3 class="filter-step-title">Маркетплейс</h3>
-                                    <p class="filter-step-description">Выберите площадку отправки</p>
-                                </div>
-                            </div>
-                            <button class="filter-step-action" type="button" data-target="marketplaceGrid">
+            <div class="step-wizard" data-progress="1">
+                <div class="step-indicators">
+                    <div class="step-indicator active" data-step="1">
+                        <div class="step-circle">
+                            <span class="step-number">1</span>
+                            <i class="fas fa-check step-check"></i>
+                        </div>
+                        <span class="step-label">Маркетплейс</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-indicator" data-step="2">
+                        <div class="step-circle">
+                            <span class="step-number">2</span>
+                            <i class="fas fa-check step-check"></i>
+                        </div>
+                        <span class="step-label">Склад</span>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step-indicator" data-step="3">
+                        <div class="step-circle">
+                            <span class="step-number">3</span>
+                            <i class="fas fa-check step-check"></i>
+                        </div>
+                        <span class="step-label">Расписание</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="steps-container">
+                <div class="step-content active" id="step1">
+                    <div class="step-card">
+                        <div class="step-header">
+                            <h3>
                                 <i class="fas fa-store"></i>
-                                Сменить маркетплейс
-                            </button>
+                                Выберите маркетплейс
+                            </h3>
+                            <p>Укажите площадку, на которой оформляете отправку</p>
                         </div>
-                        <div class="filter-step-body">
-                            <div class="selection-banner" id="marketplaceBanner" data-state="active">
-                                <div class="selection-banner__icon">
-                                    <i class="fas fa-store"></i>
-                                </div>
-                                <div class="selection-banner__content">
-                                    <h4 class="selection-banner__title" data-banner-title>Выберите маркетплейс</h4>
-                                    <p class="selection-banner__description" data-banner-description>
-                                        Мы покажем подходящие склады и расписание после выбора площадки.
-                                    </p>
-                                </div>
-                                <div class="selection-banner__status" data-banner-status>Шаг 1 из 2</div>
-                            </div>
 
-                            <div class="selection-grid" id="marketplaceGrid" role="list"></div>
-                        </div>
-                    </div>
-                    <div class="filter-step">
-                        <div class="filter-step-header">
-                            <div class="filter-step-info">
-                                <span class="filter-step-number">Шаг 2</span>
-                                <div>
-                                    <h3 class="filter-step-title">Склад</h3>
-                                    <p class="filter-step-description">Уточните точку приёма</p>
-                                </div>
+                        <div class="selection-banner" id="marketplaceBanner" data-state="active">
+                            <div class="selection-banner__icon">
+                                <i class="fas fa-store"></i>
                             </div>
-                            <button class="filter-step-action" type="button" data-target="warehouseGrid">
-                                <i class="fas fa-warehouse"></i>
-                                Выбрать склад
-                            </button>
-                        </div>
-                        <div class="filter-step-body">
-                            <div class="selection-banner" id="warehouseBanner" data-state="locked">
-                                <div class="selection-banner__icon">
-                                    <i class="fas fa-warehouse"></i>
-                                </div>
-                                <div class="selection-banner__content">
-                                    <h4 class="selection-banner__title" data-banner-title>Сначала выберите маркетплейс</h4>
-                                    <p class="selection-banner__description" data-banner-description>
-                                        После выбора площадки мы покажем доступные склады и расписание приёмок.
-                                    </p>
-                                </div>
-                                <div class="selection-banner__status" data-banner-status>Шаг 2 из 2</div>
+                            <div class="selection-banner__content">
+                                <h4 class="selection-banner__title" data-banner-title>Выберите маркетплейс</h4>
+                                <p class="selection-banner__description" data-banner-description>
+                                    После выбора площадки мы покажем подходящие склады и даты отправлений.
+                                </p>
                             </div>
+                            <div class="selection-banner__status" data-banner-status>Шаг 1 из 3</div>
+                        </div>
 
-                            <div class="selection-grid selection-grid--warehouses" id="warehouseGrid" role="list"></div>
+                        <div class="selection-grid marketplace-grid" id="marketplaceGrid" role="list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                Загрузка маркетплейсов...
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="schedule-grid" id="scheduleGrid">
-                    <!-- Карточки расписания будут генерироваться динамически -->
+                <div class="step-content" id="step2">
+                    <div class="step-card">
+                        <div class="step-header">
+                            <h3>
+                                <i class="fas fa-warehouse"></i>
+                                Выберите склад назначения
+                            </h3>
+                            <p>Доступные склады для маркетплейса <span id="selectedMarketplace">—</span></p>
+                        </div>
+
+                        <div class="selection-banner" id="warehouseBanner" data-state="locked">
+                            <div class="selection-banner__icon">
+                                <i class="fas fa-warehouse"></i>
+                            </div>
+                            <div class="selection-banner__content">
+                                <h4 class="selection-banner__title" data-banner-title>Сначала выберите маркетплейс</h4>
+                                <p class="selection-banner__description" data-banner-description>
+                                    Как только выберете площадку, мы подгрузим доступные склады.
+                                </p>
+                            </div>
+                            <div class="selection-banner__status" data-banner-status>Шаг 2 из 3</div>
+                        </div>
+
+                        <div class="selection-grid warehouse-grid" id="warehouseGrid" role="list"></div>
+                    </div>
+                </div>
+
+                <div class="step-content" id="step3">
+                    <div class="step-card">
+                        <div class="step-header">
+                            <h3>
+                                <i class="fas fa-calendar-alt"></i>
+                                Расписание отправлений
+                            </h3>
+                            <p id="scheduleStepSubtitle">Чтобы увидеть расписание, выберите маркетплейс и склад</p>
+                        </div>
+
+                        <div class="step-summary">
+                            <span class="summary-pill" id="summaryMarketplace">Маркетплейс: —</span>
+                            <span class="summary-pill" id="summaryWarehouse">Склад: —</span>
+                        </div>
+
+                        <div class="schedule-step-layout">
+                            <div class="schedule-grid" id="scheduleGrid"></div>
+
+                            <div class="calendar-panel">
+                                <div class="calendar-controls">
+                                    <button class="calendar-nav" id="prevMonth">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <h3 id="currentMonth">Январь 2025</h3>
+                                    <button class="calendar-nav" id="nextMonth">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                                <div class="calendar-grid" id="calendarGrid"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Вкладка календаря -->
-            <div class="tab-content" id="calendarTab">
-                <div class="calendar-controls">
-                    <button class="calendar-nav" id="prevMonth">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <h3 id="currentMonth">Январь 2025</h3>
-                    <button class="calendar-nav" id="nextMonth">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-                <div class="calendar-grid" id="calendarGrid">
-                    <!-- Календарь генерируется динамически -->
-                </div>
+            <div class="step-navigation">
+                <button class="step-nav-btn secondary" id="stepBackBtn" style="display: none;">
+                    <i class="fas fa-arrow-left"></i>
+                    Назад
+                </button>
+                <button class="step-nav-btn primary" id="stepNextBtn" style="display: none;">
+                    Далее
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button class="step-nav-btn ghost" id="resetStepsBtn">
+                    <i class="fas fa-rotate-right"></i>
+                    Сбросить выбор
+                </button>
             </div>
         </section>
 
