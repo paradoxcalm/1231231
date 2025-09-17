@@ -4,11 +4,6 @@
   gap: 8px;
 }
 
-.request-form__static-field {
-  text-align: center;
-  font-weight: 600;
-}
-
 .request-form__radio-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

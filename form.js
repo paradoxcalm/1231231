@@ -117,14 +117,16 @@ function renderFormHTML(scheduleData = {}) {
         <input type="hidden" name="accept_time" id="acceptTimeField" value="${accept_time}">
         <input type="hidden" name="direction" id="directionField" value="${warehouses}">
 
-        <div class="form-group request-form__group">
-          <label>Направление:</label>
-          <div class="static-field request-modal__static-field request-form__static-field">${city || '—'} → ${warehouses || '—'}</div>
-        </div>
+        <div class="request-modal__summary">
+          <div class="modal-row request-modal__summary-row">
+            <span class="modal-label">Направление:</span>
+            <span class="modal-value">${city || '—'} → ${warehouses || '—'}</span>
+          </div>
 
-        <div class="form-group request-form__group">
-          <label>Выезд → Сдача:</label>
-          <div class="static-field request-modal__static-field request-form__static-field">${combinedDates || '—'}</div>
+          <div class="modal-row request-modal__summary-row">
+            <span class="modal-label">Выезд → Сдача:</span>
+            <span class="modal-value">${combinedDates || '—'}</span>
+          </div>
         </div>
 
         <input type="hidden" id="city" name="city" value="${city}">
