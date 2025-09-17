@@ -1,4 +1,4 @@
-import { fetchMarketplaces, populateSelect } from './filterOptions.js';
+import { fetchMarketplaces } from './filterOptions.js';
 
 // Управление расписанием отправлений
 class ScheduleManager {
@@ -12,8 +12,13 @@ class ScheduleManager {
             city: '',
             warehouse: ''
         };
-        this.marketplaceFilterElement = null;
-        this.warehouseFilterElement = null;
+        this.marketplaceGridElement = null;
+        this.warehouseGridElement = null;
+        this.marketplaceBannerElement = null;
+        this.warehouseBannerElement = null;
+        this.marketplaceOptions = [];
+        this.warehouseOptions = [];
+        this.highlightTimers = {};
         this.filtersIncomplete = true;
 
         this.init();
@@ -57,85 +62,497 @@ class ScheduleManager {
     }
 
     setupFilters() {
-        const marketplaceFilter = document.getElementById('marketplaceFilter');
-        const warehouseFilter = document.getElementById('warehouseFilter');
+        this.marketplaceGridElement = document.getElementById('marketplaceGrid');
+        this.warehouseGridElement = document.getElementById('warehouseGrid');
+        this.marketplaceBannerElement = document.getElementById('marketplaceBanner');
+        this.warehouseBannerElement = document.getElementById('warehouseBanner');
 
-        if (!marketplaceFilter || !warehouseFilter) {
+        if (!this.marketplaceGridElement || !this.warehouseGridElement) {
             return;
         }
 
         this.filters.city = '';
-        this.marketplaceFilterElement = marketplaceFilter;
-        this.warehouseFilterElement = warehouseFilter;
+
+        this.marketplaceGridElement.dataset.state = 'loading';
+        this.marketplaceGridElement.innerHTML = `
+            <div class="selection-skeleton">
+                <div class="selection-skeleton__pulse"></div>
+                <div class="selection-skeleton__pulse"></div>
+                <div class="selection-skeleton__pulse"></div>
+            </div>
+        `;
+
+        this.renderWarehouseCards([]);
+        this.refreshStepStates();
 
         const baseUrl = '../filter_options.php';
 
         const initializeFilters = async () => {
             try {
                 const marketplaces = await fetchMarketplaces({ baseUrl });
-                const marketplaceValue = populateSelect(marketplaceFilter, marketplaces, {
-                    selectedValue: this.filters.marketplace
-                });
-
-                this.filters.marketplace = marketplaceValue;
-                marketplaceFilter.disabled = marketplaces.length === 0;
+                this.renderMarketplaceCards(marketplaces);
             } catch (error) {
                 console.error('Ошибка инициализации фильтров расписания:', error);
-                marketplaceFilter.disabled = true;
-            } finally {
-                this.updateWarehouseOptions();
+                this.renderMarketplaceCards([]);
             }
         };
 
         initializeFilters();
 
-        marketplaceFilter.addEventListener('change', (event) => {
-            this.filters.marketplace = event.target.value;
-            this.filters.warehouse = '';
-            this.updateWarehouseOptions();
-            this.applyFilters();
-        });
-
-        warehouseFilter.addEventListener('change', (event) => {
-            this.filters.warehouse = event.target.value;
-            this.applyFilters();
-        });
-
         this.bindFilterStepActions();
     }
 
+    normalizeOptions(options = []) {
+        const normalized = [];
+        const seen = new Set();
+
+        options.forEach(option => {
+            if (option === null || option === undefined) {
+                return;
+            }
+
+            let value = '';
+            let label = '';
+            let description = '';
+            let meta = null;
+
+            if (typeof option === 'string') {
+                value = option.trim();
+                label = option.trim();
+            } else if (typeof option === 'object') {
+                const rawValue = option.value ?? option.code ?? option.slug ?? option.id ?? option.name ?? option.title;
+                const rawLabel = option.label ?? option.name ?? option.title ?? rawValue;
+                const rawDescription = option.description ?? option.subtitle ?? option.hint ?? '';
+                const rawMeta = option.meta ?? option.count ?? option.total ?? null;
+
+                if (rawValue !== null && rawValue !== undefined) {
+                    value = typeof rawValue === 'string' ? rawValue.trim() : `${rawValue}`.trim();
+                }
+
+                if (rawLabel !== null && rawLabel !== undefined) {
+                    label = typeof rawLabel === 'string' ? rawLabel.trim() : `${rawLabel}`.trim();
+                }
+
+                if (rawDescription !== null && rawDescription !== undefined) {
+                    description = typeof rawDescription === 'string'
+                        ? rawDescription.trim()
+                        : `${rawDescription}`.trim();
+                }
+
+                if (rawMeta !== null && rawMeta !== undefined && `${rawMeta}`.trim() !== '') {
+                    const numericMeta = Number(rawMeta);
+                    meta = Number.isFinite(numericMeta) ? numericMeta : rawMeta;
+                }
+            }
+
+            if (!value) {
+                return;
+            }
+
+            if (!label) {
+                label = value;
+            }
+
+            if (seen.has(value)) {
+                return;
+            }
+
+            seen.add(value);
+            normalized.push({
+                value,
+                label,
+                description,
+                meta,
+                raw: option
+            });
+        });
+
+        return normalized;
+    }
+
+    renderMarketplaceCards(options = null) {
+        if (!this.marketplaceGridElement) {
+            return;
+        }
+
+        if (options !== null) {
+            this.marketplaceOptions = this.normalizeOptions(options);
+        }
+
+        if (!Array.isArray(this.marketplaceOptions) || this.marketplaceOptions.length === 0) {
+            this.marketplaceGridElement.dataset.state = 'empty';
+            this.marketplaceGridElement.innerHTML = `
+                <div class="selection-empty">
+                    <i class="fas fa-store-slash"></i>
+                    <p>Маркетплейсы недоступны</p>
+                    <span>Попробуйте обновить страницу или обратитесь в поддержку.</span>
+                </div>
+            `;
+            this.refreshStepStates();
+            return;
+        }
+
+        this.marketplaceGridElement.dataset.state = 'ready';
+        this.marketplaceGridElement.innerHTML = this.marketplaceOptions
+            .map(option => this.buildSelectionCard(option, 'marketplace'))
+            .join('');
+
+        this.bindSelectionCards(this.marketplaceGridElement, 'marketplace');
+        this.refreshStepStates();
+    }
+
+    renderWarehouseCards(options = null) {
+        if (!this.warehouseGridElement) {
+            return;
+        }
+
+        if (options !== null) {
+            this.warehouseOptions = Array.isArray(options) ? options : [];
+        }
+
+        const marketplaceSelected = Boolean(this.filters.marketplace);
+
+        if (!marketplaceSelected) {
+            this.warehouseGridElement.dataset.state = 'locked';
+            this.warehouseGridElement.innerHTML = `
+                <div class="selection-empty">
+                    <i class="fas fa-hand-pointer"></i>
+                    <p>Выберите маркетплейс</p>
+                    <span>Сначала завершите шаг 1, чтобы увидеть доступные склады.</span>
+                </div>
+            `;
+            this.refreshStepStates();
+            return;
+        }
+
+        if (!Array.isArray(this.warehouseOptions) || this.warehouseOptions.length === 0) {
+            this.warehouseGridElement.dataset.state = 'empty';
+            this.warehouseGridElement.innerHTML = `
+                <div class="selection-empty">
+                    <i class="fas fa-warehouse"></i>
+                    <p>Нет складов</p>
+                    <span>Для выбранного маркетплейса пока нет активных расписаний.</span>
+                </div>
+            `;
+            this.refreshStepStates();
+            return;
+        }
+
+        this.warehouseGridElement.dataset.state = 'ready';
+        this.warehouseGridElement.innerHTML = this.warehouseOptions
+            .map(option => this.buildSelectionCard(option, 'warehouse'))
+            .join('');
+
+        this.bindSelectionCards(this.warehouseGridElement, 'warehouse');
+        this.refreshStepStates();
+    }
+
+    buildSelectionCard(option, type) {
+        if (!option || !option.value) {
+            return '';
+        }
+
+        const isMarketplace = type === 'marketplace';
+        const isSelected = isMarketplace
+            ? this.filters.marketplace === option.value
+            : this.filters.warehouse === option.value;
+        const isDisabled = !isMarketplace && !this.filters.marketplace;
+
+        const { meta, description } = isMarketplace
+            ? this.getMarketplaceMeta(option)
+            : this.getWarehouseMeta(option);
+
+        const classes = ['selection-card', `selection-card--${type}`];
+        if (isSelected) {
+            classes.push('selection-card--selected');
+        }
+        if (isDisabled) {
+            classes.push('selection-card--disabled');
+        }
+
+        const disabledAttr = isDisabled ? ' disabled' : '';
+        const metaHtml = meta ? `<span class="selection-card__meta">${meta}</span>` : '';
+        const descriptionHtml = description ? `<span class="selection-card__description">${description}</span>` : '';
+
+        return `
+            <button type="button" class="${classes.join(' ')}" data-value="${option.value}" data-type="${type}"${disabledAttr}>
+                <span class="selection-card__abbr" aria-hidden="true">${this.getOptionAbbreviation(option.label)}</span>
+                <span class="selection-card__title">${option.label}</span>
+                ${metaHtml}
+                ${descriptionHtml}
+                <span class="selection-card__check" aria-hidden="true">
+                    <i class="fas fa-check"></i>
+                </span>
+            </button>
+        `;
+    }
+
+    bindSelectionCards(container, type) {
+        if (!container) {
+            return;
+        }
+
+        container.querySelectorAll('.selection-card').forEach(card => {
+            if (card.dataset.bound === 'true' || card.disabled) {
+                return;
+            }
+
+            card.addEventListener('click', () => {
+                const value = card.dataset.value;
+                if (!value) {
+                    return;
+                }
+
+                if (type === 'marketplace') {
+                    this.handleMarketplaceSelection(value);
+                } else if (type === 'warehouse') {
+                    this.handleWarehouseSelection(value);
+                }
+            });
+
+            card.dataset.bound = 'true';
+        });
+    }
+
+    handleMarketplaceSelection(value) {
+        if (!value) {
+            return;
+        }
+
+        this.filters.marketplace = value;
+        this.filters.warehouse = '';
+        this.renderMarketplaceCards();
+        this.updateWarehouseOptions();
+
+        this.applyFilters();
+        this.refreshStepStates();
+        this.focusFilter('warehouseGrid');
+    }
+
+    handleWarehouseSelection(value) {
+        if (!value) {
+            return;
+        }
+
+        this.filters.warehouse = value;
+        this.renderWarehouseCards();
+        this.applyFilters();
+        this.refreshStepStates();
+        this.focusFilter('scheduleGrid');
+    }
+
+    refreshStepStates() {
+        const marketplaceSelected = Boolean(this.filters.marketplace);
+        const warehouseSelected = Boolean(this.filters.warehouse);
+
+        if (this.marketplaceBannerElement) {
+            if (!this.marketplaceOptions.length) {
+                this.setBannerState(this.marketplaceBannerElement, 'locked', {
+                    title: 'Маркетплейсы недоступны',
+                    description: 'Попробуйте обновить страницу или обратитесь в поддержку.',
+                    status: 'Недоступно'
+                });
+            } else if (marketplaceSelected) {
+                const marketplace = this.marketplaceOptions.find(option => option.value === this.filters.marketplace);
+                const label = marketplace ? marketplace.label : this.filters.marketplace;
+                this.setBannerState(this.marketplaceBannerElement, 'complete', {
+                    title: 'Маркетплейс выбран',
+                    description: `Вы выбрали: ${label}`,
+                    status: 'Шаг 1 готов'
+                });
+            } else {
+                this.setBannerState(this.marketplaceBannerElement, 'active', {
+                    title: 'Выберите маркетплейс',
+                    description: 'Мы покажем подходящие склады и расписание после выбора площадки.',
+                    status: 'Шаг 1 из 2'
+                });
+            }
+        }
+
+        if (this.warehouseBannerElement) {
+            if (!marketplaceSelected) {
+                this.setBannerState(this.warehouseBannerElement, 'locked', {
+                    title: 'Сначала выберите маркетплейс',
+                    description: 'После выбора площадки мы покажем доступные склады и расписание приёмок.',
+                    status: 'Шаг 2 из 2'
+                });
+            } else if (!this.warehouseOptions.length) {
+                this.setBannerState(this.warehouseBannerElement, 'empty', {
+                    title: 'Склады недоступны',
+                    description: 'Для выбранного маркетплейса пока нет активных расписаний.',
+                    status: 'Нет данных'
+                });
+            } else if (warehouseSelected) {
+                const warehouse = this.warehouseOptions.find(option => option.value === this.filters.warehouse);
+                const label = warehouse ? warehouse.label : this.filters.warehouse;
+                this.setBannerState(this.warehouseBannerElement, 'complete', {
+                    title: 'Склад выбран',
+                    description: `Вы выбрали: ${label}`,
+                    status: 'Готово'
+                });
+            } else {
+                const warehousesCount = this.warehouseOptions.length;
+                const countLabel = `${warehousesCount} ${this.formatPlural(warehousesCount, ['склад', 'склада', 'складов'])}`;
+                this.setBannerState(this.warehouseBannerElement, 'active', {
+                    title: 'Выберите склад',
+                    description: `Для выбранного маркетплейса доступно ${countLabel}.`,
+                    status: 'Шаг 2 из 2'
+                });
+            }
+        }
+
+        if (this.marketplaceGridElement) {
+            if (!this.marketplaceOptions.length) {
+                this.marketplaceGridElement.dataset.state = 'empty';
+            } else if (this.marketplaceGridElement.dataset.state === 'loading') {
+                this.marketplaceGridElement.dataset.state = 'ready';
+            }
+        }
+
+        if (this.warehouseGridElement) {
+            let state = 'locked';
+            if (!marketplaceSelected) {
+                state = 'locked';
+            } else if (!this.warehouseOptions.length) {
+                state = 'empty';
+            } else {
+                state = 'ready';
+            }
+            this.warehouseGridElement.dataset.state = state;
+        }
+    }
+
+    setBannerState(element, state, { title, description, status } = {}) {
+        if (!element) {
+            return;
+        }
+
+        element.dataset.state = state;
+
+        const titleElement = element.querySelector('[data-banner-title]');
+        if (titleElement && typeof title === 'string') {
+            titleElement.textContent = title;
+        }
+
+        const descriptionElement = element.querySelector('[data-banner-description]');
+        if (descriptionElement && typeof description === 'string') {
+            descriptionElement.textContent = description;
+        }
+
+        const statusElement = element.querySelector('[data-banner-status]');
+        if (statusElement && typeof status === 'string') {
+            statusElement.textContent = status;
+        }
+    }
+
+    getOptionAbbreviation(label) {
+        if (!label) {
+            return '—';
+        }
+
+        const normalized = `${label}`.trim();
+        if (!normalized) {
+            return '—';
+        }
+
+        const words = normalized.split(/\s+/).filter(Boolean);
+        const toFirstLetter = (word) => {
+            if (!word) {
+                return '';
+            }
+            const letters = Array.from(word);
+            return letters.length ? letters[0] : '';
+        };
+
+        let abbreviation = '';
+
+        if (words.length === 1) {
+            abbreviation = Array.from(words[0]).slice(0, 2).join('');
+        } else {
+            abbreviation = `${toFirstLetter(words[0])}${toFirstLetter(words[1])}`;
+        }
+
+        return abbreviation.toUpperCase() || normalized.slice(0, 2).toUpperCase();
+    }
+
+    formatPlural(count, forms) {
+        const n = Math.abs(Number(count)) % 100;
+        const n1 = n % 10;
+
+        if (n > 10 && n < 20) {
+            return forms[2];
+        }
+        if (n1 > 1 && n1 < 5) {
+            return forms[1];
+        }
+        if (n1 === 1) {
+            return forms[0];
+        }
+        return forms[2];
+    }
+
+    getMarketplaceMeta(option) {
+        const relatedWarehouses = this.collectWarehouses(option.value);
+        const warehousesCount = relatedWarehouses.length;
+        const schedulesCount = relatedWarehouses.reduce((acc, item) => acc + (item.count ?? 0), 0);
+
+        const metaParts = [];
+        if (warehousesCount > 0) {
+            metaParts.push(`${warehousesCount} ${this.formatPlural(warehousesCount, ['склад', 'склада', 'складов'])}`);
+        }
+        if (schedulesCount > 0) {
+            metaParts.push(`${schedulesCount} ${this.formatPlural(schedulesCount, ['рейс', 'рейса', 'рейсов'])}`);
+        }
+
+        const meta = metaParts.join(' • ');
+        const description = option.description || 'Нажмите, чтобы перейти к выбору склада.';
+
+        return { meta, description };
+    }
+
+    getWarehouseMeta(option) {
+        const cities = Array.isArray(option?.cities) ? option.cities.filter(city => city && city.trim()) : [];
+        let meta = '';
+
+        if (cities.length === 1) {
+            meta = `Город: ${cities[0]}`;
+        } else if (cities.length > 1) {
+            const visibleCities = cities.slice(0, 2).join(', ');
+            const remaining = cities.length - 2;
+            meta = `Города: ${visibleCities}${remaining > 0 ? ` и ещё ${remaining}` : ''}`;
+        }
+
+        const count = option.count ?? 0;
+        const description = count
+            ? `${count} ${this.formatPlural(count, ['рейс', 'рейса', 'рейсов'])} в расписании`
+            : 'Кликните, чтобы увидеть ближайшие даты.';
+
+        return { meta, description };
+    }
+
     updateWarehouseOptions() {
-        const warehouseFilter = this.warehouseFilterElement || document.getElementById('warehouseFilter');
-        if (!warehouseFilter) {
+        if (!this.warehouseGridElement) {
             return;
         }
 
         if (!this.filters.marketplace) {
-            populateSelect(warehouseFilter, [], {
-                selectedValue: '',
-                placeholder: 'Сначала выберите маркетплейс'
-            });
+            this.warehouseOptions = [];
             this.filters.warehouse = '';
-            warehouseFilter.disabled = true;
-            warehouseFilter.title = 'Сначала выберите маркетплейс';
+            this.renderWarehouseCards([]);
+            this.refreshStepStates();
             return;
         }
 
         const warehouses = this.collectWarehouses(this.filters.marketplace);
-        const selectedValue = populateSelect(warehouseFilter, warehouses, {
-            selectedValue: this.filters.warehouse,
-            placeholder: 'Все склады'
-        });
+        this.warehouseOptions = warehouses;
 
-        const hasWarehouses = warehouses.length > 0;
-        warehouseFilter.disabled = !hasWarehouses;
-        this.filters.warehouse = hasWarehouses ? selectedValue : '';
-
-        if (!hasWarehouses) {
-            warehouseFilter.title = 'Склады недоступны для выбранного маркетплейса';
-        } else {
-            warehouseFilter.removeAttribute('title');
+        const hasSelectedWarehouse = warehouses.some(option => option.value === this.filters.warehouse);
+        if (!hasSelectedWarehouse) {
+            this.filters.warehouse = '';
         }
+
+        this.renderWarehouseCards();
+        this.refreshStepStates();
     }
 
     collectWarehouses(marketplace) {
@@ -147,41 +564,58 @@ class ScheduleManager {
             return [];
         }
 
-        const values = [];
+        const warehouseMap = new Map();
 
         this.schedules.forEach(schedule => {
-            if (marketplace && schedule.marketplace !== marketplace) {
+            if (schedule.marketplace !== marketplace) {
                 return;
             }
 
             const rawWarehouse = schedule.warehouse ?? schedule.warehouses;
+            const warehouseList = Array.isArray(rawWarehouse) ? rawWarehouse : [rawWarehouse];
+            const city = typeof schedule.city === 'string' ? schedule.city.trim() : '';
 
-            if (Array.isArray(rawWarehouse)) {
-                rawWarehouse.forEach(item => {
-                    if (typeof item === 'string') {
-                        const trimmed = item.trim();
-                        if (trimmed) {
-                            values.push(trimmed);
-                        }
-                    }
-                });
-            } else if (typeof rawWarehouse === 'string') {
-                const trimmed = rawWarehouse.trim();
-                if (trimmed) {
-                    values.push(trimmed);
+            warehouseList.forEach(item => {
+                if (item === null || item === undefined) {
+                    return;
                 }
-            }
+
+                const trimmed = typeof item === 'string' ? item.trim() : `${item}`.trim();
+                if (!trimmed) {
+                    return;
+                }
+
+                if (!warehouseMap.has(trimmed)) {
+                    warehouseMap.set(trimmed, {
+                        value: trimmed,
+                        label: trimmed,
+                        count: 0,
+                        cities: new Set()
+                    });
+                }
+
+                const entry = warehouseMap.get(trimmed);
+                entry.count += 1;
+                if (city) {
+                    entry.cities.add(city);
+                }
+            });
         });
 
-        const uniqueWarehouses = Array.from(new Set(values)).sort((a, b) => {
+        const collated = Array.from(warehouseMap.values()).map(entry => ({
+            value: entry.value,
+            label: entry.label,
+            count: entry.count,
+            cities: Array.from(entry.cities)
+        }));
+
+        return collated.sort((a, b) => {
             try {
-                return a.localeCompare(b, 'ru', { sensitivity: 'base' });
+                return a.label.localeCompare(b.label, 'ru', { sensitivity: 'base' });
             } catch (error) {
-                return a.localeCompare(b);
+                return a.label.localeCompare(b.label);
             }
         });
-
-        return uniqueWarehouses.map(value => ({ value, label: value }));
     }
 
     setupCalendar() {
@@ -231,7 +665,9 @@ class ScheduleManager {
             }));
 
             this.updateWarehouseOptions();
+            this.renderMarketplaceCards();
             this.applyFilters();
+            this.refreshStepStates();
         } catch (error) {
             console.error('Ошибка загрузки расписания:', error);
             window.app.showError('Не удалось загрузить расписание');
@@ -339,13 +775,13 @@ class ScheduleManager {
             <div class="empty-state empty-state-filters">
                 <i class="fas fa-filter"></i>
                 <h3>Выберите маркетплейс и склад</h3>
-                <p>Чтобы увидеть расписание отправлений, сначала выберите маркетплейс, затем склад.</p>
+                <p>Чтобы увидеть расписание отправлений, сначала выберите карточку маркетплейса, затем склад.</p>
                 <div class="empty-state-actions">
-                    <button type="button" class="filter-step-action" data-target="marketplaceFilter">
-                        Перейти к выбору маркетплейса
+                    <button type="button" class="filter-step-action" data-target="marketplaceGrid">
+                        Перейти к шагу «Маркетплейс»
                     </button>
-                    <button type="button" class="filter-step-action" data-target="warehouseFilter">
-                        Перейти к выбору склада
+                    <button type="button" class="filter-step-action" data-target="warehouseGrid">
+                        Перейти к шагу «Склад»
                     </button>
                 </div>
             </div>
@@ -362,16 +798,33 @@ class ScheduleManager {
             targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        if (typeof targetElement.focus === 'function') {
-            try {
-                targetElement.focus({ preventScroll: true });
-            } catch (error) {
-                targetElement.focus();
-            }
+        const parentStep = targetElement.closest('.filter-step');
+        const elementsToHighlight = [targetElement];
+
+        if (parentStep) {
+            elementsToHighlight.push(parentStep);
         }
 
-        if (typeof targetElement.showPicker === 'function') {
-            targetElement.showPicker();
+        elementsToHighlight.forEach((element, index) => {
+            if (!element) {
+                return;
+            }
+
+            element.classList.add('schedule-filter--highlight');
+            const key = `${targetId}-${index}`;
+            clearTimeout(this.highlightTimers[key]);
+            this.highlightTimers[key] = setTimeout(() => {
+                element.classList.remove('schedule-filter--highlight');
+            }, 1800);
+        });
+
+        const focusable = targetElement.querySelector('button:not([disabled])');
+        if (focusable && typeof focusable.focus === 'function') {
+            try {
+                focusable.focus({ preventScroll: true });
+            } catch (error) {
+                focusable.focus();
+            }
         }
     }
 
