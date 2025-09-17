@@ -14,6 +14,7 @@ class ScheduleManager {
         };
         this.marketplaceFilterElement = null;
         this.warehouseFilterElement = null;
+        this.filtersIncomplete = true;
 
         this.init();
     }
@@ -100,22 +101,7 @@ class ScheduleManager {
             this.applyFilters();
         });
 
-        document.querySelectorAll('.filter-step-action').forEach(button => {
-            const targetId = button.dataset.target;
-            if (!targetId) {
-                return;
-            }
-
-            button.addEventListener('click', () => {
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
-                    targetElement.focus();
-                    if (typeof targetElement.showPicker === 'function') {
-                        targetElement.showPicker();
-                    }
-                }
-            });
-        });
+        this.bindFilterStepActions();
     }
 
     updateWarehouseOptions() {
@@ -253,14 +239,23 @@ class ScheduleManager {
     }
 
     applyFilters() {
-        this.filteredSchedules = this.schedules.filter(schedule => {
-            const matchMarketplace = !this.filters.marketplace ||
-                                   schedule.marketplace === this.filters.marketplace;
-            const matchWarehouse = !this.filters.warehouse ||
-                                  schedule.warehouse === this.filters.warehouse;
+        const requireFilters = !this.filters.marketplace || !this.filters.warehouse;
 
-            return matchMarketplace && matchWarehouse;
-        });
+        if (requireFilters) {
+            this.filteredSchedules = [];
+            this.filtersIncomplete = true;
+        } else {
+            this.filteredSchedules = this.schedules.filter(schedule => {
+                const matchMarketplace = schedule.marketplace === this.filters.marketplace;
+                const scheduleWarehouse = schedule.warehouse;
+                const matchWarehouse = Array.isArray(scheduleWarehouse)
+                    ? scheduleWarehouse.includes(this.filters.warehouse)
+                    : scheduleWarehouse === this.filters.warehouse;
+
+                return matchMarketplace && matchWarehouse;
+            });
+            this.filtersIncomplete = false;
+        }
 
         if (this.currentTab === 'upcoming') {
             this.renderScheduleGrid();
@@ -272,6 +267,12 @@ class ScheduleManager {
     renderScheduleGrid() {
         const grid = document.getElementById('scheduleGrid');
         if (!grid) return;
+
+        if (this.filtersIncomplete) {
+            grid.innerHTML = this.getMissingFiltersTemplate();
+            this.bindFilterStepActions(grid);
+            return;
+        }
 
         if (this.filteredSchedules.length === 0) {
             grid.innerHTML = `
@@ -333,6 +334,68 @@ class ScheduleManager {
         });
     }
 
+    getMissingFiltersTemplate() {
+        return `
+            <div class="empty-state empty-state-filters">
+                <i class="fas fa-filter"></i>
+                <h3>Выберите маркетплейс и склад</h3>
+                <p>Чтобы увидеть расписание отправлений, сначала выберите маркетплейс, затем склад.</p>
+                <div class="empty-state-actions">
+                    <button type="button" class="filter-step-action" data-target="marketplaceFilter">
+                        Перейти к выбору маркетплейса
+                    </button>
+                    <button type="button" class="filter-step-action" data-target="warehouseFilter">
+                        Перейти к выбору склада
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    focusFilter(targetId) {
+        const targetElement = document.getElementById(targetId);
+        if (!targetElement) {
+            return;
+        }
+
+        if (typeof targetElement.scrollIntoView === 'function') {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        if (typeof targetElement.focus === 'function') {
+            try {
+                targetElement.focus({ preventScroll: true });
+            } catch (error) {
+                targetElement.focus();
+            }
+        }
+
+        if (typeof targetElement.showPicker === 'function') {
+            targetElement.showPicker();
+        }
+    }
+
+    bindFilterStepActions(context = document) {
+        const buttons = context.querySelectorAll('.filter-step-action');
+        buttons.forEach(button => {
+            if (button.dataset.bound === 'true') {
+                return;
+            }
+
+            const targetId = button.dataset.target;
+            if (!targetId) {
+                return;
+            }
+
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.focusFilter(targetId);
+            });
+
+            button.dataset.bound = 'true';
+        });
+    }
+
     renderCalendar() {
         const monthNames = [
             'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
@@ -347,6 +410,12 @@ class ScheduleManager {
 
         const calendarGrid = document.getElementById('calendarGrid');
         if (!calendarGrid) return;
+
+        if (this.filtersIncomplete) {
+            calendarGrid.innerHTML = this.getMissingFiltersTemplate();
+            this.bindFilterStepActions(calendarGrid);
+            return;
+        }
 
         // Очищаем календарь
         calendarGrid.innerHTML = '';
