@@ -44,7 +44,7 @@ export function enterWarehouseEditMode() {
 
     const controls = document.getElementById('warehouseEditControls');
     if (controls) {
-        controls.style.display = 'block';
+        controls.classList.add('is-visible');
     }
 }
 
@@ -61,7 +61,7 @@ export function cancelWarehouseEdits() {
 
     const controls = document.getElementById('warehouseEditControls');
     if (controls) {
-        controls.style.display = 'none';
+        controls.classList.remove('is-visible');
     }
 }
 

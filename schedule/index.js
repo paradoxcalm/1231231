@@ -547,7 +547,7 @@ function showCreateForm() {
                 <form id="createScheduleForm">
                     <div class="form-group">
                         <label>Город отправления:</label>
-                        <div class="modal-inline-row">
+                        <div class="modal-inline-row city-actions">
                             <select name="city" id="citySelect" required>
                                 ${cities.map(c => `<option value="${c.id}">${c.name}</option>`).join("")}
                             </select>
@@ -598,7 +598,7 @@ function showCreateForm() {
                               `).join("")
                             }
                         </div>
-                        <div class="modal-inline-actions">
+                        <div class="modal-inline-actions warehouse-actions">
                             <button
                                 type="button"
                                 class="primary-button modal-action-button"
@@ -627,7 +627,7 @@ function showCreateForm() {
                                 <span class="modal-action-button__text">Удалить склады</span>
                             </button>
                         </div>
-                        <div id="warehouseEditControls" class="modal-inline-actions" style="display:none;">
+                        <div id="warehouseEditControls" class="modal-inline-actions warehouse-edit-controls">
                             <button
                                 type="button"
                                 class="primary-button modal-action-button"
