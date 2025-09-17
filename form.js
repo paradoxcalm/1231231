@@ -564,7 +564,12 @@ async function setupCitySelector({
         updateDirectionSummary(value, nextWarehouse);
         if (typeof onCityChange === 'function') {
             try {
-                onCityChange(value, nextWarehouse, marketplaceValue);
+                const maybePromise = onCityChange(value, nextWarehouse, marketplaceValue);
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    maybePromise.catch((asyncErr) => {
+                        console.warn('Ошибка асинхронного обработчика изменения города формы заявки:', asyncErr);
+                    });
+                }
             } catch (err) {
                 console.warn('Ошибка обработчика изменения города формы заявки:', err);
             }
@@ -750,94 +755,104 @@ function renderFormHTML(scheduleData = {}) {
         <input type="hidden" id="car_brand" name="car_brand" value="${car_brand}">
         <input type="hidden" id="sender" name="sender" value="${sender}">
 
-        <div class="form-group request-form__group">
-          <label class="section-label">Тип упаковки:</label>
-          <div class="request-modal__option-group request-form__radio-row">
-            <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
-            <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
+        <p id="citySelectionNotice" class="request-form__city-notice" role="status" aria-live="polite">
+          Пожалуйста, выберите город отправления…
+        </p>
+
+        <div id="cityDependentFields" class="request-form__city-dependent">
+          <div class="form-group request-form__group">
+            <label class="section-label">Тип упаковки:</label>
+            <div class="request-modal__option-group request-form__radio-row">
+              <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Box" checked> Коробка</label>
+              <label class="request-modal__option request-form__option"><input type="radio" name="packaging_type" value="Pallet"> Паллета</label>
+            </div>
           </div>
-        </div>
 
-        <div class="form-group request-form__group">
-          <label for="boxes">Количество:</label>
-          <input type="number" id="boxes" name="boxes" min="1" required>
-        </div>
-
-        <div id="palletInputBlock" class="form-group request-form__group request-modal__custom-box request-form__pallet-group request-form__hidden">
-          <label>Параметры палет:</label>
-          <div id="palletFields" class="request-modal__pallet-fields request-form__pallet-grid"></div>
-          <p id="palletWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Максимум 20 палет</p>
-        </div>
-
-        <div class="form-group request-form__group" id="boxTypeBlock">
-          <label class="section-label">Тип коробки:</label>
-          <div class="request-modal__option-group request-form__radio-row">
-            <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
-            <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="custom"> Свои размеры</label>
+          <div class="form-group request-form__group">
+            <label for="boxes">Количество:</label>
+            <input type="number" id="boxes" name="boxes" min="1" required>
           </div>
-        </div>
 
-        <div class="form-group request-form__group request-form__box-dimensions" id="boxSizeBlock">
-          <label>Габариты одной коробки (см):</label>
-          <div class="request-modal__dimensions request-form__dimensions">
-            <input type="number" id="box_length" name="box_length" placeholder="Длина" class="request-modal__dimension-input request-form__dimension-input">
-            <input type="number" id="box_width" name="box_width" placeholder="Ширина" class="request-modal__dimension-input request-form__dimension-input">
-            <input type="number" id="box_height" name="box_height" placeholder="Высота" class="request-modal__dimension-input request-form__dimension-input">
+          <div id="palletInputBlock" class="form-group request-form__group request-modal__custom-box request-form__pallet-group request-form__hidden">
+            <label>Параметры палет:</label>
+            <div id="palletFields" class="request-modal__pallet-fields request-form__pallet-grid"></div>
+            <p id="palletWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Максимум 20 палет</p>
           </div>
-        </div>
 
-        <div class="form-group request-form__group request-modal__custom-box request-form__custom-box request-form__hidden" id="customBoxFieldsBlock">
-          <label>Свои группы коробов:</label>
-          <input type="number" id="customBoxGroupCount" min="1" max="10" placeholder="Кол-во групп" class="request-modal__group-count request-form__group-count">
-          <div id="customBoxFields" class="request-modal__custom-fields request-form__custom-fields"></div>
-          <p id="customBoxWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Сумма количеств в группах не должна превышать общее количество коробов</p>
-        </div>
+          <div class="form-group request-form__group" id="boxTypeBlock">
+            <label class="section-label">Тип коробки:</label>
+            <div class="request-modal__option-group request-form__radio-row">
+              <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="standard" checked> Стандарт (60×40×40)</label>
+              <label class="request-modal__option request-form__option"><input type="radio" name="box_type" value="custom"> Свои размеры</label>
+            </div>
+          </div>
 
-        <div class="form-group request-form__group request-form__summary"><label>Общий объём:</label><span id="box_volume" class="request-form__summary-value">—</span></div>
-        <div class="form-group request-form__group request-form__summary"><label>Тариф:</label><span id="tariff_rate" class="request-form__summary-value">—</span></div>
-        <div class="form-group request-form__group"><label for="payment">Сумма оплаты:</label>
-          <input type="number" id="payment" name="payment" readonly>
-        </div>
+          <div class="form-group request-form__group request-form__box-dimensions" id="boxSizeBlock">
+            <label>Габариты одной коробки (см):</label>
+            <div class="request-modal__dimensions request-form__dimensions">
+              <input type="number" id="box_length" name="box_length" placeholder="Длина" class="request-modal__dimension-input request-form__dimension-input">
+              <input type="number" id="box_width" name="box_width" placeholder="Ширина" class="request-modal__dimension-input request-form__dimension-input">
+              <input type="number" id="box_height" name="box_height" placeholder="Высота" class="request-modal__dimension-input request-form__dimension-input">
+            </div>
+          </div>
 
-        <div class="form-group request-form__group request-form__checkbox">
-          <label>
-            <input type="checkbox" id="pickupCheckbox" name="pickup_checkbox">
-            Забрать груз с адреса отправителя
-          </label>
-        </div>
+          <div class="form-group request-form__group request-modal__custom-box request-form__custom-box request-form__hidden" id="customBoxFieldsBlock">
+            <label>Свои группы коробов:</label>
+            <input type="number" id="customBoxGroupCount" min="1" max="10" placeholder="Кол-во групп" class="request-modal__group-count request-form__group-count">
+            <div id="customBoxFields" class="request-modal__custom-fields request-form__custom-fields"></div>
+            <p id="customBoxWarning" class="request-modal__warning request-form__warning form-error text-danger request-form__hidden">Сумма количеств в группах не должна превышать общее количество коробов</p>
+          </div>
 
-        <div id="pickupAddressFields" class="request-modal__pickup request-form__pickup request-form__hidden">
-          <div class="request-card">
-            <div class="request-card__body">
-              <div id="pickupMap" class="request-card__map request-modal__map request-form__map"></div>
+          <div class="form-group request-form__group request-form__summary"><label>Общий объём:</label><span id="box_volume" class="request-form__summary-value">—</span></div>
+          <div class="form-group request-form__group request-form__summary"><label>Тариф:</label><span id="tariff_rate" class="request-form__summary-value">—</span></div>
+          <div class="form-group request-form__group"><label for="payment">Сумма оплаты:</label>
+            <input type="number" id="payment" name="payment" readonly>
+          </div>
 
-              <input type="hidden" id="pickupLat" name="pickup_lat">
-              <input type="hidden" id="pickupLng" name="pickup_lng">
+          <div class="form-group request-form__group request-form__checkbox">
+            <label>
+              <input type="checkbox" id="pickupCheckbox" name="pickup_checkbox">
+              Забрать груз с адреса отправителя
+            </label>
+          </div>
 
-              <div class="request-card__field">
-                <label for="clientPhone" class="request-card__label request-modal__pickup-label request-form__pickup-label">Номер для связи:</label>
-                <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-card__input request-modal__pickup-phone request-form__pickup-input">
-              </div>
+          <div id="pickupAddressFields" class="request-modal__pickup request-form__pickup request-form__hidden">
+            <div class="request-card">
+              <div class="request-card__body">
+                <div id="pickupMap" class="request-card__map request-modal__map request-form__map"></div>
 
-              <div id="routeBlock" class="request-card__route request-modal__route request-form__route request-form__hidden">
-                <span class="request-card__route-label request-modal__route-label request-form__route-label">Ссылка для навигатора:</span>
-                <div class="request-card__routes request-modal__route-links request-form__route-links">
-                  <div class="request-card__route-group">
-                    <a id="routeLinkYandex" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
-                    <button type="button" id="routeCopyBtn" class="ghost-button request-card__copy request-modal__route-copy request-form__route-copy">Копировать</button>
+                <input type="hidden" id="pickupLat" name="pickup_lat">
+                <input type="hidden" id="pickupLng" name="pickup_lng">
+
+                <div class="request-card__field">
+                  <label for="clientPhone" class="request-card__label request-modal__pickup-label request-form__pickup-label">Номер для связи:</label>
+                  <input type="tel" id="clientPhone" name="client_phone" placeholder="+7 (999) 123-45-67" class="request-card__input request-modal__pickup-phone request-form__pickup-input">
+                </div>
+
+                <div id="routeBlock" class="request-card__route request-modal__route request-form__route request-form__hidden">
+                  <span class="request-card__route-label request-modal__route-label request-form__route-label">Ссылка для навигатора:</span>
+                  <div class="request-card__routes request-modal__route-links request-form__route-links">
+                    <div class="request-card__route-group">
+                      <a id="routeLinkYandex" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
+                      <button type="button" id="routeCopyBtn" class="ghost-button request-card__copy request-modal__route-copy request-form__route-copy">Копировать</button>
+                    </div>
+                    <a id="routeLinkGoogle" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
                   </div>
-                  <a id="routeLinkGoogle" href="#" target="_blank" class="link-button request-card__link request-modal__route-link request-form__route-link"></a>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="form-group request-form__group">
-          <label for="comment">Комментарий:</label>
-          <textarea id="comment" name="comment" rows="3" placeholder="Введите комментарий"></textarea>
+          <div class="form-group request-form__group">
+            <label for="comment">Комментарий:</label>
+            <textarea id="comment" name="comment" rows="3" placeholder="Введите комментарий"></textarea>
+          </div>
+          <div class="modal-actions request-form__actions">
+            <button type="submit" class="primary-button request-form__submit">
+              <span class="button__label">Отправить</span>
+            </button>
+          </div>
         </div>
-        <button type="submit" class="request-form__submit">Отправить</button>
       </form>
       <p id="status" class="request-form__status"></p>
     </div>
@@ -1484,6 +1499,8 @@ async function initializeForm() {
 
     const cityEl = document.getElementById('city');
     const whEl   = document.getElementById('warehouses');
+    const cityDependentContainer = document.getElementById('cityDependentFields');
+    const cityNoticeElement = document.getElementById('citySelectionNotice');
 
     const marketplace = (form.dataset?.marketplace || '').trim();
     const initialCity = (form.dataset?.initialCity || (cityEl ? cityEl.value : '') || '').trim();
@@ -1492,7 +1509,99 @@ async function initializeForm() {
         return normalizeWarehouseValue(raw);
     };
 
+    const applyCityInteractivity = (cityValue) => {
+        const normalizedCity = `${cityValue ?? ''}`.trim();
+        const hasCity = normalizedCity.length > 0;
+
+        if (form) {
+            form.dataset.selectedCity = normalizedCity;
+            form.dataset.cityReady = hasCity ? 'true' : 'false';
+        }
+
+        if (cityNoticeElement) {
+            if (hasCity) {
+                cityNoticeElement.classList.add(REQUEST_FORM_HIDDEN_CLASS);
+            } else {
+                cityNoticeElement.classList.remove(REQUEST_FORM_HIDDEN_CLASS);
+            }
+        }
+
+        if (!cityDependentContainer) {
+            return;
+        }
+
+        cityDependentContainer.classList.toggle(REQUEST_FORM_HIDDEN_CLASS, !hasCity);
+        if (!hasCity) {
+            cityDependentContainer.setAttribute('aria-hidden', 'true');
+        } else {
+            cityDependentContainer.removeAttribute('aria-hidden');
+        }
+
+        const interactiveElements = cityDependentContainer.querySelectorAll('input, select, textarea, button');
+        interactiveElements.forEach((element) => {
+            if (!element) {
+                return;
+            }
+            if (element.type === 'hidden' || element.dataset?.cityLockIgnore === 'true') {
+                return;
+            }
+            if (!hasCity) {
+                if (!element.dataset.cityLockWasDisabled) {
+                    element.dataset.cityLockWasDisabled = element.disabled ? 'true' : 'false';
+                }
+                element.disabled = true;
+            } else {
+                if (element.dataset.cityLockWasDisabled !== 'true') {
+                    element.disabled = false;
+                }
+                delete element.dataset.cityLockWasDisabled;
+            }
+        });
+    };
+
+    const resetCityDependentOutputs = () => {
+        const tariffRate = document.getElementById('tariff_rate');
+        if (tariffRate) {
+            tariffRate.textContent = '—';
+        }
+        const paymentInput = document.getElementById('payment');
+        if (paymentInput) {
+            paymentInput.value = '';
+        }
+        const volumeDisplay = document.getElementById('box_volume');
+        if (volumeDisplay) {
+            volumeDisplay.textContent = '—';
+        }
+    };
+
+    const handleCitySelectionChange = async (cityValue) => {
+        const normalizedCity = `${cityValue ?? ''}`.trim();
+        applyCityInteractivity(normalizedCity);
+
+        if (!normalizedCity) {
+            resetCityDependentOutputs();
+            return;
+        }
+
+        await updateTariffFor(normalizedCity, warehouseFallback());
+    };
+
+    const triggerCitySelectionChange = (value) => {
+        try {
+            const maybePromise = handleCitySelectionChange(value);
+            if (maybePromise && typeof maybePromise.then === 'function') {
+                maybePromise.catch((err) => {
+                    console.warn('Ошибка обновления состояния формы при выборе города:', err);
+                });
+            }
+        } catch (err) {
+            console.warn('Ошибка обновления состояния формы при выборе города:', err);
+        }
+    };
+
     let resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
+
+    applyCityInteractivity(resolvedCity);
 
     try {
         resolvedCity = await setupCitySelector({
@@ -1502,7 +1611,7 @@ async function initializeForm() {
             initialCity,
             getWarehouseValue: warehouseFallback,
             onCityChange: (value) => {
-                updateTariffFor(value, warehouseFallback());
+                triggerCitySelectionChange(value);
             }
         }) || resolvedCity;
     } catch (err) {
@@ -1510,7 +1619,11 @@ async function initializeForm() {
         resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
     }
 
-    await updateTariffFor(resolvedCity, warehouseFallback());
+    try {
+        await handleCitySelectionChange(resolvedCity);
+    } catch (err) {
+        console.warn('Не удалось применить состояние формы после инициализации города:', err);
+    }
 
     // 4) Обработка отправки формы
     form.addEventListener('submit', async (e) => {
