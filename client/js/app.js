@@ -166,8 +166,8 @@ class App {
             }
         });
 
-        // Кнопка сброса шагов
-        const resetBtn = document.getElementById('resetStepsBtn');
+        // Кнопка сброса фильтров расписания
+        const resetBtn = document.getElementById('resetScheduleFilters');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
                 if (window.ScheduleManager) {
