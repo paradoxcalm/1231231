@@ -106,7 +106,7 @@ if (empty($_SESSION['user_id'])) {
                         <div class="filter-group">
                             <label for="marketplaceFilter">Маркетплейс</label>
                             <select id="marketplaceFilter">
-                                <option value="">Выберите маркетплейс</option>
+                                <option value="">Все</option>
                             </select>
                         </div>
                     </div>
@@ -127,7 +127,7 @@ if (empty($_SESSION['user_id'])) {
                         <div class="filter-group">
                             <label for="warehouseFilter">Склад</label>
                             <select id="warehouseFilter">
-                                <option value="">Сначала выберите маркетплейс</option>
+                                <option value="">Все</option>
                             </select>
                         </div>
                     </div>

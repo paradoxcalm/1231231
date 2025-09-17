@@ -66,19 +66,15 @@ export async function fetchCities({ marketplace = '', baseUrl = 'filter_options.
 }
 
 export async function fetchWarehouses({ marketplace = '', city = '', baseUrl = 'filter_options.php' } = {}) {
-    let action = 'warehouses';
+    let action = 'all_warehouses';
     const params = {};
 
-    if (marketplace) {
+    if (marketplace && city) {
+        action = 'warehouses';
         params.marketplace = marketplace;
-        if (city) {
-            params.city = city;
-        }
-    } else {
-        action = 'all_warehouses';
-        if (city) {
-            params.city = city;
-        }
+        params.city = city;
+    } else if (city) {
+        params.city = city;
     }
 
     try {
@@ -151,9 +147,6 @@ export function populateSelect(selectElement, options, { placeholder = EMPTY_OPT
     const defaultOption = document.createElement('option');
     defaultOption.value = '';
     defaultOption.textContent = placeholder;
-    if (placeholder.includes('Сначала') || placeholder.includes('Выберите')) {
-        defaultOption.disabled = true;
-    }
     fragment.appendChild(defaultOption);
 
     normalized.forEach(({ value, label }) => {
