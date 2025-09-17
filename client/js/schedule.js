@@ -90,6 +90,7 @@ class ScheduleManager {
 
         marketplaceFilter.addEventListener('change', (event) => {
             this.filters.marketplace = event.target.value;
+            this.filters.warehouse = '';
             this.updateWarehouseOptions();
             this.applyFilters();
         });
@@ -123,18 +124,28 @@ class ScheduleManager {
             return;
         }
 
+        if (!this.filters.marketplace) {
+            populateSelect(warehouseFilter, [], {
+                selectedValue: '',
+                placeholder: 'Сначала выберите маркетплейс'
+            });
+            this.filters.warehouse = '';
+            warehouseFilter.disabled = true;
+            warehouseFilter.title = 'Сначала выберите маркетплейс';
+            return;
+        }
+
         const warehouses = this.collectWarehouses(this.filters.marketplace);
-        const placeholder = this.filters.marketplace ? 'Все склады' : 'Все';
         const selectedValue = populateSelect(warehouseFilter, warehouses, {
             selectedValue: this.filters.warehouse,
-            placeholder
+            placeholder: 'Все склады'
         });
 
         const hasWarehouses = warehouses.length > 0;
         warehouseFilter.disabled = !hasWarehouses;
         this.filters.warehouse = hasWarehouses ? selectedValue : '';
 
-        if (!hasWarehouses && this.filters.marketplace) {
+        if (!hasWarehouses) {
             warehouseFilter.title = 'Склады недоступны для выбранного маркетплейса';
         } else {
             warehouseFilter.removeAttribute('title');
@@ -142,6 +153,10 @@ class ScheduleManager {
     }
 
     collectWarehouses(marketplace) {
+        if (!marketplace) {
+            return [];
+        }
+
         if (!Array.isArray(this.schedules) || this.schedules.length === 0) {
             return [];
         }
