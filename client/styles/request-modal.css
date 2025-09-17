@@ -24,7 +24,8 @@
 #clientRequestModal .modal-header-with-close {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    text-align: center;
     gap: clamp(12px, 2vw, 20px);
     padding: clamp(20px, 3vw, 28px) clamp(24px, 4vw, 32px) clamp(12px, 2vw, 20px);
     border-bottom: 1px solid var(--border, #e5e7eb);
@@ -32,7 +33,9 @@
 }
 
 #clientRequestModal .modal-close-btn {
-    margin-left: auto;
+    position: absolute;
+    top: clamp(20px, 3vw, 28px);
+    right: clamp(24px, 4vw, 32px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -877,6 +880,11 @@
 
   #clientRequestModal .modal-content > .request-modal .modal-header-with-close {
     padding: var(--client-modal-spacing);
+  }
+
+  #clientRequestModal .modal-content > .request-modal .modal-close-btn {
+    top: var(--client-modal-spacing);
+    right: var(--client-modal-spacing);
   }
 
   #clientRequestModal .modal-content > .request-modal .request-modal__body {
