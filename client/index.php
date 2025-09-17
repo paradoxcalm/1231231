@@ -186,19 +186,6 @@ if (empty($_SESSION['user_id'])) {
 
                         <div class="schedule-step-layout">
                             <div class="schedule-grid" id="scheduleGrid"></div>
-
-                            <div class="calendar-panel">
-                                <div class="calendar-controls">
-                                    <button class="calendar-nav" id="prevMonth">
-                                        <i class="fas fa-chevron-left"></i>
-                                    </button>
-                                    <h3 id="currentMonth">Январь 2025</h3>
-                                    <button class="calendar-nav" id="nextMonth">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </button>
-                                </div>
-                                <div class="calendar-grid" id="calendarGrid"></div>
-                            </div>
                         </div>
                     </div>
                 </div>

@@ -5,15 +5,13 @@ class ScheduleManager {
     constructor() {
         this.schedules = [];
         this.filteredSchedules = [];
-        this.currentStep = 1; // 1 = маркетплейс, 2 = склад, 3 = календарь
-        this.currentMonth = new Date();
+        this.currentStep = 1; // 1 = маркетплейс, 2 = склад, 3 = расписание
         this.filters = {
             marketplace: '',
             warehouse: ''
         };
         this.marketplaceOptions = [];
         this.warehouseOptions = [];
-        this.calendarData = {};
         this.isLoadingMarketplaces = false;
         this.isLoadingWarehouses = false;
         this.isLoadingSchedules = false;
@@ -24,14 +22,12 @@ class ScheduleManager {
 
     init() {
         this.setupStepNavigation();
-        this.setupCalendarControls();
         this.updateMarketplaceBanner();
         this.updateWarehouseBanner();
         this.updateSelectionSummary();
         this.loadMarketplaces();
         this.showStep(1);
         this.renderScheduleGrid();
-        this.renderCalendar();
     }
 
     setupStepNavigation() {
@@ -52,25 +48,6 @@ class ScheduleManager {
                 if (this.currentStep < 3) {
                     this.showStep(this.currentStep + 1);
                 }
-            });
-        }
-    }
-
-    setupCalendarControls() {
-        const prevBtn = document.getElementById('prevMonth');
-        const nextBtn = document.getElementById('nextMonth');
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-                this.renderCalendar();
-            });
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', () => {
-                this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-                this.renderCalendar();
             });
         }
     }
@@ -353,14 +330,12 @@ class ScheduleManager {
         this.filters.warehouse = ''; // Сбрасываем выбор склада
         this.schedules = [];
         this.filteredSchedules = [];
-        this.calendarData = {};
         this.isLoadingSchedules = false;
 
         this.updateMarketplaceBanner();
         this.updateWarehouseBanner();
         this.updateSelectionSummary();
         this.renderScheduleGrid();
-        this.renderCalendar();
 
         // Обновляем визуальное состояние
         document.querySelectorAll('.marketplace-card').forEach(card => {
@@ -498,7 +473,7 @@ class ScheduleManager {
         this.isLoadingSchedules = true;
         this.renderScheduleGrid();
 
-        // Автоматически переходим к календарю
+        // Автоматически переходим к расписанию
         setTimeout(() => {
             this.showStep(3);
         }, 300);
@@ -550,12 +525,10 @@ class ScheduleManager {
     applyFilters() {
         if (!this.filters.marketplace || !this.filters.warehouse) {
             this.filteredSchedules = [];
-            this.calendarData = {};
             this.updateSelectionSummary();
             this.updateMarketplaceBanner();
             this.updateWarehouseBanner();
             this.renderScheduleGrid();
-            this.renderCalendar();
             return;
         }
 
@@ -565,19 +538,8 @@ class ScheduleManager {
             return matchMarketplace && matchWarehouse;
         });
 
-        // Группируем по датам для календаря
-        this.calendarData = {};
-        this.filteredSchedules.forEach(schedule => {
-            const date = schedule.accept_date;
-            if (!this.calendarData[date]) {
-                this.calendarData[date] = [];
-            }
-            this.calendarData[date].push(schedule);
-        });
-
         this.updateSelectionSummary();
         this.renderScheduleGrid();
-        this.renderCalendar();
     }
 
     renderScheduleGrid() {
@@ -720,183 +682,6 @@ class ScheduleManager {
         `;
     }
 
-    renderCalendar() {
-        const monthNames = [
-            'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-        ];
-
-        // Обновляем заголовок месяца
-        const currentMonthElement = document.getElementById('currentMonth');
-        if (currentMonthElement) {
-            currentMonthElement.textContent = 
-                `${monthNames[this.currentMonth.getMonth()]} ${this.currentMonth.getFullYear()}`;
-        }
-
-        const calendarGrid = document.getElementById('calendarGrid');
-        if (!calendarGrid) return;
-
-        // Очищаем календарь
-        calendarGrid.innerHTML = '';
-        calendarGrid.classList.remove('calendar-grid--empty');
-
-        if (!this.filters.marketplace || !this.filters.warehouse) {
-            calendarGrid.classList.add('calendar-grid--empty');
-            calendarGrid.innerHTML = this.renderEmptyState(
-                'fa-calendar-alt',
-                'Календарь недоступен',
-                'Выберите маркетплейс и склад, чтобы увидеть доступные даты.'
-            );
-            return;
-        }
-
-        // Заголовки дней недели
-        const dayHeaders = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-        dayHeaders.forEach(day => {
-            const headerCell = document.createElement('div');
-            headerCell.className = 'calendar-header-cell';
-            headerCell.textContent = day;
-            calendarGrid.appendChild(headerCell);
-        });
-
-        // Получаем первый и последний день месяца
-        const firstDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
-        const lastDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0);
-        
-        // Получаем день недели первого дня (0 = воскресенье, преобразуем в 1-7)
-        let startDayOfWeek = firstDay.getDay();
-        if (startDayOfWeek === 0) startDayOfWeek = 7;
-
-        // Добавляем пустые ячейки в начале
-        for (let i = 1; i < startDayOfWeek; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.className = 'calendar-cell other-month';
-            calendarGrid.appendChild(emptyCell);
-        }
-
-        // Добавляем дни месяца
-        for (let day = 1; day <= lastDay.getDate(); day++) {
-            const cell = document.createElement('div');
-            const cellDate = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), day);
-            const dateStr = cellDate.toISOString().split('T')[0];
-            
-            cell.className = 'calendar-cell';
-            if (this.isToday(cellDate)) {
-                cell.classList.add('today');
-            }
-
-            // Проверяем, есть ли отправления на эту дату
-            const hasSchedules = this.calendarData[dateStr] && this.calendarData[dateStr].length > 0;
-            
-            if (hasSchedules) {
-                cell.classList.add('has-schedules');
-                cell.innerHTML = `
-                    <div class="cell-date">${day}</div>
-                    <div class="schedule-indicator">
-                        <i class="fas fa-plus pulse-icon"></i>
-                        <span class="schedule-count">${this.calendarData[dateStr].length}</span>
-                    </div>
-                `;
-                
-                cell.addEventListener('click', () => {
-                    this.openScheduleModal(dateStr, this.calendarData[dateStr]);
-                });
-            } else {
-                cell.innerHTML = `<div class="cell-date">${day}</div>`;
-            }
-
-            calendarGrid.appendChild(cell);
-        }
-
-        // Заполняем оставшиеся ячейки следующего месяца
-        const totalCells = 42; // 6 недель × 7 дней
-        const currentCells = calendarGrid.children.length - 7; // минус заголовки
-        const nextMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
-        
-        for (let day = 1; currentCells + day <= totalCells - 7; day++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.className = 'calendar-cell other-month';
-            emptyCell.innerHTML = `<div class="cell-date">${day}</div>`;
-            calendarGrid.appendChild(emptyCell);
-        }
-    }
-
-    isToday(date) {
-        const today = new Date();
-        return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
-    }
-
-    openScheduleModal(date, schedules) {
-        const modal = document.getElementById('scheduleDetailsModal');
-        const content = document.getElementById('scheduleDetailsContent');
-
-        if (!content) return;
-
-        const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-
-        content.innerHTML = `
-            <div class="schedule-day-details">
-                <div class="day-header">
-                    <h4>Отправления на ${formattedDate}</h4>
-                    <div class="day-stats">
-                        <span class="schedule-count-badge">${schedules.length} отправлений</span>
-                    </div>
-                </div>
-                
-                <div class="schedules-list">
-                    ${schedules.map(schedule => `
-                        <div class="schedule-item" data-id="${schedule.id}">
-                            <div class="schedule-item-header">
-                                <div class="schedule-route">
-                                    <i class="fas fa-route"></i>
-                                    ${schedule.city} → ${schedule.warehouses}
-                                </div>
-                                <div class="schedule-status status-${this.getStatusClass(schedule.status)}">
-                                    ${schedule.status}
-                                </div>
-                            </div>
-                            
-                            <div class="schedule-item-details">
-                                <div class="detail-row">
-                                    <span class="detail-label">Время приёмки:</span>
-                                    <span class="detail-value">${schedule.accept_time || '—'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Дата сдачи:</span>
-                                    <span class="detail-value">${this.formatDate(schedule.delivery_date)}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Водитель:</span>
-                                    <span class="detail-value">${schedule.driver_name || '—'}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="detail-label">Автомобиль:</span>
-                                    <span class="detail-value">${schedule.car_brand || '—'} ${schedule.car_number || ''}</span>
-                                </div>
-                            </div>
-                            
-                            <div class="schedule-item-actions">
-                                <button class="create-order-btn" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                                    <i class="fas fa-plus"></i>
-                                    Создать заявку
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-
-        window.app.openModal(modal);
-    }
-
     escapeHtml(value) {
         if (value === null || value === undefined) {
             return '';
@@ -971,7 +756,6 @@ class ScheduleManager {
         };
         this.schedules = [];
         this.filteredSchedules = [];
-        this.calendarData = {};
         this.isLoadingSchedules = false;
 
         this.updateMarketplaceBanner();
@@ -982,7 +766,6 @@ class ScheduleManager {
         this.warehouseOptions = [];
         this.renderWarehouses();
         this.renderScheduleGrid();
-        this.renderCalendar();
 
         this.showStep(1);
     }
