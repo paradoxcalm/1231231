@@ -239,7 +239,8 @@ function fillLegacyFormFields(container, scheduleData) {
         driverPhone,
         carNumber,
         carBrand,
-        sender
+        sender,
+        marketplace
     } = scheduleData;
 
     const directionDisplay = container.querySelector('#legacyDirection');
@@ -282,6 +283,13 @@ function fillLegacyFormFields(container, scheduleData) {
     setValue('#car_number', carNumber || '');
     setValue('#car_brand', carBrand || '');
     setValue('#sender', sender || '');
+
+    const formElement = container.querySelector('#dataForm');
+    if (formElement) {
+        formElement.dataset.marketplace = marketplace || '';
+        formElement.dataset.initialCity = city || '';
+        formElement.dataset.initialWarehouse = warehouse || '';
+    }
 
     const status = container.querySelector('#status');
     if (status) {
