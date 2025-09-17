@@ -660,73 +660,148 @@ function showSuccessModal(qrText, paymentAmount, modalIdOverride) {
 
 let pickupMapInstance;
 let pickupPlacemark;
+let pickupMapInitPromise = null;
 
-function initPickupMap() {
-  if (pickupMapInstance) return;
+const YMAPS_READY_TIMEOUT = 10000;
+const YMAPS_READY_CHECK_INTERVAL = 150;
 
-  ymaps.ready(() => {
-    const latEl      = document.getElementById('pickupLat');
-    const lngEl      = document.getElementById('pickupLng');
-    const routeBlock = document.getElementById('routeBlock');
-    const yLink      = document.getElementById('routeLinkYandex');
-    const gLink      = document.getElementById('routeLinkGoogle');
-    const copyBtn    = document.getElementById('routeCopyBtn');
+function waitForYmapsGlobal(timeoutMs = YMAPS_READY_TIMEOUT, intervalMs = YMAPS_READY_CHECK_INTERVAL) {
+  return new Promise((resolve, reject) => {
+    const hasYmaps = () => typeof window !== 'undefined'
+      && typeof window.ymaps !== 'undefined'
+      && typeof window.ymaps.ready === 'function';
 
-    pickupMapInstance = new ymaps.Map('pickupMap', {
-      center: [43.251900, 46.603400], // центр по умолчанию
-      zoom: 12,
-      controls: ['zoomControl']
-    });
-    setTimeout(() => pickupMapInstance.container.fitToViewport(), 0);
+    if (hasYmaps()) {
+      resolve(window.ymaps);
+      return;
+    }
 
-    // Поставить/переместить метку
-    function setPlacemark(coords) {
-      if (pickupPlacemark) {
-        pickupPlacemark.geometry.setCoordinates(coords);
-      } else {
-        pickupPlacemark = new ymaps.Placemark(coords, {}, { preset: 'islands#redIcon' });
-        pickupMapInstance.geoObjects.add(pickupPlacemark);
+    const deadline = Date.now() + Math.max(timeoutMs, 0);
+
+    (function check() {
+      if (hasYmaps()) {
+        resolve(window.ymaps);
+        return;
       }
-    }
-
-    // Обновить скрытые поля и ссылки
-    function updateLinks(coords) {
-      const lat = Number(coords[0]).toFixed(6);
-      const lon = Number(coords[1]).toFixed(6);
-
-      latEl.value = lat;
-      lngEl.value = lon;
-
-      const yUrl = `https://yandex.ru/maps/?from=api-maps`
-        + `&ll=${encodeURIComponent(lon)},${encodeURIComponent(lat)}`
-        + `&mode=routes&rtext=~${encodeURIComponent(lat)},${encodeURIComponent(lon)}`
-        + `&rtt=auto&z=14`;
-
-      const gUrl = `https://www.google.com/maps/dir/?api=1`
-        + `&destination=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`
-        + `&travelmode=driving`;
-
-      yLink.href = yUrl;
-      yLink.textContent = 'Открыть в Яндекс.Картах';
-      gLink.href = gUrl;
-      gLink.textContent = 'Открыть в Google Maps';
-      showRequestFormElement(routeBlock);
-
-      copyBtn.onclick = () => {
-        navigator.clipboard.writeText(yUrl).then(() => {
-          copyBtn.textContent = 'Скопировано!';
-          setTimeout(() => copyBtn.textContent = 'Копировать', 1200);
-        });
-      };
-    }
-
-    // Клик по карте
-    pickupMapInstance.events.add('click', (e) => {
-      const coords = e.get('coords'); // [lat, lon]
-      setPlacemark(coords);
-      updateLinks(coords);
-    });
+      if (Date.now() > deadline) {
+        reject(new Error('Глобальный объект ymaps ещё не готов'));
+        return;
+      }
+      setTimeout(check, Math.max(intervalMs, 50));
+    })();
   });
+}
+
+async function initPickupMap() {
+  if (pickupMapInstance) {
+    window.__pickupMapInited = true;
+    return pickupMapInstance;
+  }
+
+  if (pickupMapInitPromise) {
+    return pickupMapInitPromise;
+  }
+
+  const createMap = () => new Promise((resolve, reject) => {
+    try {
+      ymaps.ready(() => {
+        try {
+          if (pickupMapInstance) {
+            window.__pickupMapInited = true;
+            resolve(pickupMapInstance);
+            return;
+          }
+
+          const latEl      = document.getElementById('pickupLat');
+          const lngEl      = document.getElementById('pickupLng');
+          const routeBlock = document.getElementById('routeBlock');
+          const yLink      = document.getElementById('routeLinkYandex');
+          const gLink      = document.getElementById('routeLinkGoogle');
+          const copyBtn    = document.getElementById('routeCopyBtn');
+
+          pickupMapInstance = new ymaps.Map('pickupMap', {
+            center: [43.251900, 46.603400], // центр по умолчанию
+            zoom: 12,
+            controls: ['zoomControl']
+          });
+          setTimeout(() => pickupMapInstance.container.fitToViewport(), 0);
+
+          function setPlacemark(coords) {
+            if (pickupPlacemark) {
+              pickupPlacemark.geometry.setCoordinates(coords);
+            } else {
+              pickupPlacemark = new ymaps.Placemark(coords, {}, { preset: 'islands#redIcon' });
+              pickupMapInstance.geoObjects.add(pickupPlacemark);
+            }
+          }
+
+          function updateLinks(coords) {
+            const lat = Number(coords[0]).toFixed(6);
+            const lon = Number(coords[1]).toFixed(6);
+
+            if (latEl) latEl.value = lat;
+            if (lngEl) lngEl.value = lon;
+
+            const yUrl = `https://yandex.ru/maps/?from=api-maps`
+              + `&ll=${encodeURIComponent(lon)},${encodeURIComponent(lat)}`
+              + `&mode=routes&rtext=~${encodeURIComponent(lat)},${encodeURIComponent(lon)}`
+              + `&rtt=auto&z=14`;
+
+            const gUrl = `https://www.google.com/maps/dir/?api=1`
+              + `&destination=${encodeURIComponent(lat)},${encodeURIComponent(lon)}`
+              + `&travelmode=driving`;
+
+            if (yLink) {
+              yLink.href = yUrl;
+              yLink.textContent = 'Открыть в Яндекс.Картах';
+            }
+            if (gLink) {
+              gLink.href = gUrl;
+              gLink.textContent = 'Открыть в Google Maps';
+            }
+            if (routeBlock) {
+              showRequestFormElement(routeBlock);
+            }
+
+            if (copyBtn) {
+              copyBtn.onclick = () => {
+                navigator.clipboard.writeText(yUrl).then(() => {
+                  copyBtn.textContent = 'Скопировано!';
+                  setTimeout(() => copyBtn.textContent = 'Копировать', 1200);
+                });
+              };
+            }
+          }
+
+          pickupMapInstance.events.add('click', (e) => {
+            const coords = e.get('coords');
+            setPlacemark(coords);
+            updateLinks(coords);
+          });
+
+          window.__pickupMapInited = true;
+          resolve(pickupMapInstance);
+        } catch (innerErr) {
+          reject(innerErr);
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  pickupMapInitPromise = (async () => {
+    await waitForYmapsGlobal();
+    return createMap();
+  })();
+
+  try {
+    return await pickupMapInitPromise;
+  } catch (err) {
+    pickupMapInitPromise = null;
+    window.__pickupMapInited = false;
+    throw err;
+  }
 }
 
 
@@ -812,10 +887,12 @@ function initializeForm() {
         const lngInput = document.getElementById('pickupLng');
 
         if (pickCb && pickCb.checked) {
-            // гарантируем, что карта инициализирована
             if (!window.__pickupMapInited) {
-                window.__pickupMapInited = true;
-                initPickupMap();
+                try {
+                    await initPickupMap();
+                } catch (err) {
+                    console.warn('Не удалось инициализировать карту перед проверкой координат:', err);
+                }
             }
             const lat = latInput ? latInput.value.trim() : '';
             const lng = lngInput ? lngInput.value.trim() : '';
@@ -871,20 +948,25 @@ function initializeForm() {
     };
 
     if (pickupCheckbox) {
+        const ensurePickupMapReady = () => {
+            return initPickupMap()
+                .then(() => {
+                    setTimeout(() => {
+                        if (pickupMapInstance && pickupMapInstance.container) {
+                            pickupMapInstance.container.fitToViewport();
+                        }
+                    }, 0);
+                })
+                .catch((err) => {
+                    console.warn('Не удалось инициализировать карту забора:', err);
+                });
+        };
+
         pickupCheckbox.addEventListener('change', () => {
             if (pickupCheckbox.checked) {
                 if (addressFields) showRequestFormElement(addressFields);
                 if (phoneInput) phoneInput.required = true;
-                // инициализация карты — только один раз
-                if (!window.__pickupMapInited) {
-                    window.__pickupMapInited = true;
-                    initPickupMap();
-                    setTimeout(() => {
-                        if (pickupMapInstance) {
-                            pickupMapInstance.container.fitToViewport();
-                        }
-                    }, 0);
-                }
+                ensurePickupMapReady();
             } else {
                 if (addressFields) hideRequestFormElement(addressFields);
                 if (phoneInput) phoneInput.required = false;
@@ -896,15 +978,7 @@ function initializeForm() {
         if (pickupCheckbox.checked) {
             if (addressFields) showRequestFormElement(addressFields);
             if (phoneInput) phoneInput.required = true;
-            if (!window.__pickupMapInited) {
-                window.__pickupMapInited = true;
-                initPickupMap();
-                setTimeout(() => {
-                    if (pickupMapInstance) {
-                        pickupMapInstance.container.fitToViewport();
-                    }
-                }, 0);
-            }
+            ensurePickupMapReady();
         }
     }
 
