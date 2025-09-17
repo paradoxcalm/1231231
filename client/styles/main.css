@@ -423,6 +423,21 @@ body {
     }
 }
 
+@keyframes createOrderPress {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 18px 32px -18px rgba(40, 199, 111, 0.7);
+    }
+    50% {
+        transform: scale(0.97);
+        box-shadow: 0 12px 26px -18px rgba(40, 199, 111, 0.6);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 18px 32px -18px rgba(40, 199, 111, 0.7);
+    }
+}
+
 /* Enhanced status colors */
 .status-open {
     background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
@@ -454,6 +469,14 @@ body {
     border: 1px solid rgba(55, 48, 163, 0.2);
 }
 
+.schedule-status-indicator.status-open,
+.schedule-status-indicator.status-waiting,
+.schedule-status-indicator.status-transit,
+.schedule-status-indicator.status-unknown,
+.schedule-status-indicator.status-completed {
+    border: none;
+}
+
 .schedule-header {
     display: flex;
     justify-content: space-between;
@@ -468,11 +491,14 @@ body {
 }
 
 .schedule-marketplace {
-    padding: 4px 8px;
-    border-radius: 4px;
+    padding: 6px 12px;
+    border-radius: 999px;
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
 }
 
 .marketplace-wb {
@@ -488,13 +514,6 @@ body {
 .marketplace-yandex {
     background: #ffc107;
     color: #333;
-}
-
-.schedule-dates {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
 }
 
 .schedule-grid {
@@ -520,14 +539,12 @@ body {
 
 .schedule-card {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    display: grid;
+    grid-template-columns: 12px 1fr;
     background: white;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
-    padding: 24px;
     transition: var(--transition);
     overflow: hidden;
 }
@@ -535,8 +552,11 @@ body {
 .schedule-card::before {
     content: '';
     position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(40, 199, 111, 0.08), transparent 60%);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 12px;
+    background: linear-gradient(135deg, rgba(40, 199, 111, 0.08), transparent 65%);
     opacity: 0;
     transition: var(--transition);
     pointer-events: none;
@@ -552,10 +572,98 @@ body {
     opacity: 1;
 }
 
+.schedule-status-indicator {
+    grid-row: 1 / -1;
+    width: 100%;
+    height: 100%;
+    background: var(--border);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.schedule-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.schedule-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.schedule-card-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.schedule-card-warehouse {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.schedule-card-city {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.schedule-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.schedule-dates {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+}
+
+.date-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.date-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.date-value {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
 .schedule-meta {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
 }
 
 .meta-item {
@@ -575,62 +683,15 @@ body {
     font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-primary);
-}
-
-.status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: currentColor;
-}
-
-
-.date-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.9rem;
-}
-
-.date-label {
-    color: var(--text-secondary);
-}
-
-.date-value {
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-.schedule-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 500;
-}
-
-.status-open {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-closed {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-completed {
-    background: #e0e7ff;
-    color: #3730a3;
+    word-break: break-word;
 }
 
 .schedule-action {
-    margin-top: 16px;
+    margin-top: auto;
     padding-top: 16px;
     border-top: 1px solid var(--border-light);
-    text-align: center;
+    display: flex;
+    align-items: stretch;
 }
 
 .create-order-small {
@@ -729,22 +790,40 @@ body {
 }
 
 .create-order-btn {
-    padding: 12px 24px;
-    background: var(--primary);
-    color: white;
+    position: relative;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff;
     border: none;
-    border-radius: var(--radius);
-    font-weight: 600;
+    border-radius: var(--radius-lg);
+    font-weight: 700;
     cursor: pointer;
-    transition: var(--transition);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    box-shadow: 0 18px 32px -18px rgba(40, 199, 111, 0.7);
+    overflow: hidden;
 }
 
-.create-order-btn:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
+.create-order-btn:hover,
+.create-order-btn:focus-visible {
+    box-shadow: 0 22px 40px -20px rgba(40, 199, 111, 0.75);
+    background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+}
+
+.create-order-btn:focus-visible {
+    outline: 2px solid rgba(40, 199, 111, 0.4);
+    outline-offset: 2px;
+}
+
+.create-order-btn.is-pressed {
+    animation: createOrderPress 0.4s ease;
+}
+
+.schedule-card .create-order-btn {
+    width: 100%;
 }
 
 .orders-grid {

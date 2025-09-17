@@ -380,9 +380,9 @@ class ScheduleManager {
         const marketplaceClass = this.getMarketplaceBadgeClass(schedule.marketplace);
         const city = this.escapeHtml(schedule.city || '—');
         const warehouse = this.escapeHtml(schedule.warehouses || '—');
-        const acceptDate = this.formatDate(schedule.accept_date);
+        const departureDate = this.escapeHtml(this.formatDate(schedule.accept_date));
         const acceptTime = this.escapeHtml(schedule.accept_time || '—');
-        const deliveryDate = this.formatDate(schedule.delivery_date);
+        const deliveryDate = this.escapeHtml(this.formatDate(schedule.delivery_date));
         const driver = this.escapeHtml(schedule.driver_name || '—');
         const carInfo = this.escapeHtml([schedule.car_brand, schedule.car_number].filter(Boolean).join(' ') || '—');
         const statusText = this.escapeHtml(schedule.status || '—');
@@ -393,49 +393,67 @@ class ScheduleManager {
 
         return `
             <article class="schedule-card" data-id="${this.escapeHtml(String(scheduleIdValue))}">
-                <div class="schedule-header">
-                    <div class="schedule-route">
-                        <i class="fas fa-route"></i>
-                        ${city} → ${warehouse}
+                <div class="schedule-status-indicator status-${statusClass}"></div>
+                <div class="schedule-card-content">
+                    <header class="schedule-card-header">
+                        <div class="schedule-card-title">
+                            <span class="schedule-card-warehouse">${warehouse}</span>
+                            <span class="schedule-card-city">${city}</span>
+                        </div>
+                        <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
+                    </header>
+                    <div class="schedule-status status-${statusClass}">
+                        <span class="status-dot"></span>
+                        ${statusText}
                     </div>
-                    <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
-                </div>
-                <div class="schedule-dates">
-                    <div class="date-item">
-                        <span class="date-label">Дата приёмки</span>
-                        <span class="date-value">${acceptDate}</span>
+                    <div class="schedule-dates">
+                        <div class="date-item">
+                            <span class="date-label">Дата выезда</span>
+                            <span class="date-value">${departureDate}</span>
+                        </div>
+                        <div class="date-item">
+                            <span class="date-label">Дата сдачи</span>
+                            <span class="date-value">${deliveryDate}</span>
+                        </div>
                     </div>
-                    <div class="date-item">
-                        <span class="date-label">Время приёмки</span>
-                        <span class="date-value">${acceptTime}</span>
+                    <div class="schedule-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Время приёмки</span>
+                            <span class="meta-value">${acceptTime}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Водитель</span>
+                            <span class="meta-value">${driver}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Автомобиль</span>
+                            <span class="meta-value">${carInfo}</span>
+                        </div>
                     </div>
-                    <div class="date-item">
-                        <span class="date-label">Дата отправки</span>
-                        <span class="date-value">${deliveryDate}</span>
+                    <div class="schedule-action">
+                        <button class="create-order-btn" onclick="window.ScheduleManager.handleCreateOrderClick(event, ${scheduleId})">
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
                     </div>
-                </div>
-                <div class="schedule-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">Водитель</span>
-                        <span class="meta-value">${driver}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Автомобиль</span>
-                        <span class="meta-value">${carInfo}</span>
-                    </div>
-                </div>
-                <div class="schedule-status status-${statusClass}">
-                    <span class="status-dot"></span>
-                    ${statusText}
-                </div>
-                <div class="schedule-action">
-                    <button class="create-order-btn" onclick="window.ScheduleManager.createOrderForSchedule(${scheduleId})">
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
-                    </button>
                 </div>
             </article>
         `;
+    }
+
+    handleCreateOrderClick(event, scheduleId) {
+        if (event && event.currentTarget instanceof HTMLElement) {
+            const button = event.currentTarget;
+            button.classList.remove('is-pressed');
+            // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
+            void button.offsetWidth;
+            button.classList.add('is-pressed');
+            button.addEventListener('animationend', () => {
+                button.classList.remove('is-pressed');
+            }, { once: true });
+        }
+
+        this.createOrderForSchedule(scheduleId);
     }
 
     getMarketplaceBadgeClass(marketplace) {
