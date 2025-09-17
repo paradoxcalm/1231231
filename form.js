@@ -93,6 +93,198 @@ let cityStorageInstance = null;
 let cityStorageChecked = false;
 let lastTariffRequestToken = 0;
 
+function focusCitySelectionElement(element) {
+    if (!element || typeof element !== 'object') {
+        return;
+    }
+
+    const performFocus = () => {
+        try {
+            if (typeof element.focus === 'function') {
+                element.focus({ preventScroll: true });
+            }
+        } catch (err) {
+            try {
+                element.focus();
+            } catch (innerErr) {
+                console.warn('Не удалось сфокусировать селектор города:', innerErr);
+            }
+        }
+    };
+
+    if (typeof element.scrollIntoView === 'function') {
+        try {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            setTimeout(performFocus, 250);
+            return;
+        } catch (err) {
+            // продолжаем выполнение и пробуем сфокусировать элемент напрямую
+        }
+    }
+
+    performFocus();
+}
+
+function openCityConfirmationModal({ cityName = '', cityElement = null } = {}) {
+    if (typeof document === 'undefined') {
+        return Promise.resolve(true);
+    }
+
+    const normalizedCity = `${cityName ?? ''}`.trim();
+    if (!normalizedCity) {
+        return Promise.resolve(true);
+    }
+
+    const bodyElement = document.body;
+    if (!bodyElement) {
+        return Promise.resolve(true);
+    }
+
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'city-confirm-overlay';
+        overlay.setAttribute('role', 'presentation');
+
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const titleId = `cityConfirmTitle-${uniqueSuffix}`;
+
+        overlay.innerHTML = `
+            <div class="city-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+                <button type="button" class="city-confirm-close" data-role="close" aria-label="Закрыть предупреждение"></button>
+                <div class="city-confirm-icon" aria-hidden="true">❗</div>
+                <h2 class="city-confirm-title" id="${titleId}">Проверьте выбранный город</h2>
+                <p class="city-confirm-message">
+                    Мы собираемся отправить заявку для города <span class="city-confirm-city" data-role="city-name"></span>.
+                    Всё верно?
+                </p>
+                <div class="city-confirm-actions">
+                    <button type="button" class="city-confirm-button city-confirm-edit" data-role="edit">Изменить</button>
+                    <button type="button" class="city-confirm-button city-confirm-continue" data-role="confirm">Да, продолжить</button>
+                </div>
+            </div>
+        `;
+
+        const dialog = overlay.querySelector('.city-confirm-dialog');
+        const cityNameTarget = overlay.querySelector('[data-role="city-name"]');
+        if (cityNameTarget) {
+            cityNameTarget.textContent = normalizedCity;
+        }
+
+        const focusableSelectors = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        const getFocusable = () => Array.from(dialog?.querySelectorAll(focusableSelectors) || [])
+            .filter((node) => node instanceof HTMLElement && !node.hasAttribute('disabled'));
+
+        let isResolved = false;
+
+        const finish = (result, afterClose) => {
+            if (isResolved) {
+                return;
+            }
+            isResolved = true;
+
+            let finalizeCalled = false;
+            const finalize = () => {
+                if (finalizeCalled) {
+                    return;
+                }
+                finalizeCalled = true;
+
+                overlay.removeEventListener('keydown', keyHandler);
+                overlay.remove();
+                bodyElement.classList.remove('city-confirm-open');
+                if (typeof afterClose === 'function') {
+                    try {
+                        afterClose();
+                    } catch (callbackErr) {
+                        console.warn('Ошибка выполнения обработчика после закрытия окна подтверждения города:', callbackErr);
+                    }
+                }
+                resolve(result);
+            };
+
+            overlay.classList.remove('city-confirm-overlay--visible');
+            dialog?.classList.remove('city-confirm-dialog--visible');
+            overlay.classList.add('city-confirm-overlay--closing');
+            dialog?.classList.add('city-confirm-dialog--closing');
+
+            const onTransitionEnd = () => {
+                overlay.removeEventListener('transitionend', onTransitionEnd);
+                finalize();
+            };
+
+            overlay.addEventListener('transitionend', onTransitionEnd);
+            setTimeout(finalize, 220);
+        };
+
+        const closeAndFocusCity = () => {
+            finish(false, () => {
+                if (cityElement) {
+                    focusCitySelectionElement(cityElement);
+                }
+            });
+        };
+
+        const keyHandler = (event) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeAndFocusCity();
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                const focusable = getFocusable();
+                if (!focusable.length) {
+                    return;
+                }
+
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
+        };
+
+        overlay.addEventListener('keydown', keyHandler);
+
+        const confirmBtn = overlay.querySelector('[data-role="confirm"]');
+        const editBtn = overlay.querySelector('[data-role="edit"]');
+        const closeBtn = overlay.querySelector('[data-role="close"]');
+
+        confirmBtn?.addEventListener('click', () => finish(true));
+        editBtn?.addEventListener('click', closeAndFocusCity);
+        closeBtn?.addEventListener('click', closeAndFocusCity);
+
+        overlay.addEventListener('click', (event) => {
+            if (event.target === overlay) {
+                closeAndFocusCity();
+            }
+        });
+
+        bodyElement.appendChild(overlay);
+
+        requestAnimationFrame(() => {
+            bodyElement.classList.add('city-confirm-open');
+            overlay.classList.add('city-confirm-overlay--visible');
+            dialog?.classList.add('city-confirm-dialog--visible');
+            const focusable = getFocusable();
+            const focusTarget = confirmBtn || focusable[0];
+            if (focusTarget) {
+                try {
+                    focusTarget.focus({ preventScroll: true });
+                } catch (err) {
+                    focusTarget.focus();
+                }
+            }
+        });
+    });
+}
+
 function getCityStorage() {
     if (cityStorageChecked) {
         return cityStorageInstance;
@@ -1322,6 +1514,21 @@ async function initializeForm() {
                     status.textContent = 'Пожалуйста, выберите точку на карте';
                     status.style.color = 'red';
                 }
+                return;
+            }
+        }
+
+        const cityValue = (cityEl && typeof cityEl.value === 'string') ? cityEl.value.trim() : '';
+        if (cityValue) {
+            let confirmed = true;
+            try {
+                confirmed = await openCityConfirmationModal({ cityName: cityValue, cityElement: cityEl });
+            } catch (err) {
+                console.warn('Не удалось показать подтверждение города перед отправкой формы:', err);
+                confirmed = true;
+            }
+
+            if (!confirmed) {
                 return;
             }
         }
