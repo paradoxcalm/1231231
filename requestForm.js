@@ -424,6 +424,27 @@ async function openRequestFormModal(
         if (contentHost) {
             contentHost.innerHTML = '';
         }
+        if (typeof pickupMapInstance !== 'undefined' && pickupMapInstance) {
+            try {
+                if (typeof pickupMapInstance.destroy === 'function') {
+                    pickupMapInstance.destroy();
+                }
+            } catch (err) {
+                console.warn('Не удалось корректно уничтожить карту забора груза:', err);
+            }
+        }
+        if (typeof pickupMapInstance !== 'undefined') {
+            pickupMapInstance = null;
+        }
+        if (typeof pickupPlacemark !== 'undefined') {
+            pickupPlacemark = null;
+        }
+        if (typeof pickupMapInitPromise !== 'undefined') {
+            pickupMapInitPromise = null;
+        }
+        if (typeof window !== 'undefined') {
+            window.__pickupMapInited = false;
+        }
         document.body.classList.remove('modal-open');
         document.removeEventListener('keydown', escHandler);
         modal.removeEventListener('click', backdropHandler);
