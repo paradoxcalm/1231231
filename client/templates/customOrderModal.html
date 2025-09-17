@@ -27,7 +27,14 @@
           </div>
         </div>
 
-        <input type="hidden" id="city" name="city" value="">
+        <div class="form-group request-form__group request-form__city-group">
+          <label for="city">Город:</label>
+          <div class="request-form__city-control">
+            <select id="city" name="city" class="request-form__city-select" autocomplete="off" required>
+              <option value="" disabled selected>Выберите город</option>
+            </select>
+          </div>
+        </div>
         <input type="hidden" id="warehouses" name="warehouses" value="">
         <input type="hidden" id="driver_name" name="driver_name" value="">
         <input type="hidden" id="driver_phone" name="driver_phone" value="">

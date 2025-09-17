@@ -54,6 +54,22 @@ function resolveFormPath(relativePath) {
     return relativePath;
 }
 
+function escapeAttributeValue(value) {
+    return `${value ?? ''}`
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function escapeHtmlContent(value) {
+    return `${value ?? ''}`
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 // 1️⃣ Автозаполнение данных пользователя
 function preloadUserDataIntoForm() {
     fetch(resolveFormPath('fetch_user_data.php'))
@@ -67,6 +83,374 @@ function preloadUserDataIntoForm() {
             }
         })
         .catch(err => console.error("Ошибка автозаполнения профиля:", err));
+}
+
+const CITY_PLACEHOLDER_LABEL = 'Выберите город';
+const CITY_STORAGE_PREFIX = 'requestForm:lastCity';
+const CITY_OPTIONS_CACHE = new Map();
+
+let cityStorageInstance = null;
+let cityStorageChecked = false;
+let lastTariffRequestToken = 0;
+
+function getCityStorage() {
+    if (cityStorageChecked) {
+        return cityStorageInstance;
+    }
+
+    cityStorageChecked = true;
+
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const storageCandidates = ['localStorage', 'sessionStorage'];
+    for (const storageName of storageCandidates) {
+        try {
+            const storage = window[storageName];
+            if (!storage) {
+                continue;
+            }
+
+            const testKey = `${CITY_STORAGE_PREFIX}__test__`;
+            storage.setItem(testKey, '1');
+            storage.removeItem(testKey);
+
+            cityStorageInstance = storage;
+            break;
+        } catch (err) {
+            cityStorageInstance = null;
+        }
+    }
+
+    return cityStorageInstance;
+}
+
+function buildCityStorageKey(marketplace = '', warehouse = '') {
+    const marketplaceKey = (marketplace || 'all').trim().toLowerCase();
+    const warehouseKey = (warehouse || 'all').trim().toLowerCase();
+    return `${CITY_STORAGE_PREFIX}:${encodeURIComponent(marketplaceKey)}:${encodeURIComponent(warehouseKey)}`;
+}
+
+function getStoredCitySelection(marketplace = '', warehouse = '') {
+    try {
+        const storage = getCityStorage();
+        if (!storage) {
+            return '';
+        }
+        return storage.getItem(buildCityStorageKey(marketplace, warehouse)) || '';
+    } catch (err) {
+        console.warn('Не удалось прочитать сохранённый город формы заявки:', err);
+        return '';
+    }
+}
+
+function saveCitySelection(marketplace = '', warehouse = '', city = '') {
+    try {
+        const storage = getCityStorage();
+        if (!storage) {
+            return;
+        }
+        const key = buildCityStorageKey(marketplace, warehouse);
+        const trimmedCity = `${city ?? ''}`.trim();
+        if (trimmedCity) {
+            storage.setItem(key, trimmedCity);
+        } else {
+            storage.removeItem(key);
+        }
+    } catch (err) {
+        console.warn('Не удалось сохранить выбранный город формы заявки:', err);
+    }
+}
+
+function clearStoredCitySelection(marketplace = '', warehouse = '') {
+    saveCitySelection(marketplace, warehouse, '');
+}
+
+function normalizeWarehouseValue(raw = '') {
+    const trimmed = `${raw ?? ''}`.trim();
+    if (!trimmed) {
+        return '';
+    }
+    const [first] = trimmed.split(',');
+    return (first || '').trim();
+}
+
+async function fetchCitiesForMarketplace(marketplace = '') {
+    const key = (marketplace || '').trim().toLowerCase() || '__all__';
+    if (CITY_OPTIONS_CACHE.has(key)) {
+        return CITY_OPTIONS_CACHE.get(key);
+    }
+
+    const params = new URLSearchParams();
+    if (marketplace) {
+        params.set('action', 'cities');
+        params.set('marketplace', marketplace);
+    } else {
+        params.set('action', 'all_cities');
+    }
+
+    const url = resolveFormPath(`filter_options.php?${params.toString()}`);
+
+    try {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) {
+            throw new Error(`Ошибка загрузки городов: ${response.status}`);
+        }
+
+        const payload = await response.json();
+        let list = [];
+        if (Array.isArray(payload?.cities)) {
+            list = payload.cities;
+        } else if (Array.isArray(payload)) {
+            list = payload;
+        }
+
+        const normalized = [];
+        const seen = new Set();
+        list.forEach((item) => {
+            if (item === null || item === undefined) {
+                return;
+            }
+            const text = `${item}`.trim();
+            if (!text) {
+                return;
+            }
+            const normalizedText = text.toLowerCase();
+            if (seen.has(normalizedText)) {
+                return;
+            }
+            seen.add(normalizedText);
+            normalized.push(text);
+        });
+
+        normalized.sort((a, b) => a.localeCompare(b, 'ru', { sensitivity: 'base' }));
+        CITY_OPTIONS_CACHE.set(key, normalized);
+        return normalized;
+    } catch (err) {
+        console.warn('Не удалось загрузить список городов для формы заявки:', err);
+        return [];
+    }
+}
+
+function populateCitySelectOptions(selectElement, cities, {
+    placeholderLabel = CITY_PLACEHOLDER_LABEL,
+    preferredCity = '',
+    fallbackCity = ''
+} = {}) {
+    if (!selectElement) {
+        return '';
+    }
+
+    const doc = selectElement.ownerDocument || document;
+    const placeholderOption = doc.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = placeholderLabel;
+    placeholderOption.disabled = true;
+
+    const fragment = doc.createDocumentFragment();
+    fragment.appendChild(placeholderOption);
+
+    const uniqueCities = [];
+    const seen = new Set();
+    const addCity = (value) => {
+        if (value === null || value === undefined) {
+            return;
+        }
+        const text = `${value}`.trim();
+        if (!text) {
+            return;
+        }
+        const normalizedText = text.toLowerCase();
+        if (seen.has(normalizedText)) {
+            return;
+        }
+        seen.add(normalizedText);
+        uniqueCities.push(text);
+    };
+
+    (Array.isArray(cities) ? cities : []).forEach(addCity);
+    addCity(preferredCity);
+    addCity(fallbackCity);
+
+    uniqueCities.forEach((cityName) => {
+        const option = doc.createElement('option');
+        option.value = cityName;
+        option.textContent = cityName;
+        fragment.appendChild(option);
+    });
+
+    selectElement.innerHTML = '';
+    selectElement.appendChild(fragment);
+
+    const preferredNormalized = `${preferredCity ?? ''}`.trim().toLowerCase();
+    const fallbackNormalized = `${fallbackCity ?? ''}`.trim().toLowerCase();
+
+    const pickValue = (target) => {
+        if (!target) return '';
+        const normalizedTarget = target.trim().toLowerCase();
+        return uniqueCities.find((cityName) => cityName.toLowerCase() === normalizedTarget) || '';
+    };
+
+    let selectedValue = pickValue(preferredNormalized ? preferredCity : '');
+    if (!selectedValue) {
+        selectedValue = pickValue(fallbackNormalized ? fallbackCity : '');
+    }
+
+    if (selectedValue) {
+        selectElement.value = selectedValue;
+    } else {
+        placeholderOption.selected = true;
+    }
+
+    return selectElement.value || '';
+}
+
+function updateDirectionSummary(city, warehouse) {
+    const directionDisplay = document.getElementById('legacyDirection');
+    if (!directionDisplay) {
+        return;
+    }
+    const left = city && city.trim() ? city.trim() : '—';
+    const right = warehouse && warehouse.trim() ? warehouse.trim() : '—';
+    directionDisplay.textContent = `${left} → ${right}`;
+}
+
+async function setupCitySelector({
+    form,
+    selectElement,
+    marketplace = '',
+    initialCity = '',
+    getWarehouseValue = () => '',
+    onCityChange
+} = {}) {
+    if (!selectElement) {
+        return (initialCity || '').trim();
+    }
+
+    const marketplaceValue = `${marketplace ?? ''}`.trim();
+    const warehouseValue = normalizeWarehouseValue(typeof getWarehouseValue === 'function' ? getWarehouseValue() : '');
+    const storedCity = getStoredCitySelection(marketplaceValue, warehouseValue);
+    const placeholderLabel = selectElement.dataset?.placeholderLabel || CITY_PLACEHOLDER_LABEL;
+
+    selectElement.disabled = true;
+    selectElement.dataset.loading = 'true';
+
+    const cities = await fetchCitiesForMarketplace(marketplaceValue).catch(() => []);
+    const selectedCity = populateCitySelectOptions(selectElement, cities, {
+        placeholderLabel,
+        preferredCity: storedCity,
+        fallbackCity: initialCity
+    });
+
+    delete selectElement.dataset.loading;
+    selectElement.disabled = false;
+
+    const finalCity = (selectedCity || '').trim();
+    const currentWarehouse = normalizeWarehouseValue(typeof getWarehouseValue === 'function' ? getWarehouseValue() : '');
+
+    if (finalCity) {
+        saveCitySelection(marketplaceValue, currentWarehouse, finalCity);
+    } else {
+        clearStoredCitySelection(marketplaceValue, currentWarehouse);
+    }
+
+    if (form) {
+        form.dataset.selectedCity = finalCity;
+    }
+
+    updateDirectionSummary(finalCity, currentWarehouse);
+
+    const handler = () => {
+        const nextWarehouse = normalizeWarehouseValue(typeof getWarehouseValue === 'function' ? getWarehouseValue() : '');
+        const value = (selectElement.value || '').trim();
+        if (value) {
+            saveCitySelection(marketplaceValue, nextWarehouse, value);
+        } else {
+            clearStoredCitySelection(marketplaceValue, nextWarehouse);
+        }
+        updateDirectionSummary(value, nextWarehouse);
+        if (typeof onCityChange === 'function') {
+            try {
+                onCityChange(value, nextWarehouse, marketplaceValue);
+            } catch (err) {
+                console.warn('Ошибка обработчика изменения города формы заявки:', err);
+            }
+        }
+    };
+
+    if (selectElement._requestFormCityChange) {
+        selectElement.removeEventListener('change', selectElement._requestFormCityChange);
+    }
+    selectElement.addEventListener('change', handler);
+    selectElement._requestFormCityChange = handler;
+
+    selectElement.dataset.loadedMarketplace = marketplaceValue;
+    selectElement.dataset.loadedWarehouse = currentWarehouse;
+
+    return finalCity;
+}
+
+async function updateTariffFor(city, warehouse) {
+    const normalizedCity = `${city ?? ''}`.trim();
+    const normalizedWarehouse = normalizeWarehouseValue(warehouse);
+    const requestToken = ++lastTariffRequestToken;
+
+    const applyDefaults = () => {
+        setupVolumeCalculator(650, 1, 7000, 1);
+        const tariffRate = document.getElementById('tariff_rate');
+        if (tariffRate) {
+            tariffRate.textContent = '650 ₽ (по умолчанию)';
+        }
+        const packaging = document.querySelector('input[name="packaging_type"]:checked');
+        if (packaging && packaging.value === 'Pallet') {
+            calculatePalletCost();
+        }
+    };
+
+    if (!normalizedCity || !normalizedWarehouse) {
+        console.warn('Нет города или склада — тариф не загружается');
+        applyDefaults();
+        return;
+    }
+
+    try {
+        const tariffUrl = resolveFormPath(
+            `get_tariff.php?city=${encodeURIComponent(normalizedCity)}&warehouse=${encodeURIComponent(normalizedWarehouse)}`
+        );
+        const response = await fetch(tariffUrl);
+        if (!response.ok) {
+            throw new Error(`get_tariff.php вернул статус ${response.status}`);
+        }
+        const data = await response.json();
+        if (requestToken !== lastTariffRequestToken) {
+            return;
+        }
+        if (data && data.success) {
+            setupVolumeCalculator(
+                Number(data.base_price),
+                Number(data.box_coef),
+                Number(data.pallet_price),
+                Number(data.box_coef)
+            );
+            const tariffRate = document.getElementById('tariff_rate');
+            if (tariffRate) {
+                tariffRate.textContent = `${data.base_price} ₽`;
+            }
+            const packaging = document.querySelector('input[name="packaging_type"]:checked');
+            if (packaging && packaging.value === 'Pallet') {
+                calculatePalletCost();
+            }
+        } else {
+            console.warn('Тариф не найден:', data && data.message);
+            applyDefaults();
+        }
+    } catch (err) {
+        if (requestToken === lastTariffRequestToken) {
+            console.error('Ошибка загрузки тарифа:', err);
+            applyDefaults();
+        }
+    }
 }
 
 // 2️⃣ Отрисовка формы (HTML) с блоком customBoxWarning
@@ -85,8 +469,14 @@ function renderFormHTML(scheduleData = {}) {
         driver_phone = '',
         car_number = '',
         car_brand = '',
-        sender = ''
+        sender = '',
+        marketplace = ''
     } = scheduleData;
+
+    const attrMarketplace = escapeAttributeValue(marketplace);
+    const attrCity = escapeAttributeValue(city);
+    const attrWarehouses = escapeAttributeValue(warehouses);
+    const cityOptionText = escapeHtmlContent(city);
 
     // Склеиваем две даты в одну строку «выезд → сдача»
     const combinedDates = accept_date && delivery_date
@@ -107,7 +497,7 @@ function renderFormHTML(scheduleData = {}) {
   </header>
   <section class="modal-body request-modal__body">
     <div class="section-container modal-section request-modal__content">
-      <form id="dataForm" enctype="multipart/form-data">
+      <form id="dataForm" enctype="multipart/form-data" data-marketplace="${attrMarketplace}" data-initial-city="${attrCity}" data-initial-warehouse="${attrWarehouses}">
         <h3 class="section-subtitle">ПРИЁМКА</h3>
 
         <input type="hidden" name="schedule_id" id="formScheduleId" value="${id}">
@@ -129,7 +519,15 @@ function renderFormHTML(scheduleData = {}) {
           </div>
         </div>
 
-        <input type="hidden" id="city" name="city" value="${city}">
+        <div class="form-group request-form__group request-form__city-group">
+          <label for="city">Город:</label>
+          <div class="request-form__city-control">
+            <select id="city" name="city" class="request-form__city-select" autocomplete="off" required>
+              <option value="" disabled ${city ? '' : 'selected'}>Выберите город</option>
+              ${city ? `<option value="${attrCity}" selected>${cityOptionText}</option>` : ''}
+            </select>
+          </div>
+        </div>
         <input type="hidden" id="warehouses" name="warehouses" value="${warehouses}">
         <input type="hidden" id="driver_name" name="driver_name" value="${driver_name}">
         <input type="hidden" id="driver_phone" name="driver_phone" value="${driver_phone}">
@@ -849,7 +1247,7 @@ async function initPickupMap() {
 
 
 
-function initializeForm() {
+async function initializeForm() {
     const form = document.getElementById('dataForm');
     if (!form) {
         // Если форма ещё не загружена — повторим после DOMContentLoaded
@@ -869,52 +1267,35 @@ function initializeForm() {
     setupPalletFieldsTrigger();
     setupBoxFieldsTrigger();
 
-    // 2) Считываем город и склад из скрытых полей формы
     const cityEl = document.getElementById('city');
     const whEl   = document.getElementById('warehouses');
-    const city   = cityEl ? cityEl.value.trim() : '';
-    let   wh     = whEl   ? whEl.value.trim()   : '';
 
-    // Если указано несколько складов через запятую — используем первый
-    if (wh.includes(',')) wh = wh.split(',')[0].trim();
+    const marketplace = (form.dataset?.marketplace || '').trim();
+    const initialCity = (form.dataset?.initialCity || (cityEl ? cityEl.value : '') || '').trim();
+    const warehouseFallback = () => {
+        const raw = whEl && typeof whEl.value === 'string' ? whEl.value : form.dataset?.initialWarehouse || '';
+        return normalizeWarehouseValue(raw);
+    };
 
-    // 3) Запрашиваем тариф и инициализируем калькулятор объёма
-    (async () => {
-        if (!city || !wh) {
-            console.warn('Нет города или склада — тариф не загружается');
-            return;
-        }
-        const setDefaults = () => {
-            setupVolumeCalculator(650, 1, 7000, 1);
-            const t = document.getElementById('tariff_rate');
-            if (t) t.textContent = '650 ₽ (по умолчанию)';
-            const pkg = document.querySelector('input[name="packaging_type"]:checked');
-            if (pkg && pkg.value === 'Pallet') calculatePalletCost();
-        };
-        try {
-            const tariffUrl = resolveFormPath(`get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(wh)}`);
-            const res = await fetch(tariffUrl);
-            const d = await res.json();
-            if (d && d.success) {
-                setupVolumeCalculator(
-                    Number(d.base_price),
-                    Number(d.box_coef),
-                    Number(d.pallet_price),
-                    Number(d.box_coef)
-                );
-                const t = document.getElementById('tariff_rate');
-                if (t) t.textContent = `${d.base_price} ₽`;
-                const pkg = document.querySelector('input[name="packaging_type"]:checked');
-                if (pkg && pkg.value === 'Pallet') calculatePalletCost();
-            } else {
-                console.warn('Тариф не найден:', d && d.message);
-                setDefaults();
+    let resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
+
+    try {
+        resolvedCity = await setupCitySelector({
+            form,
+            selectElement: cityEl,
+            marketplace,
+            initialCity,
+            getWarehouseValue: warehouseFallback,
+            onCityChange: (value) => {
+                updateTariffFor(value, warehouseFallback());
             }
-        } catch (err) {
-            console.error('Ошибка загрузки тарифа:', err);
-            setDefaults();
-        }
-    })();
+        }) || resolvedCity;
+    } catch (err) {
+        console.warn('Не удалось инициализировать список городов формы заявки:', err);
+        resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
+    }
+
+    await updateTariffFor(resolvedCity, warehouseFallback());
 
     // 4) Обработка отправки формы
     form.addEventListener('submit', async (e) => {
