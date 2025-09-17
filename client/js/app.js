@@ -165,6 +165,16 @@ class App {
                 notificationsPanel.classList.remove('active');
             }
         });
+
+        // Кнопка сброса шагов
+        const resetBtn = document.getElementById('resetStepsBtn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (window.ScheduleManager) {
+                    window.ScheduleManager.resetFilters();
+                }
+            });
+        }
     }
 
     openModal(modal) {

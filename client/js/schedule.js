@@ -1,624 +1,53 @@
-import { fetchMarketplaces } from './filterOptions.js';
+import { fetchMarketplaces, fetchWarehouses } from './filterOptions.js';
 
-// Управление расписанием отправлений
+// Управление расписанием отправлений с пошаговым выбором
 class ScheduleManager {
     constructor() {
         this.schedules = [];
         this.filteredSchedules = [];
-        this.currentTab = 'upcoming';
+        this.currentStep = 1; // 1 = маркетплейс, 2 = склад, 3 = календарь
         this.currentMonth = new Date();
         this.filters = {
             marketplace: '',
-            city: '',
             warehouse: ''
         };
-        this.marketplaceGridElement = null;
-        this.warehouseGridElement = null;
-        this.marketplaceBannerElement = null;
-        this.warehouseBannerElement = null;
         this.marketplaceOptions = [];
         this.warehouseOptions = [];
-        this.highlightTimers = {};
-        this.filtersIncomplete = true;
+        this.calendarData = {};
 
         this.init();
     }
 
     init() {
-        this.setupTabs();
-        this.setupFilters();
-        this.setupCalendar();
-        this.loadSchedules();
+        this.setupStepNavigation();
+        this.setupCalendarControls();
+        this.loadMarketplaces();
+        this.showStep(1);
     }
 
-    setupTabs() {
-        const tabBtns = document.querySelectorAll('#scheduleSection .tab-btn');
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                this.switchTab(tab);
-                
-                tabBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-    }
+    setupStepNavigation() {
+        // Кнопки навигации между шагами
+        const backBtn = document.getElementById('stepBackBtn');
+        const nextBtn = document.getElementById('stepNextBtn');
 
-    switchTab(tab) {
-        const tabs = document.querySelectorAll('#scheduleSection .tab-content');
-        tabs.forEach(tabContent => tabContent.classList.remove('active'));
-        
-        const targetTab = document.getElementById(`${tab}Tab`);
-        if (targetTab) {
-            targetTab.classList.add('active');
-            this.currentTab = tab;
-            
-            if (tab === 'calendar') {
-                this.renderCalendar();
-            } else {
-                this.renderScheduleGrid();
-            }
-        }
-    }
-
-    setupFilters() {
-        this.marketplaceGridElement = document.getElementById('marketplaceGrid');
-        this.warehouseGridElement = document.getElementById('warehouseGrid');
-        this.marketplaceBannerElement = document.getElementById('marketplaceBanner');
-        this.warehouseBannerElement = document.getElementById('warehouseBanner');
-
-        if (!this.marketplaceGridElement || !this.warehouseGridElement) {
-            return;
-        }
-
-        this.filters.city = '';
-
-        this.marketplaceGridElement.dataset.state = 'loading';
-        this.marketplaceGridElement.innerHTML = `
-            <div class="selection-skeleton">
-                <div class="selection-skeleton__pulse"></div>
-                <div class="selection-skeleton__pulse"></div>
-                <div class="selection-skeleton__pulse"></div>
-            </div>
-        `;
-
-        this.renderWarehouseCards([]);
-        this.refreshStepStates();
-
-        const baseUrl = '../filter_options.php';
-
-        const initializeFilters = async () => {
-            try {
-                const marketplaces = await fetchMarketplaces({ baseUrl });
-                this.renderMarketplaceCards(marketplaces);
-            } catch (error) {
-                console.error('Ошибка инициализации фильтров расписания:', error);
-                this.renderMarketplaceCards([]);
-            }
-        };
-
-        initializeFilters();
-
-        this.bindFilterStepActions();
-    }
-
-    normalizeOptions(options = []) {
-        const normalized = [];
-        const seen = new Set();
-
-        options.forEach(option => {
-            if (option === null || option === undefined) {
-                return;
-            }
-
-            let value = '';
-            let label = '';
-            let description = '';
-            let meta = null;
-
-            if (typeof option === 'string') {
-                value = option.trim();
-                label = option.trim();
-            } else if (typeof option === 'object') {
-                const rawValue = option.value ?? option.code ?? option.slug ?? option.id ?? option.name ?? option.title;
-                const rawLabel = option.label ?? option.name ?? option.title ?? rawValue;
-                const rawDescription = option.description ?? option.subtitle ?? option.hint ?? '';
-                const rawMeta = option.meta ?? option.count ?? option.total ?? null;
-
-                if (rawValue !== null && rawValue !== undefined) {
-                    value = typeof rawValue === 'string' ? rawValue.trim() : `${rawValue}`.trim();
-                }
-
-                if (rawLabel !== null && rawLabel !== undefined) {
-                    label = typeof rawLabel === 'string' ? rawLabel.trim() : `${rawLabel}`.trim();
-                }
-
-                if (rawDescription !== null && rawDescription !== undefined) {
-                    description = typeof rawDescription === 'string'
-                        ? rawDescription.trim()
-                        : `${rawDescription}`.trim();
-                }
-
-                if (rawMeta !== null && rawMeta !== undefined && `${rawMeta}`.trim() !== '') {
-                    const numericMeta = Number(rawMeta);
-                    meta = Number.isFinite(numericMeta) ? numericMeta : rawMeta;
-                }
-            }
-
-            if (!value) {
-                return;
-            }
-
-            if (!label) {
-                label = value;
-            }
-
-            if (seen.has(value)) {
-                return;
-            }
-
-            seen.add(value);
-            normalized.push({
-                value,
-                label,
-                description,
-                meta,
-                raw: option
-            });
-        });
-
-        return normalized;
-    }
-
-    renderMarketplaceCards(options = null) {
-        if (!this.marketplaceGridElement) {
-            return;
-        }
-
-        if (options !== null) {
-            this.marketplaceOptions = this.normalizeOptions(options);
-        }
-
-        if (!Array.isArray(this.marketplaceOptions) || this.marketplaceOptions.length === 0) {
-            this.marketplaceGridElement.dataset.state = 'empty';
-            this.marketplaceGridElement.innerHTML = `
-                <div class="selection-empty">
-                    <i class="fas fa-store-slash"></i>
-                    <p>Маркетплейсы недоступны</p>
-                    <span>Попробуйте обновить страницу или обратитесь в поддержку.</span>
-                </div>
-            `;
-            this.refreshStepStates();
-            return;
-        }
-
-        this.marketplaceGridElement.dataset.state = 'ready';
-        this.marketplaceGridElement.innerHTML = this.marketplaceOptions
-            .map(option => this.buildSelectionCard(option, 'marketplace'))
-            .join('');
-
-        this.bindSelectionCards(this.marketplaceGridElement, 'marketplace');
-        this.refreshStepStates();
-    }
-
-    renderWarehouseCards(options = null) {
-        if (!this.warehouseGridElement) {
-            return;
-        }
-
-        if (options !== null) {
-            this.warehouseOptions = Array.isArray(options) ? options : [];
-        }
-
-        const marketplaceSelected = Boolean(this.filters.marketplace);
-
-        if (!marketplaceSelected) {
-            this.warehouseGridElement.dataset.state = 'locked';
-            this.warehouseGridElement.innerHTML = `
-                <div class="selection-empty">
-                    <i class="fas fa-hand-pointer"></i>
-                    <p>Выберите маркетплейс</p>
-                    <span>Сначала завершите шаг 1, чтобы увидеть доступные склады.</span>
-                </div>
-            `;
-            this.refreshStepStates();
-            return;
-        }
-
-        if (!Array.isArray(this.warehouseOptions) || this.warehouseOptions.length === 0) {
-            this.warehouseGridElement.dataset.state = 'empty';
-            this.warehouseGridElement.innerHTML = `
-                <div class="selection-empty">
-                    <i class="fas fa-warehouse"></i>
-                    <p>Нет складов</p>
-                    <span>Для выбранного маркетплейса пока нет активных расписаний.</span>
-                </div>
-            `;
-            this.refreshStepStates();
-            return;
-        }
-
-        this.warehouseGridElement.dataset.state = 'ready';
-        this.warehouseGridElement.innerHTML = this.warehouseOptions
-            .map(option => this.buildSelectionCard(option, 'warehouse'))
-            .join('');
-
-        this.bindSelectionCards(this.warehouseGridElement, 'warehouse');
-        this.refreshStepStates();
-    }
-
-    buildSelectionCard(option, type) {
-        if (!option || !option.value) {
-            return '';
-        }
-
-        const isMarketplace = type === 'marketplace';
-        const isSelected = isMarketplace
-            ? this.filters.marketplace === option.value
-            : this.filters.warehouse === option.value;
-        const isDisabled = !isMarketplace && !this.filters.marketplace;
-
-        const { meta, description } = isMarketplace
-            ? this.getMarketplaceMeta(option)
-            : this.getWarehouseMeta(option);
-
-        const classes = ['selection-card', `selection-card--${type}`];
-        if (isSelected) {
-            classes.push('selection-card--selected');
-        }
-        if (isDisabled) {
-            classes.push('selection-card--disabled');
-        }
-
-        const disabledAttr = isDisabled ? ' disabled' : '';
-        const metaHtml = meta ? `<span class="selection-card__meta">${meta}</span>` : '';
-        const descriptionHtml = description ? `<span class="selection-card__description">${description}</span>` : '';
-
-        return `
-            <button type="button" class="${classes.join(' ')}" data-value="${option.value}" data-type="${type}"${disabledAttr}>
-                <span class="selection-card__abbr" aria-hidden="true">${this.getOptionAbbreviation(option.label)}</span>
-                <span class="selection-card__title">${option.label}</span>
-                ${metaHtml}
-                ${descriptionHtml}
-                <span class="selection-card__check" aria-hidden="true">
-                    <i class="fas fa-check"></i>
-                </span>
-            </button>
-        `;
-    }
-
-    bindSelectionCards(container, type) {
-        if (!container) {
-            return;
-        }
-
-        container.querySelectorAll('.selection-card').forEach(card => {
-            if (card.dataset.bound === 'true' || card.disabled) {
-                return;
-            }
-
-            card.addEventListener('click', () => {
-                const value = card.dataset.value;
-                if (!value) {
-                    return;
-                }
-
-                if (type === 'marketplace') {
-                    this.handleMarketplaceSelection(value);
-                } else if (type === 'warehouse') {
-                    this.handleWarehouseSelection(value);
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                if (this.currentStep > 1) {
+                    this.showStep(this.currentStep - 1);
                 }
             });
-
-            card.dataset.bound = 'true';
-        });
-    }
-
-    handleMarketplaceSelection(value) {
-        if (!value) {
-            return;
         }
 
-        this.filters.marketplace = value;
-        this.filters.warehouse = '';
-        this.renderMarketplaceCards();
-        this.updateWarehouseOptions();
-
-        this.applyFilters();
-        this.refreshStepStates();
-        this.focusFilter('warehouseGrid');
-    }
-
-    handleWarehouseSelection(value) {
-        if (!value) {
-            return;
-        }
-
-        this.filters.warehouse = value;
-        this.renderWarehouseCards();
-        this.applyFilters();
-        this.refreshStepStates();
-        this.focusFilter('scheduleGrid');
-    }
-
-    refreshStepStates() {
-        const marketplaceSelected = Boolean(this.filters.marketplace);
-        const warehouseSelected = Boolean(this.filters.warehouse);
-
-        if (this.marketplaceBannerElement) {
-            if (!this.marketplaceOptions.length) {
-                this.setBannerState(this.marketplaceBannerElement, 'locked', {
-                    title: 'Маркетплейсы недоступны',
-                    description: 'Попробуйте обновить страницу или обратитесь в поддержку.',
-                    status: 'Недоступно'
-                });
-            } else if (marketplaceSelected) {
-                const marketplace = this.marketplaceOptions.find(option => option.value === this.filters.marketplace);
-                const label = marketplace ? marketplace.label : this.filters.marketplace;
-                this.setBannerState(this.marketplaceBannerElement, 'complete', {
-                    title: 'Маркетплейс выбран',
-                    description: `Вы выбрали: ${label}`,
-                    status: 'Шаг 1 готов'
-                });
-            } else {
-                this.setBannerState(this.marketplaceBannerElement, 'active', {
-                    title: 'Выберите маркетплейс',
-                    description: 'Мы покажем подходящие склады и расписание после выбора площадки.',
-                    status: 'Шаг 1 из 2'
-                });
-            }
-        }
-
-        if (this.warehouseBannerElement) {
-            if (!marketplaceSelected) {
-                this.setBannerState(this.warehouseBannerElement, 'locked', {
-                    title: 'Сначала выберите маркетплейс',
-                    description: 'После выбора площадки мы покажем доступные склады и расписание приёмок.',
-                    status: 'Шаг 2 из 2'
-                });
-            } else if (!this.warehouseOptions.length) {
-                this.setBannerState(this.warehouseBannerElement, 'empty', {
-                    title: 'Склады недоступны',
-                    description: 'Для выбранного маркетплейса пока нет активных расписаний.',
-                    status: 'Нет данных'
-                });
-            } else if (warehouseSelected) {
-                const warehouse = this.warehouseOptions.find(option => option.value === this.filters.warehouse);
-                const label = warehouse ? warehouse.label : this.filters.warehouse;
-                this.setBannerState(this.warehouseBannerElement, 'complete', {
-                    title: 'Склад выбран',
-                    description: `Вы выбрали: ${label}`,
-                    status: 'Готово'
-                });
-            } else {
-                const warehousesCount = this.warehouseOptions.length;
-                const countLabel = `${warehousesCount} ${this.formatPlural(warehousesCount, ['склад', 'склада', 'складов'])}`;
-                this.setBannerState(this.warehouseBannerElement, 'active', {
-                    title: 'Выберите склад',
-                    description: `Для выбранного маркетплейса доступно ${countLabel}.`,
-                    status: 'Шаг 2 из 2'
-                });
-            }
-        }
-
-        if (this.marketplaceGridElement) {
-            if (!this.marketplaceOptions.length) {
-                this.marketplaceGridElement.dataset.state = 'empty';
-            } else if (this.marketplaceGridElement.dataset.state === 'loading') {
-                this.marketplaceGridElement.dataset.state = 'ready';
-            }
-        }
-
-        if (this.warehouseGridElement) {
-            let state = 'locked';
-            if (!marketplaceSelected) {
-                state = 'locked';
-            } else if (!this.warehouseOptions.length) {
-                state = 'empty';
-            } else {
-                state = 'ready';
-            }
-            this.warehouseGridElement.dataset.state = state;
-        }
-    }
-
-    setBannerState(element, state, { title, description, status } = {}) {
-        if (!element) {
-            return;
-        }
-
-        element.dataset.state = state;
-
-        const titleElement = element.querySelector('[data-banner-title]');
-        if (titleElement && typeof title === 'string') {
-            titleElement.textContent = title;
-        }
-
-        const descriptionElement = element.querySelector('[data-banner-description]');
-        if (descriptionElement && typeof description === 'string') {
-            descriptionElement.textContent = description;
-        }
-
-        const statusElement = element.querySelector('[data-banner-status]');
-        if (statusElement && typeof status === 'string') {
-            statusElement.textContent = status;
-        }
-    }
-
-    getOptionAbbreviation(label) {
-        if (!label) {
-            return '—';
-        }
-
-        const normalized = `${label}`.trim();
-        if (!normalized) {
-            return '—';
-        }
-
-        const words = normalized.split(/\s+/).filter(Boolean);
-        const toFirstLetter = (word) => {
-            if (!word) {
-                return '';
-            }
-            const letters = Array.from(word);
-            return letters.length ? letters[0] : '';
-        };
-
-        let abbreviation = '';
-
-        if (words.length === 1) {
-            abbreviation = Array.from(words[0]).slice(0, 2).join('');
-        } else {
-            abbreviation = `${toFirstLetter(words[0])}${toFirstLetter(words[1])}`;
-        }
-
-        return abbreviation.toUpperCase() || normalized.slice(0, 2).toUpperCase();
-    }
-
-    formatPlural(count, forms) {
-        const n = Math.abs(Number(count)) % 100;
-        const n1 = n % 10;
-
-        if (n > 10 && n < 20) {
-            return forms[2];
-        }
-        if (n1 > 1 && n1 < 5) {
-            return forms[1];
-        }
-        if (n1 === 1) {
-            return forms[0];
-        }
-        return forms[2];
-    }
-
-    getMarketplaceMeta(option) {
-        const relatedWarehouses = this.collectWarehouses(option.value);
-        const warehousesCount = relatedWarehouses.length;
-        const schedulesCount = relatedWarehouses.reduce((acc, item) => acc + (item.count ?? 0), 0);
-
-        const metaParts = [];
-        if (warehousesCount > 0) {
-            metaParts.push(`${warehousesCount} ${this.formatPlural(warehousesCount, ['склад', 'склада', 'складов'])}`);
-        }
-        if (schedulesCount > 0) {
-            metaParts.push(`${schedulesCount} ${this.formatPlural(schedulesCount, ['рейс', 'рейса', 'рейсов'])}`);
-        }
-
-        const meta = metaParts.join(' • ');
-        const description = option.description || 'Нажмите, чтобы перейти к выбору склада.';
-
-        return { meta, description };
-    }
-
-    getWarehouseMeta(option) {
-        const cities = Array.isArray(option?.cities) ? option.cities.filter(city => city && city.trim()) : [];
-        let meta = '';
-
-        if (cities.length === 1) {
-            meta = `Город: ${cities[0]}`;
-        } else if (cities.length > 1) {
-            const visibleCities = cities.slice(0, 2).join(', ');
-            const remaining = cities.length - 2;
-            meta = `Города: ${visibleCities}${remaining > 0 ? ` и ещё ${remaining}` : ''}`;
-        }
-
-        const count = option.count ?? 0;
-        const description = count
-            ? `${count} ${this.formatPlural(count, ['рейс', 'рейса', 'рейсов'])} в расписании`
-            : 'Кликните, чтобы увидеть ближайшие даты.';
-
-        return { meta, description };
-    }
-
-    updateWarehouseOptions() {
-        if (!this.warehouseGridElement) {
-            return;
-        }
-
-        if (!this.filters.marketplace) {
-            this.warehouseOptions = [];
-            this.filters.warehouse = '';
-            this.renderWarehouseCards([]);
-            this.refreshStepStates();
-            return;
-        }
-
-        const warehouses = this.collectWarehouses(this.filters.marketplace);
-        this.warehouseOptions = warehouses;
-
-        const hasSelectedWarehouse = warehouses.some(option => option.value === this.filters.warehouse);
-        if (!hasSelectedWarehouse) {
-            this.filters.warehouse = '';
-        }
-
-        this.renderWarehouseCards();
-        this.refreshStepStates();
-    }
-
-    collectWarehouses(marketplace) {
-        if (!marketplace) {
-            return [];
-        }
-
-        if (!Array.isArray(this.schedules) || this.schedules.length === 0) {
-            return [];
-        }
-
-        const warehouseMap = new Map();
-
-        this.schedules.forEach(schedule => {
-            if (schedule.marketplace !== marketplace) {
-                return;
-            }
-
-            const rawWarehouse = schedule.warehouse ?? schedule.warehouses;
-            const warehouseList = Array.isArray(rawWarehouse) ? rawWarehouse : [rawWarehouse];
-            const city = typeof schedule.city === 'string' ? schedule.city.trim() : '';
-
-            warehouseList.forEach(item => {
-                if (item === null || item === undefined) {
-                    return;
-                }
-
-                const trimmed = typeof item === 'string' ? item.trim() : `${item}`.trim();
-                if (!trimmed) {
-                    return;
-                }
-
-                if (!warehouseMap.has(trimmed)) {
-                    warehouseMap.set(trimmed, {
-                        value: trimmed,
-                        label: trimmed,
-                        count: 0,
-                        cities: new Set()
-                    });
-                }
-
-                const entry = warehouseMap.get(trimmed);
-                entry.count += 1;
-                if (city) {
-                    entry.cities.add(city);
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (this.currentStep < 3) {
+                    this.showStep(this.currentStep + 1);
                 }
             });
-        });
-
-        const collated = Array.from(warehouseMap.values()).map(entry => ({
-            value: entry.value,
-            label: entry.label,
-            count: entry.count,
-            cities: Array.from(entry.cities)
-        }));
-
-        return collated.sort((a, b) => {
-            try {
-                return a.label.localeCompare(b.label, 'ru', { sensitivity: 'base' });
-            } catch (error) {
-                return a.label.localeCompare(b.label);
-            }
-        });
+        }
     }
 
-    setupCalendar() {
+    setupCalendarControls() {
         const prevBtn = document.getElementById('prevMonth');
         const nextBtn = document.getElementById('nextMonth');
 
@@ -637,7 +66,259 @@ class ScheduleManager {
         }
     }
 
+    showStep(stepNumber) {
+        this.currentStep = stepNumber;
+        
+        // Обновляем индикаторы шагов
+        this.updateStepIndicators();
+        
+        // Показываем соответствующий контент
+        const steps = document.querySelectorAll('.step-content');
+        steps.forEach(step => step.classList.remove('active'));
+        
+        const currentStepElement = document.getElementById(`step${stepNumber}`);
+        if (currentStepElement) {
+            currentStepElement.classList.add('active');
+        }
+
+        // Обновляем кнопки навигации
+        this.updateNavigationButtons();
+
+        // Загружаем данные для текущего шага
+        switch (stepNumber) {
+            case 1:
+                this.renderMarketplaces();
+                break;
+            case 2:
+                this.loadWarehouses();
+                break;
+            case 3:
+                this.loadSchedules();
+                break;
+        }
+    }
+
+    updateStepIndicators() {
+        for (let i = 1; i <= 3; i++) {
+            const indicator = document.querySelector(`.step-indicator[data-step="${i}"]`);
+            if (indicator) {
+                indicator.classList.remove('active', 'completed');
+                
+                if (i < this.currentStep) {
+                    indicator.classList.add('completed');
+                } else if (i === this.currentStep) {
+                    indicator.classList.add('active');
+                }
+            }
+        }
+    }
+
+    updateNavigationButtons() {
+        const backBtn = document.getElementById('stepBackBtn');
+        const nextBtn = document.getElementById('stepNextBtn');
+
+        if (backBtn) {
+            backBtn.style.display = this.currentStep > 1 ? 'flex' : 'none';
+        }
+
+        if (nextBtn) {
+            const canProceed = this.canProceedToNextStep();
+            nextBtn.style.display = this.currentStep < 3 && canProceed ? 'flex' : 'none';
+        }
+    }
+
+    canProceedToNextStep() {
+        switch (this.currentStep) {
+            case 1:
+                return Boolean(this.filters.marketplace);
+            case 2:
+                return Boolean(this.filters.warehouse);
+            default:
+                return false;
+        }
+    }
+
+    async loadMarketplaces() {
+        try {
+            const marketplaces = await fetchMarketplaces({ baseUrl: '../filter_options.php' });
+            this.marketplaceOptions = marketplaces.map(mp => ({
+                value: mp,
+                label: mp,
+                description: this.getMarketplaceDescription(mp)
+            }));
+            this.renderMarketplaces();
+        } catch (error) {
+            console.error('Ошибка загрузки маркетплейсов:', error);
+            this.showError('Не удалось загрузить список маркетплейсов');
+        }
+    }
+
+    getMarketplaceDescription(marketplace) {
+        const descriptions = {
+            'Wildberries': 'Крупнейший российский маркетплейс',
+            'Ozon': 'Универсальная торговая площадка',
+            'YandexMarket': 'Маркетплейс от Яндекса'
+        };
+        return descriptions[marketplace] || 'Торговая площадка';
+    }
+
+    renderMarketplaces() {
+        const container = document.getElementById('marketplaceGrid');
+        if (!container) return;
+
+        if (this.marketplaceOptions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-store-slash"></i>
+                    <h3>Маркетплейсы недоступны</h3>
+                    <p>Попробуйте обновить страницу</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = this.marketplaceOptions.map(option => `
+            <div class="marketplace-card ${this.filters.marketplace === option.value ? 'selected' : ''}" 
+                 data-value="${option.value}">
+                <div class="marketplace-icon">
+                    <i class="fas ${this.getMarketplaceIcon(option.value)}"></i>
+                </div>
+                <div class="marketplace-info">
+                    <h3>${option.label}</h3>
+                    <p>${option.description}</p>
+                </div>
+                <div class="marketplace-check">
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+        `).join('');
+
+        // Добавляем обработчики кликов
+        container.querySelectorAll('.marketplace-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const value = card.dataset.value;
+                this.selectMarketplace(value);
+            });
+        });
+    }
+
+    getMarketplaceIcon(marketplace) {
+        const icons = {
+            'Wildberries': 'fa-shopping-bag',
+            'Ozon': 'fa-box',
+            'YandexMarket': 'fa-store'
+        };
+        return icons[marketplace] || 'fa-store';
+    }
+
+    selectMarketplace(marketplace) {
+        this.filters.marketplace = marketplace;
+        this.filters.warehouse = ''; // Сбрасываем выбор склада
+        
+        // Обновляем визуальное состояние
+        document.querySelectorAll('.marketplace-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.value === marketplace);
+        });
+
+        // Автоматически переходим к следующему шагу
+        setTimeout(() => {
+            this.showStep(2);
+        }, 300);
+    }
+
+    async loadWarehouses() {
+        if (!this.filters.marketplace) {
+            this.showStep(1);
+            return;
+        }
+
+        try {
+            const warehouses = await fetchWarehouses({ 
+                marketplace: this.filters.marketplace,
+                baseUrl: '../filter_options.php' 
+            });
+            
+            this.warehouseOptions = warehouses.map(wh => ({
+                value: wh,
+                label: wh,
+                count: this.getWarehouseScheduleCount(wh)
+            }));
+            
+            this.renderWarehouses();
+        } catch (error) {
+            console.error('Ошибка загрузки складов:', error);
+            this.showError('Не удалось загрузить список складов');
+        }
+    }
+
+    getWarehouseScheduleCount(warehouse) {
+        return this.schedules.filter(s => 
+            s.marketplace === this.filters.marketplace && 
+            s.warehouses === warehouse
+        ).length;
+    }
+
+    renderWarehouses() {
+        const container = document.getElementById('warehouseGrid');
+        if (!container) return;
+
+        if (this.warehouseOptions.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-warehouse"></i>
+                    <h3>Нет доступных складов</h3>
+                    <p>Для выбранного маркетплейса пока нет активных расписаний</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Создаем сетку складов
+        container.innerHTML = this.warehouseOptions.map(option => `
+            <div class="warehouse-card ${this.filters.warehouse === option.value ? 'selected' : ''}" 
+                 data-value="${option.value}">
+                <div class="warehouse-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <div class="warehouse-info">
+                    <h4>${option.label}</h4>
+                    <span class="warehouse-count">${option.count} отправлений</span>
+                </div>
+                <div class="warehouse-check">
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+        `).join('');
+
+        // Добавляем обработчики кликов
+        container.querySelectorAll('.warehouse-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const value = card.dataset.value;
+                this.selectWarehouse(value);
+            });
+        });
+    }
+
+    selectWarehouse(warehouse) {
+        this.filters.warehouse = warehouse;
+        
+        // Обновляем визуальное состояние
+        document.querySelectorAll('.warehouse-card').forEach(card => {
+            card.classList.toggle('selected', card.dataset.value === warehouse);
+        });
+
+        // Автоматически переходим к календарю
+        setTimeout(() => {
+            this.showStep(3);
+        }, 300);
+    }
+
     async loadSchedules() {
+        if (!this.filters.marketplace || !this.filters.warehouse) {
+            this.showStep(1);
+            return;
+        }
+
         try {
             const response = await fetch('../fetch_schedule.php', {
                 credentials: 'include'
@@ -648,204 +329,30 @@ class ScheduleManager {
             }
 
             const data = await response.json();
-            this.schedules = data.map(({
-                accept_date,
-                delivery_date,
-                city,
-                warehouses,
-                status,
-                ...rest
-            }) => ({
-                ...rest,
-                acceptDate: accept_date,
-                deliveryDate: delivery_date,
-                city,
-                warehouse: warehouses,
-                status
-            }));
-
-            this.updateWarehouseOptions();
-            this.renderMarketplaceCards();
+            this.schedules = data;
             this.applyFilters();
-            this.refreshStepStates();
+            this.renderCalendar();
         } catch (error) {
             console.error('Ошибка загрузки расписания:', error);
-            window.app.showError('Не удалось загрузить расписание');
+            this.showError('Не удалось загрузить расписание');
         }
     }
 
     applyFilters() {
-        const requireFilters = !this.filters.marketplace || !this.filters.warehouse;
-
-        if (requireFilters) {
-            this.filteredSchedules = [];
-            this.filtersIncomplete = true;
-        } else {
-            this.filteredSchedules = this.schedules.filter(schedule => {
-                const matchMarketplace = schedule.marketplace === this.filters.marketplace;
-                const scheduleWarehouse = schedule.warehouse;
-                const matchWarehouse = Array.isArray(scheduleWarehouse)
-                    ? scheduleWarehouse.includes(this.filters.warehouse)
-                    : scheduleWarehouse === this.filters.warehouse;
-
-                return matchMarketplace && matchWarehouse;
-            });
-            this.filtersIncomplete = false;
-        }
-
-        if (this.currentTab === 'upcoming') {
-            this.renderScheduleGrid();
-        } else {
-            this.renderCalendar();
-        }
-    }
-
-    renderScheduleGrid() {
-        const grid = document.getElementById('scheduleGrid');
-        if (!grid) return;
-
-        if (this.filtersIncomplete) {
-            grid.innerHTML = this.getMissingFiltersTemplate();
-            this.bindFilterStepActions(grid);
-            return;
-        }
-
-        if (this.filteredSchedules.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>Нет доступных отправлений</h3>
-                    <p>По выбранным фильтрам отправления не найдены</p>
-                </div>
-            `;
-            return;
-        }
-
-        grid.innerHTML = this.filteredSchedules.map(schedule => `
-            <div class="schedule-card" data-id="${schedule.id}">
-                <div class="schedule-header">
-                    <div class="schedule-route">${schedule.city} → ${schedule.warehouse}</div>
-                    <div class="schedule-marketplace marketplace-${schedule.marketplace.toLowerCase()}">
-                        ${schedule.marketplace}
-                    </div>
-                </div>
-                
-                <div class="schedule-dates">
-                    <div class="date-item">
-                        <span class="date-label">Приёмка:</span>
-                        <span class="date-value">${window.utils.formatDate(schedule.acceptDate)}</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Сдача:</span>
-                        <span class="date-value">${window.utils.formatDate(schedule.deliveryDate)}</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Водитель:</span>
-                        <span class="date-value">${schedule.driverName}</span>
-                    </div>
-                </div>
-
-                <div class="schedule-status status-${schedule.status.toLowerCase().replace(/\s+/g, '-')}">
-                    <i class="fas fa-circle"></i>
-                    ${schedule.status}
-                </div>
-
-                <div class="schedule-action">
-                    <button class="create-order-small" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
-                    </button>
-                </div>
-            </div>
-        `).join('');
-
-        // Добавляем обработчики кликов
-        grid.querySelectorAll('.schedule-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (!e.target.closest('.create-order-small')) {
-                    const scheduleId = parseInt(card.dataset.id);
-                    this.showScheduleDetails(scheduleId);
-                }
-            });
-        });
-    }
-
-    getMissingFiltersTemplate() {
-        return `
-            <div class="empty-state empty-state-filters">
-                <i class="fas fa-filter"></i>
-                <h3>Выберите маркетплейс и склад</h3>
-                <p>Чтобы увидеть расписание отправлений, сначала выберите карточку маркетплейса, затем склад.</p>
-                <div class="empty-state-actions">
-                    <button type="button" class="filter-step-action" data-target="marketplaceGrid">
-                        Перейти к шагу «Маркетплейс»
-                    </button>
-                    <button type="button" class="filter-step-action" data-target="warehouseGrid">
-                        Перейти к шагу «Склад»
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    focusFilter(targetId) {
-        const targetElement = document.getElementById(targetId);
-        if (!targetElement) {
-            return;
-        }
-
-        if (typeof targetElement.scrollIntoView === 'function') {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        const parentStep = targetElement.closest('.filter-step');
-        const elementsToHighlight = [targetElement];
-
-        if (parentStep) {
-            elementsToHighlight.push(parentStep);
-        }
-
-        elementsToHighlight.forEach((element, index) => {
-            if (!element) {
-                return;
-            }
-
-            element.classList.add('schedule-filter--highlight');
-            const key = `${targetId}-${index}`;
-            clearTimeout(this.highlightTimers[key]);
-            this.highlightTimers[key] = setTimeout(() => {
-                element.classList.remove('schedule-filter--highlight');
-            }, 1800);
+        this.filteredSchedules = this.schedules.filter(schedule => {
+            const matchMarketplace = schedule.marketplace === this.filters.marketplace;
+            const matchWarehouse = schedule.warehouses === this.filters.warehouse;
+            return matchMarketplace && matchWarehouse;
         });
 
-        const focusable = targetElement.querySelector('button:not([disabled])');
-        if (focusable && typeof focusable.focus === 'function') {
-            try {
-                focusable.focus({ preventScroll: true });
-            } catch (error) {
-                focusable.focus();
+        // Группируем по датам для календаря
+        this.calendarData = {};
+        this.filteredSchedules.forEach(schedule => {
+            const date = schedule.accept_date;
+            if (!this.calendarData[date]) {
+                this.calendarData[date] = [];
             }
-        }
-    }
-
-    bindFilterStepActions(context = document) {
-        const buttons = context.querySelectorAll('.filter-step-action');
-        buttons.forEach(button => {
-            if (button.dataset.bound === 'true') {
-                return;
-            }
-
-            const targetId = button.dataset.target;
-            if (!targetId) {
-                return;
-            }
-
-            button.addEventListener('click', (event) => {
-                event.preventDefault();
-                this.focusFilter(targetId);
-            });
-
-            button.dataset.bound = 'true';
+            this.calendarData[date].push(schedule);
         });
     }
 
@@ -855,6 +362,7 @@ class ScheduleManager {
             'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
         ];
 
+        // Обновляем заголовок месяца
         const currentMonthElement = document.getElementById('currentMonth');
         if (currentMonthElement) {
             currentMonthElement.textContent = 
@@ -863,12 +371,6 @@ class ScheduleManager {
 
         const calendarGrid = document.getElementById('calendarGrid');
         if (!calendarGrid) return;
-
-        if (this.filtersIncomplete) {
-            calendarGrid.innerHTML = this.getMissingFiltersTemplate();
-            this.bindFilterStepActions(calendarGrid);
-            return;
-        }
 
         // Очищаем календарь
         calendarGrid.innerHTML = '';
@@ -908,39 +410,39 @@ class ScheduleManager {
                 cell.classList.add('today');
             }
 
-            cell.innerHTML = `<div class="cell-date">${day}</div>`;
-
-            // Добавляем события на эту дату
-            const daySchedules = this.filteredSchedules.filter(s => 
-                s.acceptDate === dateStr || s.deliveryDate === dateStr
-            );
-
-            if (daySchedules.length > 0) {
-                const eventsContainer = document.createElement('div');
-                eventsContainer.className = 'calendar-events';
+            // Проверяем, есть ли отправления на эту дату
+            const hasSchedules = this.calendarData[dateStr] && this.calendarData[dateStr].length > 0;
+            
+            if (hasSchedules) {
+                cell.classList.add('has-schedules');
+                cell.innerHTML = `
+                    <div class="cell-date">${day}</div>
+                    <div class="schedule-indicator">
+                        <i class="fas fa-plus pulse-icon"></i>
+                        <span class="schedule-count">${this.calendarData[dateStr].length}</span>
+                    </div>
+                `;
                 
-                daySchedules.slice(0, 3).forEach(schedule => {
-                    const event = document.createElement('div');
-                    event.className = 'calendar-event';
-                    event.textContent = `${schedule.city} → ${schedule.warehouse}`;
-                    eventsContainer.appendChild(event);
+                cell.addEventListener('click', () => {
+                    this.openScheduleModal(dateStr, this.calendarData[dateStr]);
                 });
-
-                if (daySchedules.length > 3) {
-                    const moreEvent = document.createElement('div');
-                    moreEvent.className = 'calendar-event';
-                    moreEvent.textContent = `+${daySchedules.length - 3} ещё`;
-                    eventsContainer.appendChild(moreEvent);
-                }
-
-                cell.appendChild(eventsContainer);
+            } else {
+                cell.innerHTML = `<div class="cell-date">${day}</div>`;
             }
 
-            cell.addEventListener('click', () => {
-                this.showDaySchedules(dateStr, daySchedules);
-            });
-
             calendarGrid.appendChild(cell);
+        }
+
+        // Заполняем оставшиеся ячейки следующего месяца
+        const totalCells = 42; // 6 недель × 7 дней
+        const currentCells = calendarGrid.children.length - 7; // минус заголовки
+        const nextMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
+        
+        for (let day = 1; currentCells + day <= totalCells - 7; day++) {
+            const emptyCell = document.createElement('div');
+            emptyCell.className = 'calendar-cell other-month';
+            emptyCell.innerHTML = `<div class="cell-date">${day}</div>`;
+            calendarGrid.appendChild(emptyCell);
         }
     }
 
@@ -951,229 +453,105 @@ class ScheduleManager {
                date.getFullYear() === today.getFullYear();
     }
 
-    showDaySchedules(date, schedules) {
-        if (schedules.length === 0) return;
-
+    openScheduleModal(date, schedules) {
         const modal = document.getElementById('scheduleDetailsModal');
         const content = document.getElementById('scheduleDetailsContent');
         
         if (!content) return;
 
+        const formattedDate = new Date(date).toLocaleDateString('ru-RU', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
         content.innerHTML = `
-            <h4>Отправления на ${window.utils.formatDate(date)}</h4>
-            <div class="day-schedules">
-                ${schedules.map(schedule => `
-                    <div class="day-schedule-item" data-id="${schedule.id}">
-                        <div class="schedule-item-header">
-                            <span class="route">${schedule.city} → ${schedule.warehouse}</span>
-                            <span class="marketplace marketplace-${schedule.marketplace.toLowerCase()}">
-                                ${schedule.marketplace}
-                            </span>
-                        </div>
-                        <div class="schedule-item-info">
-                            <div class="info-row">
-                                <span>Водитель:</span>
-                                <span>${schedule.driverName}</span>
-                            </div>
-                            <div class="info-row">
-                                <span>Автомобиль:</span>
-                                <span>${schedule.carBrand} ${schedule.carNumber}</span>
-                            </div>
-                            <div class="info-row">
-                                <span>Заявок:</span>
-                                <span>${schedule.ordersCount}</span>
-                            </div>
-                        </div>
-                        <button class="create-order-small" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                            Создать заявку
-                        </button>
+            <div class="schedule-day-details">
+                <div class="day-header">
+                    <h4>Отправления на ${formattedDate}</h4>
+                    <div class="day-stats">
+                        <span class="schedule-count-badge">${schedules.length} отправлений</span>
                     </div>
-                `).join('')}
+                </div>
+                
+                <div class="schedules-list">
+                    ${schedules.map(schedule => `
+                        <div class="schedule-item" data-id="${schedule.id}">
+                            <div class="schedule-item-header">
+                                <div class="schedule-route">
+                                    <i class="fas fa-route"></i>
+                                    ${schedule.city} → ${schedule.warehouses}
+                                </div>
+                                <div class="schedule-status status-${this.getStatusClass(schedule.status)}">
+                                    ${schedule.status}
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-item-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">Время приёмки:</span>
+                                    <span class="detail-value">${schedule.accept_time || '—'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Дата сдачи:</span>
+                                    <span class="detail-value">${this.formatDate(schedule.delivery_date)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Водитель:</span>
+                                    <span class="detail-value">${schedule.driver_name || '—'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Автомобиль:</span>
+                                    <span class="detail-value">${schedule.car_brand || '—'} ${schedule.car_number || ''}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="schedule-item-actions">
+                                <button class="create-order-btn" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
+                                    <i class="fas fa-plus"></i>
+                                    Создать заявку
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
-
-        // Добавляем стили для day-schedules
-        if (!document.getElementById('daySchedulesStyles')) {
-            const styles = document.createElement('style');
-            styles.id = 'daySchedulesStyles';
-            styles.textContent = `
-                .day-schedules {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                    margin-top: 16px;
-                }
-                .day-schedule-item {
-                    border: 1px solid var(--border);
-                    border-radius: var(--radius);
-                    padding: 16px;
-                    background: var(--bg-secondary);
-                }
-                .schedule-item-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 12px;
-                }
-                .schedule-item-header .route {
-                    font-weight: 600;
-                    color: var(--text-primary);
-                }
-                .schedule-item-info {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 6px;
-                    margin-bottom: 12px;
-                }
-                .info-row {
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 0.9rem;
-                }
-                .info-row span:first-child {
-                    color: var(--text-secondary);
-                }
-                .info-row span:last-child {
-                    font-weight: 500;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
 
         window.app.openModal(modal);
     }
 
-    showScheduleDetails(scheduleId) {
-        const schedule = this.schedules.find(s => s.id === scheduleId);
-        if (!schedule) return;
+    getStatusClass(status) {
+        const statusMap = {
+            'Приём заявок': 'open',
+            'Ожидает отправки': 'waiting',
+            'В пути': 'transit',
+            'Завершено': 'completed'
+        };
+        return statusMap[status] || 'unknown';
+    }
 
-        const modal = document.getElementById('scheduleDetailsModal');
-        const content = document.getElementById('scheduleDetailsContent');
-        
-        if (!content) return;
-
-        content.innerHTML = `
-            <div class="schedule-details">
-                <div class="details-section">
-                    <h4>Маршрут</h4>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Откуда:</span>
-                            <span class="detail-value">${schedule.city}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Куда:</span>
-                            <span class="detail-value">${schedule.warehouse}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Маркетплейс:</span>
-                            <span class="detail-value">${schedule.marketplace}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="details-section">
-                    <h4>Даты</h4>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Приёмка:</span>
-                            <span class="detail-value">${window.utils.formatDate(schedule.acceptDate)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Сдача:</span>
-                            <span class="detail-value">${window.utils.formatDate(schedule.deliveryDate)}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Статус:</span>
-                            <span class="detail-value status-${schedule.status.toLowerCase().replace(/\s+/g, '-')}">${schedule.status}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="details-section">
-                    <h4>Транспорт</h4>
-                    <div class="details-grid">
-                        <div class="detail-item">
-                            <span class="detail-label">Водитель:</span>
-                            <span class="detail-value">${schedule.driverName}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Телефон:</span>
-                            <span class="detail-value">${schedule.driverPhone}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Автомобиль:</span>
-                            <span class="detail-value">${schedule.carBrand} ${schedule.carNumber}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button class="action-btn action-btn-primary" onclick="window.ScheduleManager.createOrderForSchedule(${schedule.id})">
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
-                    </button>
-                </div>
-            </div>
-        `;
-
-        // Добавляем стили
-        if (!document.getElementById('scheduleDetailsStyles')) {
-            const styles = document.createElement('style');
-            styles.id = 'scheduleDetailsStyles';
-            styles.textContent = `
-                .schedule-details {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }
-                .details-section h4 {
-                    font-size: 1.1rem;
-                    font-weight: 600;
-                    color: var(--text-primary);
-                    margin-bottom: 12px;
-                    padding-bottom: 8px;
-                    border-bottom: 1px solid var(--border-light);
-                }
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 8px;
-                }
-                .detail-item {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 8px 0;
-                }
-                .detail-label {
-                    color: var(--text-secondary);
-                    font-size: 0.9rem;
-                }
-                .detail-value {
-                    font-weight: 500;
-                    color: var(--text-primary);
-                }
-                .modal-actions {
-                    display: flex;
-                    justify-content: center;
-                    margin-top: 20px;
-                }
-            `;
-            document.head.appendChild(styles);
-        }
-
-        window.app.openModal(modal);
+    formatDate(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleDateString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
     }
 
     createOrderForSchedule(scheduleId) {
         const schedule = this.schedules.find(s => s.id === scheduleId);
         if (!schedule) return;
 
+        // Закрываем модальное окно деталей
         const detailsModal = document.getElementById('scheduleDetailsModal');
         if (detailsModal) {
             window.app.closeModal(detailsModal);
         }
 
+        // Открываем форму создания заявки
         if (typeof window.openClientRequestFormModal === 'function') {
             window.openClientRequestFormModal(schedule);
         } else if (typeof window.openRequestFormModal === 'function') {
@@ -1187,6 +565,31 @@ class ScheduleManager {
                 window.app.showError('Не удалось загрузить форму заявки');
             }
         }
+    }
+
+    showError(message) {
+        if (window.app && typeof window.app.showError === 'function') {
+            window.app.showError(message);
+        } else {
+            alert(message);
+        }
+    }
+
+    // Методы для внешнего вызова
+    resetFilters() {
+        this.filters = {
+            marketplace: '',
+            warehouse: ''
+        };
+        this.showStep(1);
+    }
+
+    getCurrentSelection() {
+        return {
+            marketplace: this.filters.marketplace,
+            warehouse: this.filters.warehouse,
+            step: this.currentStep
+        };
     }
 }
 
