@@ -381,6 +381,13 @@ async function openRequestFormModal(
 
     await safeCallAsync(onBeforeOpen, modal, scheduleData);
 
+    const yandexMapsReadyPromise = ensureYandexMaps()
+        .then(() => true)
+        .catch((err) => {
+            console.warn('Не удалось загрузить Яндекс.Карты:', err);
+            return false;
+        });
+
     const wrapper = document.createElement('div');
     wrapper.innerHTML = templateHtml.trim();
     const contentRoot = wrapper.firstElementChild;
@@ -446,12 +453,12 @@ async function openRequestFormModal(
     modal.style.display = 'flex';
     document.body.classList.add('modal-open');
 
-    ensureYandexMaps().catch((err) => {
-        console.warn('Не удалось загрузить Яндекс.Карты:', err);
-    });
-
     try {
         await ensureLegacyFormScript();
+        const ymapsLoaded = await yandexMapsReadyPromise;
+        if (!ymapsLoaded && typeof window.ymaps === 'undefined') {
+            console.warn('Глобальный объект ymaps так и не появился после загрузки скрипта.');
+        }
         if (typeof window.initializeForm === 'function') {
             window.initializeForm();
             safeCall(onAfterOpen, modal, contentHost, scheduleData);
