@@ -134,6 +134,13 @@ if (empty($_SESSION['user_id'])) {
                                         <option value="">Сначала выберите маркетплейс</option>
                                     </select>
                                 </div>
+                                <div
+                                    id="warehouseStats"
+                                    class="warehouse-stats"
+                                    aria-live="polite"
+                                    aria-atomic="true"
+                                    aria-hidden="true"
+                                ></div>
                                 <div class="step-actions">
                                     <button type="button" class="step-prev-btn" id="backToMarketplaceBtn">Назад</button>
                                     <button type="button" class="step-next-btn" id="confirmWarehouse" disabled>Показать расписание</button>
