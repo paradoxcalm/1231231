@@ -514,6 +514,7 @@ async function setupCitySelector({
     marketplace = '',
     initialCity = '',
     getWarehouseValue = () => '',
+    overrideCities = null,
     onCityChange
 } = {}) {
     if (!selectElement) {
@@ -528,7 +529,40 @@ async function setupCitySelector({
     selectElement.disabled = true;
     selectElement.dataset.loading = 'true';
 
-    const cities = await fetchCitiesForMarketplace(marketplaceValue).catch(() => []);
+    const overrideListRaw = Array.isArray(overrideCities) ? overrideCities : [];
+    const overrideList = [];
+    const seenOverride = new Set();
+    overrideListRaw.forEach((item) => {
+        if (item === null || item === undefined) {
+            return;
+        }
+        let rawValue = '';
+        if (typeof item === 'string') {
+            rawValue = item;
+        } else if (typeof item === 'object') {
+            if (typeof item.city === 'string') {
+                rawValue = item.city;
+            } else if (typeof item.name === 'string') {
+                rawValue = item.name;
+            } else if (typeof item.label === 'string') {
+                rawValue = item.label;
+            }
+        }
+        const text = `${rawValue ?? ''}`.trim();
+        if (!text) {
+            return;
+        }
+        const key = text.toLowerCase();
+        if (seenOverride.has(key)) {
+            return;
+        }
+        seenOverride.add(key);
+        overrideList.push(text);
+    });
+
+    const cities = overrideList.length > 0
+        ? overrideList
+        : await fetchCitiesForMarketplace(marketplaceValue).catch(() => []);
     const selectedCity = populateCitySelectOptions(selectElement, cities, {
         placeholderLabel,
         preferredCity: storedCity,
@@ -1509,6 +1543,173 @@ async function initializeForm() {
         return normalizeWarehouseValue(raw);
     };
 
+    const toTrimmedString = (value) => {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return `${value}`.trim();
+    };
+
+    const scheduleFieldElements = {
+        scheduleId: document.getElementById('formScheduleId'),
+        acceptDate: document.getElementById('acceptDateField'),
+        deliveryDate: document.getElementById('deliveryDateField'),
+        deliveryAlias: document.getElementById('deliveryDateAlias'),
+        acceptTime: document.getElementById('acceptTimeField'),
+        direction: document.getElementById('directionField'),
+        warehouse: whEl,
+        driverName: document.getElementById('driver_name'),
+        driverPhone: document.getElementById('driver_phone'),
+        carNumber: document.getElementById('car_number'),
+        carBrand: document.getElementById('car_brand'),
+        sender: document.getElementById('sender')
+    };
+
+    const defaultScheduleState = {};
+    Object.entries(scheduleFieldElements).forEach(([key, element]) => {
+        if (element && Object.prototype.hasOwnProperty.call(element, 'value')) {
+            defaultScheduleState[key] = toTrimmedString(element.value);
+        } else {
+            defaultScheduleState[key] = '';
+        }
+    });
+
+    const scheduleByCityKey = new Map();
+    const overrideCityList = [];
+    const seenOverrideCities = new Set();
+
+    if (form.dataset?.availableSchedules) {
+        try {
+            const parsed = JSON.parse(form.dataset.availableSchedules);
+            if (Array.isArray(parsed)) {
+                parsed.forEach((item) => {
+                    if (!item || typeof item !== 'object') {
+                        return;
+                    }
+
+                    const normalizedEntry = {
+                        id: toTrimmedString(item.id ?? item.schedule_id ?? ''),
+                        city: toTrimmedString(item.city ?? ''),
+                        warehouse: toTrimmedString(item.warehouse ?? item.warehouses ?? defaultScheduleState.warehouse),
+                        acceptDate: toTrimmedString(item.acceptDate ?? item.accept_date ?? ''),
+                        deliveryDate: toTrimmedString(item.deliveryDate ?? item.delivery_date ?? ''),
+                        acceptTime: toTrimmedString(item.acceptTime ?? item.accept_time ?? ''),
+                        driverName: toTrimmedString(item.driverName ?? item.driver_name ?? ''),
+                        driverPhone: toTrimmedString(item.driverPhone ?? item.driver_phone ?? ''),
+                        carNumber: toTrimmedString(item.carNumber ?? item.car_number ?? ''),
+                        carBrand: toTrimmedString(item.carBrand ?? item.car_brand ?? ''),
+                        sender: toTrimmedString(item.sender ?? ''),
+                        marketplace: toTrimmedString(item.marketplace ?? '')
+                    };
+
+                    if (normalizedEntry.city) {
+                        const cityKey = normalizedEntry.city.toLowerCase();
+                        if (!scheduleByCityKey.has(cityKey)) {
+                            scheduleByCityKey.set(cityKey, normalizedEntry);
+                        }
+                        if (!seenOverrideCities.has(cityKey)) {
+                            seenOverrideCities.add(cityKey);
+                            overrideCityList.push(normalizedEntry.city);
+                        }
+                    }
+                });
+            }
+        } catch (err) {
+            console.warn('Не удалось разобрать список доступных отправлений формы заявки:', err);
+        }
+    }
+
+    const overrideCityOptions = overrideCityList.length > 0 ? overrideCityList : null;
+
+    const applyScheduleSelection = (cityValue) => {
+        const cityText = toTrimmedString(cityValue);
+        const schedule = cityText ? (scheduleByCityKey.get(cityText.toLowerCase()) || null) : null;
+        const usingOverrideList = Array.isArray(overrideCityOptions) && overrideCityOptions.length > 0;
+
+        const values = { ...defaultScheduleState };
+
+        if (schedule) {
+            const scheduleId = toTrimmedString(schedule.id);
+            if (scheduleId) {
+                values.scheduleId = scheduleId;
+            }
+
+            const acceptDate = toTrimmedString(schedule.acceptDate);
+            if (acceptDate) {
+                values.acceptDate = acceptDate;
+            }
+
+            const deliveryDate = toTrimmedString(schedule.deliveryDate);
+            if (deliveryDate) {
+                values.deliveryDate = deliveryDate;
+                values.deliveryAlias = deliveryDate;
+            }
+
+            const acceptTime = toTrimmedString(schedule.acceptTime);
+            if (acceptTime) {
+                values.acceptTime = acceptTime;
+            }
+
+            const warehouseName = toTrimmedString(schedule.warehouse);
+            if (warehouseName) {
+                values.direction = warehouseName;
+                values.warehouse = warehouseName;
+            }
+
+            const driverName = toTrimmedString(schedule.driverName);
+            if (driverName) {
+                values.driverName = driverName;
+            }
+
+            const driverPhone = toTrimmedString(schedule.driverPhone);
+            if (driverPhone) {
+                values.driverPhone = driverPhone;
+            }
+
+            const carNumber = toTrimmedString(schedule.carNumber);
+            if (carNumber) {
+                values.carNumber = carNumber;
+            }
+
+            const carBrand = toTrimmedString(schedule.carBrand);
+            if (carBrand) {
+                values.carBrand = carBrand;
+            }
+
+            const senderName = toTrimmedString(schedule.sender);
+            if (senderName) {
+                values.sender = senderName;
+            }
+        } else if (usingOverrideList) {
+            values.scheduleId = '';
+            values.acceptTime = '';
+            values.driverName = '';
+            values.driverPhone = '';
+            values.carNumber = '';
+            values.carBrand = '';
+        }
+
+        Object.entries(scheduleFieldElements).forEach(([key, element]) => {
+            if (!element || !Object.prototype.hasOwnProperty.call(element, 'value')) {
+                return;
+            }
+            const nextValue = values[key] !== undefined ? values[key] : '';
+            element.value = toTrimmedString(nextValue);
+        });
+
+        const selectedScheduleId = toTrimmedString(values.scheduleId);
+        if (selectedScheduleId) {
+            form.dataset.selectedScheduleId = selectedScheduleId;
+        } else {
+            delete form.dataset.selectedScheduleId;
+        }
+
+        const resolvedWarehouse = toTrimmedString(values.warehouse) || warehouseFallback();
+        updateDirectionSummary(cityText, resolvedWarehouse);
+
+        return schedule;
+    };
+
     const applyCityInteractivity = (cityValue) => {
         const normalizedCity = `${cityValue ?? ''}`.trim();
         const hasCity = normalizedCity.length > 0;
@@ -1601,23 +1802,31 @@ async function initializeForm() {
 
     let resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
 
+    applyScheduleSelection(resolvedCity);
     applyCityInteractivity(resolvedCity);
 
     try {
-        resolvedCity = await setupCitySelector({
+        const selectedCity = await setupCitySelector({
             form,
             selectElement: cityEl,
             marketplace,
             initialCity,
             getWarehouseValue: warehouseFallback,
+            overrideCities: overrideCityOptions,
             onCityChange: (value) => {
+                applyScheduleSelection(value);
                 triggerCitySelectionChange(value);
             }
-        }) || resolvedCity;
+        });
+        if (typeof selectedCity === 'string') {
+            resolvedCity = selectedCity;
+        }
     } catch (err) {
         console.warn('Не удалось инициализировать список городов формы заявки:', err);
         resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
     }
+
+    applyScheduleSelection(resolvedCity);
 
     try {
         await handleCitySelectionChange(resolvedCity);
