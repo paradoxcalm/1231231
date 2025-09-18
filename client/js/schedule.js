@@ -56,8 +56,23 @@ class ScheduleManager {
         const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
 
         if (marketplaceSelect) {
-            marketplaceSelect.addEventListener('change', (event) => {
-                this.handleMarketplaceChange(event.target.value);
+            marketplaceSelect.addEventListener('click', (event) => {
+                if (marketplaceSelect.classList.contains('is-disabled')) {
+                    return;
+                }
+
+                const card = event.target.closest('.marketplace-card');
+                if (!card || card.disabled) {
+                    return;
+                }
+
+                const { value } = card.dataset;
+                if (typeof value === 'undefined') {
+                    return;
+                }
+
+                const isSameSelection = card.classList.contains('is-active') && this.pendingSelections.marketplace === value;
+                this.handleMarketplaceChange(isSameSelection ? '' : value);
             });
         }
 
@@ -126,6 +141,8 @@ class ScheduleManager {
     handleMarketplaceChange(value) {
         this.pendingSelections.marketplace = value;
         this.updateMarketplaceConfirmState();
+        this.setActiveMarketplaceCard(value);
+
         this.pendingSelections.warehouse = '';
         this.updateWarehouseConfirmState();
         this.applyStepState('warehouse', { active: false, complete: false });
@@ -134,6 +151,20 @@ class ScheduleManager {
         if (!value) {
             this.clearMarketplaceSummary();
         }
+    }
+
+    setActiveMarketplaceCard(value) {
+        const container = this.elements.marketplaceSelect;
+        if (!container) {
+            return;
+        }
+
+        const cards = container.querySelectorAll('.marketplace-card');
+        cards.forEach((card) => {
+            const isActive = Boolean(value) && card.dataset.value === value;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
     }
 
     updateMarketplaceConfirmState() {
@@ -168,10 +199,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
-
-        if (this.elements.marketplaceSelect) {
-            this.elements.marketplaceSelect.value = this.filters.marketplace || '';
-        }
+        this.setActiveMarketplaceCard(this.pendingSelections.marketplace);
     }
 
     openWarehouseStep() {
@@ -231,7 +259,8 @@ class ScheduleManager {
             return;
         }
 
-        summary.textContent = `Маркетплейс: ${this.filters.marketplace}`;
+        const label = this.getMarketplaceLabel(this.filters.marketplace);
+        summary.textContent = label ? `Маркетплейс: ${label}` : '';
     }
 
     showWarehouseSummary() {
@@ -291,52 +320,72 @@ class ScheduleManager {
     }
 
     renderMarketplaces() {
-        const select = this.elements.marketplaceSelect;
-        if (!select) return;
+        const container = this.elements.marketplaceSelect;
+        if (!container) return;
 
-        select.innerHTML = '';
+        container.innerHTML = '';
+        container.classList.remove('is-loading', 'is-disabled');
+        container.removeAttribute('aria-busy');
+        container.removeAttribute('aria-disabled');
 
         if (this.isLoadingMarketplaces) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'Загрузка маркетплейсов...';
-            option.disabled = true;
-            select.appendChild(option);
-            select.disabled = true;
+            container.classList.add('is-loading');
+            container.setAttribute('aria-busy', 'true');
+            container.appendChild(this.createMarketplaceMessage('Загрузка маркетплейсов...', { isLoading: true }));
             return;
         }
 
         if (this.marketplaceOptions.length === 0) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'Маркетплейсы недоступны';
-            option.disabled = true;
-            select.appendChild(option);
-            select.disabled = true;
+            container.classList.add('is-disabled');
+            container.setAttribute('aria-disabled', 'true');
+            container.appendChild(this.createMarketplaceMessage('Маркетплейсы недоступны'));
             return;
         }
 
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = '';
-        placeholderOption.textContent = 'Выберите маркетплейс';
-        select.appendChild(placeholderOption);
+        const activeValue = this.pendingSelections.marketplace || this.filters.marketplace || '';
 
         this.marketplaceOptions.forEach(optionData => {
-            const option = document.createElement('option');
-            option.value = optionData.value;
-            option.textContent = optionData.label;
-            if (optionData.description) {
-                option.title = optionData.description;
-            }
-            select.appendChild(option);
-        });
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'marketplace-card';
+            card.dataset.value = optionData.value;
+            card.dataset.label = optionData.label;
+            card.title = optionData.description || optionData.label;
 
-        select.disabled = false;
-        const selected = this.filters.marketplace || '';
-        select.value = selected;
-        if (select.value !== selected) {
-            select.value = '';
+            const title = document.createElement('span');
+            title.className = 'marketplace-card__title';
+            title.textContent = optionData.label;
+            card.appendChild(title);
+
+            if (optionData.description) {
+                const description = document.createElement('span');
+                description.className = 'marketplace-card__description';
+                description.textContent = optionData.description;
+                card.appendChild(description);
+            }
+
+            const isActive = Boolean(activeValue) && optionData.value === activeValue;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+            container.appendChild(card);
+        });
+    }
+
+    createMarketplaceMessage(text, { isLoading = false } = {}) {
+        const message = document.createElement('div');
+        message.className = 'marketplace-placeholder';
+        if (isLoading) {
+            message.classList.add('marketplace-placeholder--loading');
         }
+
+        message.setAttribute('role', isLoading ? 'status' : 'note');
+        message.setAttribute('aria-live', 'polite');
+
+        const span = document.createElement('span');
+        span.textContent = text;
+        message.appendChild(span);
+        return message;
     }
 
     getMarketplaceDescription(marketplace) {
@@ -346,6 +395,15 @@ class ScheduleManager {
             'YandexMarket': 'Маркетплейс от Яндекса'
         };
         return descriptions[marketplace] || 'Торговая площадка';
+    }
+
+    getMarketplaceLabel(value) {
+        if (!value) {
+            return '';
+        }
+
+        const option = this.marketplaceOptions.find(item => item.value === value);
+        return option ? option.label : value;
     }
 
     selectMarketplace(marketplace) {
@@ -788,9 +846,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
 
-        if (this.elements.marketplaceSelect) {
-            this.elements.marketplaceSelect.value = '';
-        }
+        this.setActiveMarketplaceCard('');
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = '';

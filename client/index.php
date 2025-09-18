@@ -97,10 +97,17 @@ if (empty($_SESSION['user_id'])) {
                             </div>
                             <div class="step-body">
                                 <div class="schedule-filter">
-                                    <label for="marketplaceFilter">Маркетплейс</label>
-                                    <select id="marketplaceFilter" class="filter-select">
-                                        <option value="">Загрузка...</option>
-                                    </select>
+                                    <label id="marketplaceFilterLabel">Маркетплейс</label>
+                                    <div
+                                        id="marketplaceFilter"
+                                        class="marketplace-grid"
+                                        role="group"
+                                        aria-labelledby="marketplaceFilterLabel"
+                                    >
+                                        <div class="marketplace-placeholder marketplace-placeholder--loading">
+                                            <span>Загрузка маркетплейсов...</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="step-actions">
                                     <button type="button" class="step-next-btn" id="confirmMarketplace" disabled>Далее</button>

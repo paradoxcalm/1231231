@@ -73,8 +73,14 @@ export async function fetchWarehouses({ marketplace = '', city = '', baseUrl = '
         action = 'warehouses';
         params.marketplace = marketplace;
         params.city = city;
-    } else if (city) {
-        params.city = city;
+    } else {
+        if (marketplace) {
+            params.marketplace = marketplace;
+        }
+
+        if (city) {
+            params.city = city;
+        }
     }
 
     try {
