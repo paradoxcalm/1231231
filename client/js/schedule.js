@@ -21,12 +21,32 @@ class ScheduleManager {
             resetButton: document.getElementById('resetScheduleFilters'),
             subtitle: document.getElementById('scheduleSubtitle')
         };
+        this.stepElements = {
+            marketplaceStep: document.querySelector('[data-step="marketplace"]'),
+            warehouseStep: document.querySelector('[data-step="warehouse"]'),
+            marketplaceSummary: document.getElementById('marketplaceSummary'),
+            warehouseSummary: document.getElementById('warehouseSummary'),
+            marketplaceConfirmBtn: document.getElementById('confirmMarketplace'),
+            warehouseConfirmBtn: document.getElementById('confirmWarehouse'),
+            backToMarketplaceBtn: document.getElementById('backToMarketplaceBtn'),
+            changeMarketplaceBtn: document.getElementById('changeMarketplaceBtn'),
+            changeWarehouseBtn: document.getElementById('changeWarehouseBtn')
+        };
+        this.pendingSelections = {
+            marketplace: '',
+            warehouse: ''
+        };
+        this.currentStep = 'marketplace';
 
         this.init();
     }
 
     init() {
         this.setupEventListeners();
+        this.applyStepState('marketplace', { active: true, complete: false });
+        this.applyStepState('warehouse', { active: false, complete: false });
+        this.updateMarketplaceConfirmState();
+        this.updateWarehouseConfirmState();
         this.renderScheduleGrid();
         this.renderWarehouses();
         this.loadMarketplaces();
@@ -37,13 +57,13 @@ class ScheduleManager {
 
         if (marketplaceSelect) {
             marketplaceSelect.addEventListener('change', (event) => {
-                this.selectMarketplace(event.target.value);
+                this.handleMarketplaceChange(event.target.value);
             });
         }
 
         if (warehouseSelect) {
             warehouseSelect.addEventListener('change', (event) => {
-                this.selectWarehouse(event.target.value);
+                this.handleWarehouseChange(event.target.value);
             });
         }
 
@@ -51,6 +71,194 @@ class ScheduleManager {
             resetButton.addEventListener('click', () => {
                 this.resetFilters();
             });
+        }
+
+        const {
+            marketplaceConfirmBtn,
+            warehouseConfirmBtn,
+            backToMarketplaceBtn,
+            changeMarketplaceBtn,
+            changeWarehouseBtn
+        } = this.stepElements;
+
+        if (marketplaceConfirmBtn) {
+            marketplaceConfirmBtn.addEventListener('click', () => {
+                this.confirmMarketplaceSelection();
+            });
+        }
+
+        if (warehouseConfirmBtn) {
+            warehouseConfirmBtn.addEventListener('click', () => {
+                this.confirmWarehouseSelection();
+            });
+        }
+
+        if (backToMarketplaceBtn) {
+            backToMarketplaceBtn.addEventListener('click', () => {
+                this.openMarketplaceStep();
+            });
+        }
+
+        if (changeMarketplaceBtn) {
+            changeMarketplaceBtn.addEventListener('click', () => {
+                this.openMarketplaceStep();
+            });
+        }
+
+        if (changeWarehouseBtn) {
+            changeWarehouseBtn.addEventListener('click', () => {
+                this.openWarehouseStep();
+            });
+        }
+    }
+
+    applyStepState(stepName, { active = false, complete = false } = {}) {
+        const stepKey = `${stepName}Step`;
+        const step = this.stepElements[stepKey];
+        if (!step) {
+            return;
+        }
+
+        step.classList.toggle('is-active', active);
+        step.classList.toggle('is-complete', complete);
+    }
+
+    handleMarketplaceChange(value) {
+        this.pendingSelections.marketplace = value;
+        this.updateMarketplaceConfirmState();
+        this.pendingSelections.warehouse = '';
+        this.updateWarehouseConfirmState();
+        this.applyStepState('warehouse', { active: false, complete: false });
+        this.clearWarehouseSummary();
+
+        if (!value) {
+            this.clearMarketplaceSummary();
+        }
+    }
+
+    updateMarketplaceConfirmState() {
+        const button = this.stepElements.marketplaceConfirmBtn;
+        if (button) {
+            button.disabled = !this.pendingSelections.marketplace;
+        }
+    }
+
+    confirmMarketplaceSelection() {
+        if (!this.pendingSelections.marketplace) {
+            return;
+        }
+
+        this.selectMarketplace(this.pendingSelections.marketplace);
+        this.pendingSelections.marketplace = this.filters.marketplace;
+        this.showMarketplaceSummary();
+        this.applyStepState('marketplace', { active: false, complete: true });
+        this.applyStepState('warehouse', { active: true, complete: false });
+        this.currentStep = 'warehouse';
+        this.pendingSelections.warehouse = '';
+        this.updateWarehouseConfirmState();
+        this.clearWarehouseSummary();
+    }
+
+    openMarketplaceStep() {
+        this.currentStep = 'marketplace';
+        this.applyStepState('marketplace', { active: true, complete: false });
+        const hasWarehouse = Boolean(this.filters.warehouse);
+        this.applyStepState('warehouse', { active: false, complete: hasWarehouse });
+        this.pendingSelections.marketplace = this.filters.marketplace || '';
+        this.updateMarketplaceConfirmState();
+        this.pendingSelections.warehouse = this.filters.warehouse || '';
+        this.updateWarehouseConfirmState();
+
+        if (this.elements.marketplaceSelect) {
+            this.elements.marketplaceSelect.value = this.filters.marketplace || '';
+        }
+    }
+
+    openWarehouseStep() {
+        if (!this.filters.marketplace) {
+            this.openMarketplaceStep();
+            return;
+        }
+
+        this.currentStep = 'warehouse';
+        this.applyStepState('marketplace', { active: false, complete: true });
+        this.applyStepState('warehouse', { active: true, complete: false });
+        this.pendingSelections.warehouse = this.filters.warehouse || '';
+        this.updateWarehouseConfirmState();
+
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = this.filters.warehouse || '';
+        }
+    }
+
+    handleWarehouseChange(value) {
+        this.pendingSelections.warehouse = value;
+        this.updateWarehouseConfirmState();
+        this.applyStepState('warehouse', { active: true, complete: false });
+
+        if (!value) {
+            this.clearWarehouseSummary();
+        }
+    }
+
+    updateWarehouseConfirmState() {
+        const button = this.stepElements.warehouseConfirmBtn;
+        if (button) {
+            const hasMarketplace = Boolean(this.filters.marketplace || this.pendingSelections.marketplace);
+            button.disabled = !hasMarketplace || !this.pendingSelections.warehouse;
+        }
+    }
+
+    confirmWarehouseSelection() {
+        if (!this.pendingSelections.warehouse) {
+            return;
+        }
+
+        this.selectWarehouse(this.pendingSelections.warehouse);
+        this.pendingSelections.warehouse = this.filters.warehouse;
+        this.showWarehouseSummary();
+        this.applyStepState('warehouse', { active: false, complete: true });
+    }
+
+    showMarketplaceSummary() {
+        const summary = this.stepElements.marketplaceSummary;
+        if (!summary) {
+            return;
+        }
+
+        if (!this.filters.marketplace) {
+            summary.textContent = '';
+            return;
+        }
+
+        summary.textContent = `Маркетплейс: ${this.filters.marketplace}`;
+    }
+
+    showWarehouseSummary() {
+        const summary = this.stepElements.warehouseSummary;
+        if (!summary) {
+            return;
+        }
+
+        if (!this.filters.warehouse) {
+            summary.textContent = '';
+            return;
+        }
+
+        summary.textContent = `Склад: ${this.filters.warehouse}`;
+    }
+
+    clearMarketplaceSummary() {
+        const summary = this.stepElements.marketplaceSummary;
+        if (summary) {
+            summary.textContent = '';
+        }
+    }
+
+    clearWarehouseSummary() {
+        const summary = this.stepElements.warehouseSummary;
+        if (summary) {
+            summary.textContent = '';
         }
     }
 
@@ -143,6 +351,12 @@ class ScheduleManager {
     selectMarketplace(marketplace) {
         this.filters.marketplace = marketplace;
         this.filters.warehouse = '';
+
+        this.pendingSelections.marketplace = marketplace;
+        this.pendingSelections.warehouse = '';
+        this.updateMarketplaceConfirmState();
+        this.updateWarehouseConfirmState();
+        this.clearWarehouseSummary();
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = '';
@@ -249,10 +463,13 @@ class ScheduleManager {
 
     selectWarehouse(warehouse) {
         this.filters.warehouse = warehouse;
+        this.pendingSelections.warehouse = warehouse;
+        this.updateWarehouseConfirmState();
 
         if (!warehouse) {
             this.filteredSchedules = [];
             this.renderScheduleGrid();
+            this.clearWarehouseSummary();
             return;
         }
 
@@ -560,6 +777,16 @@ class ScheduleManager {
         this.filteredSchedules = [];
         this.warehouseOptions = [];
         this.isLoadingSchedules = false;
+        this.pendingSelections.marketplace = '';
+        this.pendingSelections.warehouse = '';
+        this.currentStep = 'marketplace';
+
+        this.applyStepState('marketplace', { active: true, complete: false });
+        this.applyStepState('warehouse', { active: false, complete: false });
+        this.clearMarketplaceSummary();
+        this.clearWarehouseSummary();
+        this.updateMarketplaceConfirmState();
+        this.updateWarehouseConfirmState();
 
         if (this.elements.marketplaceSelect) {
             this.elements.marketplaceSelect.value = '';

@@ -83,18 +83,59 @@ if (empty($_SESSION['user_id'])) {
 
             <div class="schedule-panel">
                 <div class="schedule-filters">
-                    <div class="schedule-filter">
-                        <label for="marketplaceFilter">Маркетплейс</label>
-                        <select id="marketplaceFilter" class="filter-select">
-                            <option value="">Загрузка...</option>
-                        </select>
+                    <div class="schedule-steps" id="scheduleSteps">
+                        <div class="schedule-step is-active" data-step="marketplace">
+                            <div class="step-header">
+                                <div class="step-title">
+                                    <span class="step-index">1</span>
+                                    <div class="step-text">
+                                        <h3>Выберите маркетплейс</h3>
+                                        <p>Укажите площадку, для которой хотите оформить отправление</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="step-change-btn" id="changeMarketplaceBtn">Изменить</button>
+                            </div>
+                            <div class="step-body">
+                                <div class="schedule-filter">
+                                    <label for="marketplaceFilter">Маркетплейс</label>
+                                    <select id="marketplaceFilter" class="filter-select">
+                                        <option value="">Загрузка...</option>
+                                    </select>
+                                </div>
+                                <div class="step-actions">
+                                    <button type="button" class="step-next-btn" id="confirmMarketplace" disabled>Далее</button>
+                                </div>
+                            </div>
+                            <div class="step-summary" id="marketplaceSummary"></div>
+                        </div>
+
+                        <div class="schedule-step" data-step="warehouse">
+                            <div class="step-header">
+                                <div class="step-title">
+                                    <span class="step-index">2</span>
+                                    <div class="step-text">
+                                        <h3>Выберите склад</h3>
+                                        <p>Доступные склады покажутся после подтверждения маркетплейса</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="step-change-btn" id="changeWarehouseBtn">Изменить</button>
+                            </div>
+                            <div class="step-body">
+                                <div class="schedule-filter">
+                                    <label for="warehouseFilter">Склад</label>
+                                    <select id="warehouseFilter" class="filter-select" disabled>
+                                        <option value="">Сначала выберите маркетплейс</option>
+                                    </select>
+                                </div>
+                                <div class="step-actions">
+                                    <button type="button" class="step-prev-btn" id="backToMarketplaceBtn">Назад</button>
+                                    <button type="button" class="step-next-btn" id="confirmWarehouse" disabled>Показать расписание</button>
+                                </div>
+                            </div>
+                            <div class="step-summary" id="warehouseSummary"></div>
+                        </div>
                     </div>
-                    <div class="schedule-filter">
-                        <label for="warehouseFilter">Склад</label>
-                        <select id="warehouseFilter" class="filter-select" disabled>
-                            <option value="">Сначала выберите маркетплейс</option>
-                        </select>
-                    </div>
+
                     <button class="reset-filters-btn" id="resetScheduleFilters">
                         <i class="fas fa-rotate-right"></i>
                         Сбросить фильтры
