@@ -1,4 +1,8 @@
 const EMPTY_OPTION_LABEL = 'Все';
+const DEFAULT_FILTER_ENDPOINTS = [
+    '../filter_options.php',
+    'filter_options.php'
+];
 
 function buildUrl(baseUrl, action, params = {}) {
     const url = new URL(baseUrl, window.location.href);
@@ -13,18 +17,80 @@ function buildUrl(baseUrl, action, params = {}) {
     return url;
 }
 
-export async function fetchFilterOptions(action, { baseUrl = 'filter_options.php', params = {} } = {}) {
-    const url = buildUrl(baseUrl, action, params);
-    const response = await fetch(url.toString(), { credentials: 'include' });
-
-    if (!response.ok) {
-        throw new Error(`Не удалось получить данные фильтра: ${response.status} ${response.statusText}`);
+function getEndpointCandidates(baseUrl) {
+    if (!baseUrl) {
+        return [...DEFAULT_FILTER_ENDPOINTS];
     }
 
-    return response.json();
+    if (Array.isArray(baseUrl)) {
+        const unique = new Set();
+        baseUrl.forEach(candidate => {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                unique.add(candidate.trim());
+            }
+        });
+        DEFAULT_FILTER_ENDPOINTS.forEach(candidate => unique.add(candidate));
+        return Array.from(unique);
+    }
+
+    const trimmed = `${baseUrl}`.trim();
+    if (!trimmed) {
+        return [...DEFAULT_FILTER_ENDPOINTS];
+    }
+
+    const endpoints = [trimmed];
+    DEFAULT_FILTER_ENDPOINTS.forEach(candidate => {
+        if (candidate !== trimmed) {
+            endpoints.push(candidate);
+        }
+    });
+
+    return endpoints;
 }
 
-export async function fetchMarketplaces({ baseUrl = 'filter_options.php' } = {}) {
+async function tryFetchEndpoint(action, candidate, params) {
+    const url = buildUrl(candidate, action, params);
+
+    try {
+        const response = await fetch(url.toString(), { credentials: 'include' });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.toLowerCase().includes('application/json')) {
+            // Попытка парсинга на случай корректного JSON без заголовка
+            const textPayload = await response.text();
+            try {
+                return JSON.parse(textPayload);
+            } catch (parseError) {
+                throw new Error(`Некорректный формат ответа (${contentType || 'text'}): ${textPayload.slice(0, 80)}`);
+            }
+        }
+
+        return await response.json();
+    } catch (error) {
+        throw new Error(`${candidate}: ${error.message}`);
+    }
+}
+
+export async function fetchFilterOptions(action, { baseUrl, params = {} } = {}) {
+    const candidates = getEndpointCandidates(baseUrl);
+    const errors = [];
+
+    for (const candidate of candidates) {
+        try {
+            return await tryFetchEndpoint(action, candidate, params);
+        } catch (error) {
+            errors.push(error.message);
+        }
+    }
+
+    throw new Error(`Не удалось получить данные фильтра (${action}). Попробованные адреса: ${errors.join('; ')}`);
+}
+
+export async function fetchMarketplaces({ baseUrl } = {}) {
     try {
         const data = await fetchFilterOptions('marketplaces', { baseUrl });
         if (Array.isArray(data?.marketplaces)) {
@@ -43,7 +109,7 @@ export async function fetchMarketplaces({ baseUrl = 'filter_options.php' } = {})
     return [];
 }
 
-export async function fetchCities({ marketplace = '', baseUrl = 'filter_options.php' } = {}) {
+export async function fetchCities({ marketplace = '', baseUrl } = {}) {
     const action = marketplace ? 'cities' : 'all_cities';
     const params = marketplace ? { marketplace } : {};
 
@@ -65,7 +131,7 @@ export async function fetchCities({ marketplace = '', baseUrl = 'filter_options.
     return [];
 }
 
-export async function fetchWarehouses({ marketplace = '', city = '', baseUrl = 'filter_options.php' } = {}) {
+export async function fetchWarehouses({ marketplace = '', city = '', baseUrl } = {}) {
     let action = 'all_warehouses';
     const params = {};
 
