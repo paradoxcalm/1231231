@@ -1625,6 +1625,18 @@ class ScheduleManager {
                             </div>
                         </div>
                     </div>
+
+                    <div class="schedule-action">
+                        <button
+                            type="button"
+                            class="create-order-btn"
+                            data-group-key="${safeGroupIdentifier}"
+                            data-schedule-id="${safeScheduleId}"
+                        >
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
+                    </div>
                 </div>
 
                 <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
@@ -1650,18 +1662,6 @@ class ScheduleManager {
                             <span class="meta-label">Города</span>
                             <span class="meta-value">${citiesSummary}</span>
                         </div>
-                    </div>
-
-                    <div class="schedule-action">
-                        <button
-                            type="button"
-                            class="create-order-btn"
-                            data-group-key="${safeGroupIdentifier}"
-                            data-schedule-id="${safeScheduleId}"
-                        >
-                            <i class="fas fa-plus"></i>
-                            Создать заявку
-                        </button>
                     </div>
                 </div>
 
