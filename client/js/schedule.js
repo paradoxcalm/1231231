@@ -35,6 +35,8 @@ class ScheduleManager {
         this.hasAppliedFilterCollapseState = false;
 
 
+
+
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
@@ -1231,6 +1233,7 @@ class ScheduleManager {
 
 
 
+
             if (!value) {
                 return Number.MAX_SAFE_INTEGER;
             }
@@ -1499,53 +1502,254 @@ class ScheduleManager {
         }
 
         container.classList.remove('is-empty');
+        container.innerHTML = '';
 
         if (!this.filters.marketplace) {
             this.updateScheduleSubtitle('Чтобы увидеть расписание, выберите маркетплейс и склад');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-layer-group',
                 'Расписание недоступно',
                 'Укажите маркетплейс и склад, чтобы мы показали подходящие отправления.'
-            );
+            ));
             return;
         }
 
         if (!this.filters.warehouse) {
             this.updateScheduleSubtitle('Сначала выберите склад, чтобы увидеть доступные отправления');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-warehouse',
                 'Не выбран склад',
                 'Выберите склад, чтобы показать подходящее расписание.'
-            );
+            ));
             return;
         }
 
         if (this.isLoadingSchedules) {
             this.updateScheduleSubtitle(`Загружаем расписание для склада «${this.filters.warehouse}»...`);
             container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Подгружаем отправления...
-                </div>
-            `;
+
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            loading.appendChild(spinner);
+
+            loading.appendChild(document.createTextNode('Подгружаем отправления...'));
+
+            container.appendChild(loading);
             return;
         }
 
         if (!Array.isArray(this.groupedSchedules) || this.groupedSchedules.length === 0) {
             this.updateScheduleSubtitle('На выбранный склад пока нет активных отправлений');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-calendar-times',
                 'Нет доступных отправлений',
                 'Попробуйте выбрать другой склад или загляните позже.'
-            );
+            ));
             return;
         }
 
         this.updateScheduleSubtitle(`Доступные даты отправления: ${this.groupedSchedules.length}`);
+
+        const fragment = document.createDocumentFragment();
+        this.groupedSchedules.forEach((group, index) => {
+            fragment.appendChild(this.createScheduleCardElement(group, index));
+        });
+
+        container.appendChild(fragment);
+    }
+
+    createScheduleCardElement(group, index = 0) {
+        const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
+            ? group.scheduleDetails[0]
+            : this.normalizeScheduleForModal(null);
+
+        const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
+        const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
+        const departureDate = this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate);
+        const deliveryDate = this.formatDeliverySummary(group);
+        const acceptTime = this.formatAcceptTimeInfo(group);
+        const driver = baseDetails.driver_name || baseDetails.driverName || '—';
+        const carParts = [baseDetails.car_brand || baseDetails.carBrand, baseDetails.car_number || baseDetails.carNumber]
+            .filter(Boolean);
+        const carInfo = carParts.length ? carParts.join(' ') : '—';
+        const statusInfo = this.getGroupStatusInfo(group);
+        const statusText = statusInfo.text || '—';
+        const statusClass = statusInfo.className || 'default';
+        const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
+        const citiesSummary = this.formatCityCount(citiesCount);
+        const groupIdentifier = group?.key ?? '';
+        const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
+        const extraSectionId = this.createExtraSectionId(groupIdentifier, primaryScheduleId, index);
+
+        const card = document.createElement('article');
+        card.className = 'schedule-card';
+        card.setAttribute('data-group', groupIdentifier != null ? String(groupIdentifier) : '');
+
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = `schedule-status-indicator status-${statusClass}`;
+        card.appendChild(statusIndicator);
+
+        const body = document.createElement('div');
+        body.className = 'schedule-card-body';
+        card.appendChild(body);
+
+        const main = document.createElement('div');
+        main.className = 'schedule-card-main';
+        body.appendChild(main);
+
+        const header = document.createElement('header');
+        header.className = 'schedule-card-header';
+        main.appendChild(header);
+
+        const warehouseSpan = document.createElement('span');
+        warehouseSpan.className = 'schedule-card-warehouse';
+        warehouseSpan.textContent = warehouseName || '—';
+        header.appendChild(warehouseSpan);
+
+        const marketplaceSpan = document.createElement('span');
+        const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
+        marketplaceSpan.className = ['schedule-marketplace', marketplaceClass].filter(Boolean).join(' ').trim();
+        marketplaceSpan.textContent = marketplaceLabel || '—';
+        header.appendChild(marketplaceSpan);
+
+        const datesWrapper = document.createElement('div');
+        datesWrapper.className = 'schedule-card-dates';
+        main.appendChild(datesWrapper);
+
+        const datesValues = document.createElement('div');
+        datesValues.className = 'schedule-dates-values';
+        datesWrapper.appendChild(datesValues);
+
+        const departureItem = document.createElement('div');
+        departureItem.className = 'date-item';
+        datesValues.appendChild(departureItem);
+
+        const departureLabel = document.createElement('span');
+        departureLabel.className = 'date-label';
+        departureLabel.textContent = 'Дата выезда';
+        departureItem.appendChild(departureLabel);
+
+        const departureValue = document.createElement('span');
+        departureValue.className = 'date-value';
+        departureValue.textContent = departureDate || '—';
+        departureItem.appendChild(departureValue);
+
+        const arrowWrapper = document.createElement('div');
+        arrowWrapper.className = 'schedule-date-arrow';
+        arrowWrapper.setAttribute('aria-hidden', 'true');
+        const arrowIcon = document.createElement('i');
+        arrowIcon.className = 'fas fa-arrow-right';
+        arrowIcon.setAttribute('aria-hidden', 'true');
+        arrowWrapper.appendChild(arrowIcon);
+        datesValues.appendChild(arrowWrapper);
+
+        const deliveryItem = document.createElement('div');
+        deliveryItem.className = 'date-item';
+        datesValues.appendChild(deliveryItem);
+
+        const deliveryLabel = document.createElement('span');
+        deliveryLabel.className = 'date-label';
+        deliveryLabel.textContent = 'Дата сдачи';
+        deliveryItem.appendChild(deliveryLabel);
+
+        const deliveryValue = document.createElement('span');
+        deliveryValue.className = 'date-value';
+        deliveryValue.textContent = deliveryDate || '—';
+        deliveryItem.appendChild(deliveryValue);
+
+        const actionWrapper = document.createElement('div');
+        actionWrapper.className = 'schedule-action';
+        main.appendChild(actionWrapper);
+
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.className = 'create-order-btn';
+        actionButton.dataset.groupKey = groupIdentifier != null ? String(groupIdentifier) : '';
+        actionButton.dataset.scheduleId = primaryScheduleId != null ? String(primaryScheduleId) : '';
+
+        const plusIcon = document.createElement('i');
+        plusIcon.className = 'fas fa-plus';
+        plusIcon.setAttribute('aria-hidden', 'true');
+        actionButton.appendChild(plusIcon);
+        actionButton.appendChild(document.createTextNode(' Создать заявку'));
+
+        actionWrapper.appendChild(actionButton);
+
+        const extraSection = document.createElement('div');
+        extraSection.className = 'schedule-card-extra';
+        extraSection.id = extraSectionId;
+        extraSection.setAttribute('aria-hidden', 'true');
+        body.appendChild(extraSection);
+
+        const statusBlock = document.createElement('div');
+        statusBlock.className = `schedule-status status-${statusClass}`;
+        extraSection.appendChild(statusBlock);
+
+        const statusDot = document.createElement('span');
+        statusDot.className = 'status-dot';
+        statusBlock.appendChild(statusDot);
+        statusBlock.appendChild(document.createTextNode(` ${statusText}`));
+
+        const metaWrapper = document.createElement('div');
+        metaWrapper.className = 'schedule-meta';
+        extraSection.appendChild(metaWrapper);
+
+        const metaItems = [
+            { label: 'Время приёмки', value: acceptTime || '—' },
+            { label: 'Водитель', value: driver || '—' },
+            { label: 'Автомобиль', value: carInfo || '—' },
+            { label: 'Города', value: citiesSummary || '—' }
+        ];
+
+        metaItems.forEach(({ label, value }) => {
+            const item = document.createElement('div');
+            item.className = 'meta-item';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'meta-label';
+            labelSpan.textContent = label;
+            item.appendChild(labelSpan);
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'meta-value';
+            valueSpan.textContent = value || '—';
+            item.appendChild(valueSpan);
+
+            metaWrapper.appendChild(item);
+        });
+
+        const footer = document.createElement('div');
+        footer.className = 'schedule-card-footer';
+        body.appendChild(footer);
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'schedule-card-toggle';
+        toggleButton.dataset.toggleGroup = groupIdentifier != null ? String(groupIdentifier) : '';
+        toggleButton.setAttribute('aria-expanded', 'false');
+        if (extraSectionId) {
+            toggleButton.setAttribute('aria-controls', extraSectionId);
+        }
+
+        const toggleLabel = document.createElement('span');
+        toggleLabel.className = 'toggle-label';
+        toggleLabel.textContent = 'Развернуть';
+        toggleButton.appendChild(toggleLabel);
+
+        const toggleIcon = document.createElement('i');
+        toggleIcon.className = 'fas fa-chevron-down toggle-icon';
+        toggleIcon.setAttribute('aria-hidden', 'true');
+        toggleButton.appendChild(toggleIcon);
+
+        footer.appendChild(toggleButton);
+
+        return card;
         container.innerHTML = this.groupedSchedules
             .map((group, index) => this.renderScheduleCard(group, index))
             .join('');
@@ -1832,6 +2036,78 @@ class ScheduleManager {
             return;
         }
 
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    toggleScheduleCardExpansion(card, explicitButton) {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldExpand = !card.classList.contains('is-expanded');
+        card.classList.toggle('is-expanded', shouldExpand);
+
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : card.querySelector('.schedule-card-toggle');
+
+        const extraSection = card.querySelector('.schedule-card-extra');
+        if (extraSection instanceof HTMLElement) {
+            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
+        }
+
+        if (button) {
+            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+            const label = button.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
+            }
+
+            const icon = button.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
+            }
+        }
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
 
         }
 
@@ -1992,29 +2268,27 @@ class ScheduleManager {
     }
 
     renderEmptyState(icon, title, description) {
-        const safeIcon = this.escapeHtml(icon);
-        const safeTitle = this.escapeHtml(title);
-        const safeDescription = this.escapeHtml(description);
-        return `
-            <div class="empty-state">
-                <i class="fas ${safeIcon}"></i>
-                <h3>${safeTitle}</h3>
-                <p>${safeDescription}</p>
-            </div>
-        `;
-    }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'empty-state';
 
-    escapeHtml(value) {
-        if (value === null || value === undefined) {
-            return '';
+        const iconElement = document.createElement('i');
+        const iconClasses = ['fas'];
+        if (typeof icon === 'string' && icon.trim()) {
+            iconClasses.push(icon.trim());
         }
+        iconElement.className = iconClasses.join(' ');
+        iconElement.setAttribute('aria-hidden', 'true');
+        wrapper.appendChild(iconElement);
 
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        const titleElement = document.createElement('h3');
+        titleElement.textContent = title;
+        wrapper.appendChild(titleElement);
+
+        const descriptionElement = document.createElement('p');
+        descriptionElement.textContent = description;
+        wrapper.appendChild(descriptionElement);
+
+        return wrapper;
     }
 
     getStatusClass(status) {
