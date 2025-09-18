@@ -914,6 +914,85 @@ class ScheduleManager {
         return raw;
     }
 
+    parseLocalDate(value) {
+        if (!value) {
+            return null;
+        }
+
+        const raw = String(value).trim();
+        if (!raw) {
+            return null;
+        }
+
+        const [sanitized] = raw.split(/[T ]/);
+
+        const isoMatch = sanitized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+            const year = Number(isoMatch[1]);
+            const month = Number(isoMatch[2]);
+            const day = Number(isoMatch[3]);
+
+            if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+                const date = new Date(year, month - 1, day);
+                if (!Number.isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+        }
+
+        const dottedMatch = sanitized.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (dottedMatch) {
+            const day = Number(dottedMatch[1]);
+            const month = Number(dottedMatch[2]);
+            const year = Number(dottedMatch[3]);
+
+            if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+                const date = new Date(year, month - 1, day);
+                if (!Number.isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+        }
+
+        const fallback = Date.parse(raw);
+        if (!Number.isNaN(fallback)) {
+            const parsed = new Date(fallback);
+            const date = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+            if (!Number.isNaN(date.getTime())) {
+                return date;
+            }
+        }
+
+        return null;
+    }
+
+    isScheduleInFuture(schedule) {
+        const departureKey = this.getScheduleDepartureKey(schedule);
+        if (!departureKey) {
+            return true;
+        }
+
+        const departureDate = this.parseLocalDate(departureKey);
+        if (!departureDate) {
+            return true;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+        const departureStart = new Date(
+            departureDate.getFullYear(),
+            departureDate.getMonth(),
+            departureDate.getDate()
+        ).getTime();
+
+        if (Number.isNaN(departureStart)) {
+            return true;
+        }
+
+        return departureStart >= todayStart;
+    }
+
+
     normalizeScheduleForModal(schedule) {
         if (!schedule || typeof schedule !== 'object') {
             return {
@@ -1005,6 +1084,11 @@ class ScheduleManager {
         const groups = new Map();
 
         (Array.isArray(schedules) ? schedules : []).forEach((schedule) => {
+            if (!schedule || !this.isScheduleInFuture(schedule)) {
+                return;
+            }
+
+
             const details = this.normalizeScheduleForModal(schedule);
             const departureKey = this.getScheduleDepartureKey(schedule)
                 || details.accept_date
@@ -1066,6 +1150,14 @@ class ScheduleManager {
         });
 
         const toTimestamp = (value) => {
+            const date = this.parseLocalDate(value);
+            if (!date) {
+                return Number.MAX_SAFE_INTEGER;
+            }
+
+            const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            return normalized.getTime();
+
             if (!value) {
                 return Number.MAX_SAFE_INTEGER;
             }
@@ -1272,10 +1364,19 @@ class ScheduleManager {
             return;
         }
 
-        this.filteredSchedules = this.schedules.filter(schedule => {
+        this.filteredSchedules = this.schedules.filter((schedule) => {
+            if (!schedule) {
+                return false;
+            }
+
             const matchMarketplace = schedule.marketplace === this.filters.marketplace;
             const matchWarehouse = schedule.warehouses === this.filters.warehouse;
-            return matchMarketplace && matchWarehouse;
+
+            if (!matchMarketplace || !matchWarehouse) {
+                return false;
+            }
+
+            return this.isScheduleInFuture(schedule);
         });
 
         this.groupedSchedules = this.groupSchedulesByDate(this.filteredSchedules);
@@ -1499,8 +1600,12 @@ class ScheduleManager {
     }
 
     formatDate(dateStr) {
-        if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('ru-RU', {
+        const date = this.parseLocalDate(dateStr);
+        if (!date) {
+            return '—';
+        }
+
+        return date.toLocaleDateString('ru-RU', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
