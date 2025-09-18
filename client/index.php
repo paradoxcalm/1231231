@@ -206,7 +206,7 @@ if (empty($_SESSION['user_id'])) {
                 </div>
                 <button class="create-order-btn" id="createOrderBtn">
                     <i class="fas fa-plus"></i>
-                    Создать заявку
+                    Создать заказ
                 </button>
             </div>
 

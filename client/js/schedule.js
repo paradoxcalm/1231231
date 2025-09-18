@@ -1625,18 +1625,6 @@ class ScheduleManager {
                             </div>
                         </div>
                     </div>
-
-                    <div class="schedule-action">
-                        <button
-                            type="button"
-                            class="create-order-btn"
-                            data-group-key="${safeGroupIdentifier}"
-                            data-schedule-id="${safeScheduleId}"
-                        >
-                            <i class="fas fa-plus"></i>
-                            Создать заявку
-                        </button>
-                    </div>
                 </div>
 
                 <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
@@ -1662,6 +1650,18 @@ class ScheduleManager {
                             <span class="meta-label">Города</span>
                             <span class="meta-value">${citiesSummary}</span>
                         </div>
+                    </div>
+
+                    <div class="schedule-action">
+                        <button
+                            type="button"
+                            class="create-order-btn"
+                            data-group-key="${safeGroupIdentifier}"
+                            data-schedule-id="${safeScheduleId}"
+                        >
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
                     </div>
                 </div>
 
@@ -1811,7 +1811,7 @@ class ScheduleManager {
         }
     }
 
-    handleCreateOrderClick(event, scheduleId, explicitButton) {
+handleCreateOrderClick(event, scheduleId, explicitButton) {
     // 1) Находим кнопку
     const button =
         explicitButton instanceof HTMLElement
@@ -1875,20 +1875,6 @@ animateActionButton(button) {
     }, { once: true });
 }
 
-
-    animateActionButton(button) {
-        if (!(button instanceof HTMLElement)) {
-            return;
-        }
-
-        button.classList.remove('is-pressed');
-        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
-        void button.offsetWidth;
-        button.classList.add('is-pressed');
-        button.addEventListener('animationend', () => {
-            button.classList.remove('is-pressed');
-        }, { once: true });
-    }
 
     getMarketplaceBadgeClass(marketplace) {
         if (!marketplace) {
