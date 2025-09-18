@@ -304,10 +304,18 @@
 /* Дизайн модалки создавния заявки*/
 
 :root {
-    --request-modal-accent: var(--schedule-primary, #1f8b4c);
-    --request-modal-border: var(--schedule-border, #dbe7e1);
-    --request-modal-muted: var(--schedule-muted, #5f6b6f);
-    --request-modal-soft-bg: rgba(31, 139, 76, 0.08);
+    --request-modal-accent: var(--primary, #28c76f);
+    --request-modal-border: var(--border, #e2e8f0);
+    --request-modal-muted: var(--text-secondary, #475569);
+    --request-modal-surface: var(--bg-primary, #ffffff);
+    --request-modal-soft-bg: var(--bg-secondary, #f8fafc);
+    --request-modal-radius-lg: clamp(20px, 4vw, 28px);
+    --request-modal-radius-md: clamp(16px, 3vw, 22px);
+    --request-modal-radius-sm: clamp(12px, 3vw, 18px);
+    --request-modal-radius-pill: 999px;
+    --request-modal-spacing-lg: clamp(22px, 4vw, 30px);
+    --request-modal-spacing-md: clamp(16px, 3vw, 24px);
+    --request-modal-spacing-sm: clamp(12px, 2.5vw, 18px);
 }
 
 .modal-header-with-close {
@@ -386,27 +394,30 @@
 
 
 .request-modal__summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--request-modal-spacing-sm);
+    padding: var(--request-modal-spacing-sm);
     border: 1px solid var(--request-modal-border);
-    border-radius: 0.75rem;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 246, 0.92));
-    overflow: hidden;
+    border-radius: var(--request-modal-radius-lg);
+    background: var(--request-modal-surface);
 }
 
 .request-modal__selection {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: clamp(0.75rem, 3vw, 1.5rem);
-    padding: clamp(0.875rem, 2vw, 1.1rem) clamp(1rem, 3vw, 1.5rem);
+    gap: var(--request-modal-spacing-md);
+    padding: var(--request-modal-spacing-md) var(--request-modal-spacing-lg);
     border: 1px solid var(--request-modal-border);
-    border-radius: 0.75rem;
-    background: var(--request-modal-soft-bg);
+    border-radius: var(--request-modal-radius-lg);
+    background: var(--request-modal-surface);
 }
 
 .request-modal__selection-info {
     display: flex;
     flex-wrap: wrap;
-    gap: clamp(0.75rem, 2.5vw, 1.5rem);
+    gap: var(--request-modal-spacing-md);
     flex: 1 1 auto;
     min-width: 0;
 }
@@ -415,7 +426,11 @@
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    min-width: clamp(140px, 40%, 220px);
+    min-width: clamp(180px, 35%, 240px);
+    padding: calc(var(--request-modal-spacing-sm) - 4px);
+    border: 1px solid var(--request-modal-border);
+    border-radius: var(--request-modal-radius-md);
+    background: var(--request-modal-surface);
 }
 
 .request-modal__selection-label {
@@ -436,38 +451,52 @@
 .request-modal__selection-change {
     flex-shrink: 0;
     align-self: center;
-    padding: 0.55rem 1.1rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    background: transparent;
+    padding: calc(var(--request-modal-spacing-sm) - 4px) var(--request-modal-spacing-md);
+    border-radius: var(--request-modal-radius-pill, 999px);
+    border: 1px solid var(--request-modal-border);
+    background: var(--request-modal-surface);
     color: var(--request-modal-accent);
     font-weight: 600;
     cursor: pointer;
-    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .request-modal__selection-change:hover {
-    background: rgba(31, 139, 76, 0.08);
-    border-color: rgba(31, 139, 76, 0.35);
+    background: var(--request-modal-soft-bg);
+    border-color: var(--request-modal-accent);
 }
 
 .request-modal__selection-change:focus-visible {
     outline: none;
     border-color: var(--request-modal-accent);
-    box-shadow: 0 0 0 3px rgba(31, 139, 76, 0.25);
+    box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.25);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--request-modal-accent) 45%, transparent);
 }
 
 .request-modal .modal-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: clamp(0.75rem, 3vw, 1.75rem);
+    gap: var(--request-modal-spacing-sm);
     flex-wrap: wrap;
-    padding: 0.75rem 1rem;
+    padding: var(--request-modal-spacing-sm) var(--request-modal-spacing-md);
+    border-radius: var(--request-modal-radius-md);
+    background: var(--request-modal-surface);
+    border: 1px solid transparent;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .request-modal .modal-row + .modal-row {
-    border-top: 1px solid var(--request-modal-border);
+    border-top: none;
+}
+
+.request-modal__summary .modal-row {
+    border-color: var(--request-modal-border);
+}
+
+.request-modal__summary .modal-row:hover {
+    border-color: var(--request-modal-accent);
+    background: var(--request-modal-soft-bg);
 }
 
 .request-modal .modal-label {
@@ -621,18 +650,25 @@
 }
 
 .request-modal__route-copy {
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--request-modal-accent);
-    background: var(--request-modal-accent);
-    color: #fff;
+    padding: calc(var(--request-modal-spacing-sm) - 6px) calc(var(--request-modal-spacing-sm));
+    border-radius: var(--request-modal-radius-sm);
+    border: 1px solid var(--request-modal-border);
+    background: var(--request-modal-surface);
+    color: var(--request-modal-accent);
     font-weight: 600;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .request-modal__route-copy:hover {
-    background: #fff;
-    color: var(--request-modal-accent);
+    background: var(--request-modal-soft-bg);
+    border-color: var(--request-modal-accent);
+}
+
+.request-modal__route-copy:focus-visible {
+    outline: none;
+    border-color: var(--request-modal-accent);
+    box-shadow: 0 0 0 3px rgba(40, 199, 111, 0.25);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--request-modal-accent) 45%, transparent);
 }
 
 .request-modal #status {
@@ -663,7 +699,8 @@
     .request-modal__selection {
         flex-direction: column;
         align-items: stretch;
-        gap: 0.75rem;
+        gap: var(--request-modal-spacing-sm);
+        padding: var(--request-modal-spacing-sm);
     }
 
     .request-modal__selection-item {
