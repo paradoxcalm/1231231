@@ -157,10 +157,26 @@ class ScheduleManager {
         this.updateWarehouseConfirmState();
         this.applyStepState('warehouse', { active: false, complete: false });
         this.clearWarehouseSummary();
+        this.clearWarehouseStats();
 
         if (!value) {
             this.clearMarketplaceSummary();
         }
+        this.renderWarehouseStats();
+    }
+
+    setActiveMarketplaceCard(value) {
+        const container = this.elements.marketplaceSelect;
+        if (!container) {
+            return;
+        }
+
+        const cards = container.querySelectorAll('.marketplace-card');
+        cards.forEach((card) => {
+            const isActive = Boolean(value) && card.dataset.value === value;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
     }
 
     setActiveMarketplaceCard(value) {
@@ -227,6 +243,13 @@ class ScheduleManager {
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = this.filters.warehouse || '';
         }
+
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        const warehouse = this.pendingSelections.warehouse;
+        if (marketplace && warehouse) {
+            this.fetchWarehouseOrdersStats(marketplace, warehouse);
+        }
+        this.renderWarehouseStats();
     }
 
     handleWarehouseChange(value) {
@@ -236,7 +259,19 @@ class ScheduleManager {
 
         if (!value) {
             this.clearWarehouseSummary();
+            this.clearWarehouseStats();
+            this.renderWarehouseStats();
+            return;
         }
+
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        if (!marketplace) {
+            this.clearWarehouseStats();
+            this.renderWarehouseStats();
+            return;
+        }
+
+        this.fetchWarehouseOrdersStats(marketplace, value);
     }
 
     updateWarehouseConfirmState() {
@@ -256,6 +291,8 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
         this.applyStepState('warehouse', { active: false, complete: true });
+        this.currentStep = 'results';
+        this.renderWarehouseStats();
     }
 
     showMarketplaceSummary() {
@@ -429,6 +466,10 @@ class ScheduleManager {
             'YandexMarket': 'Маркетплейс от Яндекса'
         };
         return descriptions[marketplace] || 'Торговая площадка';
+    }
+
+    getMarketplaceForWarehouseStep() {
+        return this.filters.marketplace || this.pendingSelections.marketplace || '';
     }
 
     getMarketplaceLabel(value) {
@@ -684,6 +725,15 @@ class ScheduleManager {
             return;
         }
 
+        const warehouseStep = this.stepElements.warehouseStep;
+        const isStepActive = Boolean(warehouseStep && warehouseStep.classList.contains('is-active'));
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        const warehouse = isStepActive ? (this.pendingSelections.warehouse || '') : '';
+        const shouldShow = Boolean(isStepActive && marketplace && warehouse);
+
+        container.classList.toggle('is-visible', shouldShow);
+
+        if (!shouldShow) {
         const hasSelection = Boolean(this.filters.marketplace && this.filters.warehouse);
         container.classList.toggle('is-visible', hasSelection);
 
@@ -695,12 +745,26 @@ class ScheduleManager {
 
         container.removeAttribute('aria-hidden');
 
+        const statsKey = this.createWarehouseStatsKey(marketplace, warehouse);
+        let statsState = this.warehouseStats;
+
+        if (!statsKey) {
+            statsState = { isLoading: false, error: '', data: null };
+        } else if (this.currentWarehouseStatsKey !== statsKey) {
+            const cached = this.warehouseStatsCache.get(statsKey);
+            statsState = cached
+                ? { isLoading: false, error: '', data: cached }
+                : { isLoading: true, error: '', data: null };
+        }
+
         const fragment = document.createDocumentFragment();
         const header = document.createElement('div');
         header.className = 'warehouse-stats__header';
 
         const title = document.createElement('span');
         title.className = 'warehouse-stats__title';
+        title.textContent = 'Статистика по складу';
+        header.appendChild(title);
         title.textContent = 'Статистика склада';
         header.appendChild(title);
 
@@ -723,6 +787,16 @@ class ScheduleManager {
         const grid = document.createElement('div');
         grid.className = 'warehouse-stats__grid';
 
+        if (statsState.isLoading) {
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Всего отправлений', 'Загружаем данные...'));
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Доля заявок', 'Загружаем данные...'));
+        } else if (statsState.error) {
+            grid.appendChild(this.createWarehouseStatsErrorItem('Всего отправлений', statsState.error));
+            grid.appendChild(this.createWarehouseStatsErrorItem('Доля заявок', statsState.error));
+        } else {
+            const stats = statsState.data || {
+                departuresUnique: 0,
+                departuresTotal: 0,
         if (this.isLoadingSchedules) {
             grid.appendChild(this.createWarehouseStatsLoadingItem('Отправления', 'Загружаем расписание...'));
         } else {
@@ -748,6 +822,24 @@ class ScheduleManager {
                 ordersForWarehouse: 0,
                 ordersPercentage: 0
             };
+
+            const departuresDescription = stats.departuresUnique === 0
+                ? 'Нет ближайших отправлений'
+                : 'по датам выезда';
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Всего отправлений',
+                value: this.formatNumber(stats.departuresUnique),
+                description: departuresDescription
+            }));
+
+            const ordersDescription = `${this.formatNumber(stats.ordersForWarehouse)} из ${this.formatNumber(stats.ordersTotal)} заявок`;
+            const percentageValue = this.formatPercentage(stats.ordersPercentage);
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Доля заявок',
+                value: `${percentageValue}%`,
+                description: ordersDescription
 
             const hasOrders = stats.ordersTotal > 0;
             const ordersValue = this.formatNumber(stats.ordersForWarehouse);
@@ -894,12 +986,18 @@ class ScheduleManager {
         }
 
         ordersPercentage = Math.min(Math.max(ordersPercentage, 0), 100);
+        const departuresUnique = this.toNumber(data?.departures_unique ?? data?.departure_dates);
+        const departuresTotal = this.toNumber(data?.departures_total ?? data?.schedules_total);
 
         return {
             marketplace: data?.marketplace || this.filters.marketplace || '',
             warehouse: data?.warehouse || this.filters.warehouse || '',
             ordersTotal,
             ordersForWarehouse,
+            ordersPercentage,
+            departuresUnique,
+            departuresTotal
+
             ordersPercentage
         };
     }

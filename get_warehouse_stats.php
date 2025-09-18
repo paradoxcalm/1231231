@@ -27,6 +27,12 @@ function normalizeMarketplaceKey(string $value): string
     return str_replace([' ', '-', '_'], '', $lower);
 }
 
+function normalizeWarehouseValue(string $value): string
+{
+    return mb_strtolower(trim($value), 'UTF-8');
+}
+
+
 function countOrdersByMarketplace(mysqli $conn, string $marketplace, ?string $warehouse = null): int
 {
     $sql = "SELECT COUNT(*) AS total FROM orders WHERE is_deleted = 0 AND status <> 'Удалён клиентом'";
@@ -54,6 +60,8 @@ function countOrdersByMarketplace(mysqli $conn, string $marketplace, ?string $wa
 
     if ($warehouse !== null && $warehouse !== '') {
         $sql        .= ' AND LOWER(TRIM(schedule_warehouses)) = ?';
+        $params[]    = normalizeWarehouseValue($warehouse);
+
         $params[]    = mb_strtolower($warehouse, 'UTF-8');
         $types      .= 's';
     }
@@ -70,6 +78,41 @@ function countOrdersByMarketplace(mysqli $conn, string $marketplace, ?string $wa
     return (int) $count;
 }
 
+function countSchedulesByWarehouse(mysqli $conn, string $marketplace, string $warehouse): array
+{
+    $sql = <<<SQL
+        SELECT
+            COUNT(*) AS schedules_total,
+            COUNT(DISTINCT NULLIF(TRIM(accept_date), '')) AS departures_unique
+        FROM schedules
+        WHERE status <> 'Завершено'
+          AND LOWER(TRIM(marketplace)) = ?
+          AND LOWER(TRIM(warehouses)) = ?
+    SQL;
+
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        throw new RuntimeException('Ошибка подготовки запроса статистики расписаний: ' . $conn->error);
+    }
+
+    $marketplaceParam = normalizeWarehouseValue($marketplace);
+    $warehouseParam   = normalizeWarehouseValue($warehouse);
+    $stmt->bind_param('ss', $marketplaceParam, $warehouseParam);
+    $stmt->execute();
+    $stmt->bind_result($total, $unique);
+    $stmt->fetch();
+    $stmt->close();
+
+    return [
+        'schedules_total'   => (int) $total,
+        'departures_unique' => (int) $unique,
+    ];
+}
+
+try {
+    $ordersTotal = countOrdersByMarketplace($conn, $marketplace);
+    $ordersForWarehouse = countOrdersByMarketplace($conn, $marketplace, $warehouse);
+    $schedulesStats = countSchedulesByWarehouse($conn, $marketplace, $warehouse);
 try {
     $ordersTotal = countOrdersByMarketplace($conn, $marketplace);
     $ordersForWarehouse = countOrdersByMarketplace($conn, $marketplace, $warehouse);
@@ -86,6 +129,9 @@ try {
         'orders_total' => $ordersTotal,
         'orders_for_warehouse' => $ordersForWarehouse,
         'orders_percentage' => round($percentage, 2),
+        'departures_unique' => $schedulesStats['departures_unique'],
+        'departures_total' => $schedulesStats['schedules_total'],
+
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);
