@@ -363,6 +363,274 @@ body {
     background: white;
 }
 
+.warehouse-stats {
+    display: grid;
+    gap: 12px;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 0;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    max-height: 0;
+    overflow: hidden;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        max-height 0.3s ease,
+        padding 0.3s ease,
+        margin-top 0.3s ease,
+        border-color 0.3s ease,
+        background 0.3s ease,
+        box-shadow 0.3s ease;
+}
+
+.warehouse-stats.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    background: var(--bg-secondary);
+    border-color: rgba(40, 199, 111, 0.18);
+    box-shadow: var(--shadow-sm);
+    padding: 16px 18px;
+    margin-top: 6px;
+    max-height: 520px;
+}
+
+.warehouse-stats__header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.warehouse-stats__title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.warehouse-stats__grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.warehouse-stats__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(17, 24, 39, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, #ffffff 100%);
+    box-shadow: var(--shadow-sm);
+    min-height: 88px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.warehouse-stats__item:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.warehouse-stats__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.warehouse-stats__value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.1;
+}
+
+.warehouse-stats__description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.warehouse-stats__item--loading .warehouse-stats__value,
+.warehouse-stats__item--error .warehouse-stats__value {
+    color: var(--text-secondary);
+}
+
+.warehouse-stats__item--error {
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.warehouse-stats__item--error .warehouse-stats__description {
+    color: var(--error);
+}
+
+.warehouse-stats__spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid rgba(40, 199, 111, 0.25);
+    border-top-color: var(--primary);
+    animation: spin 0.9s linear infinite;
+}
+
+@media (max-width: 900px) {
+    .warehouse-stats.is-visible {
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    .warehouse-stats__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .warehouse-stats__item {
+        min-height: 88px;
+    }
+}
+
+.marketplace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    width: 100%;
+    transition: opacity 0.3s ease;
+}
+
+.marketplace-grid.is-loading,
+.marketplace-grid.is-disabled {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.marketplace-grid.is-loading {
+    cursor: progress;
+}
+
+.marketplace-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    padding: 16px 18px;
+    min-height: 92px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease, background-color 0.2s ease;
+    overflow: hidden;
+}
+
+.marketplace-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(40, 199, 111, 0.08), rgba(37, 99, 235, 0.06));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+}
+
+.marketplace-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(40, 199, 111, 0.35);
+    box-shadow: var(--shadow-md);
+}
+
+.marketplace-card:hover::after {
+    opacity: 1;
+}
+
+.marketplace-card:focus-visible {
+    outline: 3px solid rgba(40, 199, 111, 0.35);
+    outline-offset: 2px;
+}
+
+.marketplace-card.is-active {
+    transform: translateY(-4px);
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #ffffff;
+    box-shadow: var(--shadow-md);
+}
+
+.marketplace-card.is-active::after {
+    opacity: 0.35;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0));
+}
+
+.marketplace-card__title {
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+}
+
+.marketplace-card__description {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.35;
+}
+
+.marketplace-card.is-active .marketplace-card__description {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.marketplace-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 18px;
+    min-height: 92px;
+    border-radius: var(--radius-lg);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-weight: 500;
+    box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.marketplace-placeholder--loading::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    border-radius: 50%;
+    border: 2px solid rgba(40, 199, 111, 0.35);
+    border-top-color: var(--primary);
+    animation: spin 0.75s linear infinite;
+}
+
+@media (max-width: 768px) {
+    .marketplace-card {
+        min-height: 84px;
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 520px) {
+    .marketplace-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+}
+
 .filter-select:disabled {
     opacity: 0.7;
     cursor: not-allowed;

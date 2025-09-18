@@ -15,11 +15,20 @@ class ScheduleManager {
         this.isLoadingWarehouses = false;
         this.isLoadingSchedules = false;
         this.schedulesCache = new Map();
+        this.warehouseStats = {
+            isLoading: false,
+            error: '',
+            data: null
+        };
+        this.warehouseStatsCache = new Map();
+        this.currentWarehouseStatsKey = '';
+        this.activeWarehouseStatsController = null;
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
             resetButton: document.getElementById('resetScheduleFilters'),
-            subtitle: document.getElementById('scheduleSubtitle')
+            subtitle: document.getElementById('scheduleSubtitle'),
+            warehouseStats: document.getElementById('warehouseStats')
         };
         this.stepElements = {
             marketplaceStep: document.querySelector('[data-step="marketplace"]'),
@@ -48,6 +57,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
         this.renderScheduleGrid();
+        this.renderWarehouseStats();
         this.renderWarehouses();
         this.loadMarketplaces();
     }
@@ -56,8 +66,23 @@ class ScheduleManager {
         const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
 
         if (marketplaceSelect) {
-            marketplaceSelect.addEventListener('change', (event) => {
-                this.handleMarketplaceChange(event.target.value);
+            marketplaceSelect.addEventListener('click', (event) => {
+                if (marketplaceSelect.classList.contains('is-disabled')) {
+                    return;
+                }
+
+                const card = event.target.closest('.marketplace-card');
+                if (!card || card.disabled) {
+                    return;
+                }
+
+                const { value } = card.dataset;
+                if (typeof value === 'undefined') {
+                    return;
+                }
+
+                const isSameSelection = card.classList.contains('is-active') && this.pendingSelections.marketplace === value;
+                this.handleMarketplaceChange(isSameSelection ? '' : value);
             });
         }
 
@@ -126,14 +151,32 @@ class ScheduleManager {
     handleMarketplaceChange(value) {
         this.pendingSelections.marketplace = value;
         this.updateMarketplaceConfirmState();
+        this.setActiveMarketplaceCard(value);
+
         this.pendingSelections.warehouse = '';
         this.updateWarehouseConfirmState();
         this.applyStepState('warehouse', { active: false, complete: false });
         this.clearWarehouseSummary();
+        this.clearWarehouseStats();
 
         if (!value) {
             this.clearMarketplaceSummary();
         }
+        this.renderWarehouseStats();
+    }
+
+    setActiveMarketplaceCard(value) {
+        const container = this.elements.marketplaceSelect;
+        if (!container) {
+            return;
+        }
+
+        const cards = container.querySelectorAll('.marketplace-card');
+        cards.forEach((card) => {
+            const isActive = Boolean(value) && card.dataset.value === value;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
     }
 
     updateMarketplaceConfirmState() {
@@ -168,10 +211,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
-
-        if (this.elements.marketplaceSelect) {
-            this.elements.marketplaceSelect.value = this.filters.marketplace || '';
-        }
+        this.setActiveMarketplaceCard(this.pendingSelections.marketplace);
     }
 
     openWarehouseStep() {
@@ -189,6 +229,13 @@ class ScheduleManager {
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = this.filters.warehouse || '';
         }
+
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        const warehouse = this.pendingSelections.warehouse;
+        if (marketplace && warehouse) {
+            this.fetchWarehouseOrdersStats(marketplace, warehouse);
+        }
+        this.renderWarehouseStats();
     }
 
     handleWarehouseChange(value) {
@@ -198,7 +245,19 @@ class ScheduleManager {
 
         if (!value) {
             this.clearWarehouseSummary();
+            this.clearWarehouseStats();
+            this.renderWarehouseStats();
+            return;
         }
+
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        if (!marketplace) {
+            this.clearWarehouseStats();
+            this.renderWarehouseStats();
+            return;
+        }
+
+        this.fetchWarehouseOrdersStats(marketplace, value);
     }
 
     updateWarehouseConfirmState() {
@@ -218,6 +277,8 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
         this.applyStepState('warehouse', { active: false, complete: true });
+        this.currentStep = 'results';
+        this.renderWarehouseStats();
     }
 
     showMarketplaceSummary() {
@@ -231,7 +292,8 @@ class ScheduleManager {
             return;
         }
 
-        summary.textContent = `Маркетплейс: ${this.filters.marketplace}`;
+        const label = this.getMarketplaceLabel(this.filters.marketplace);
+        summary.textContent = label ? `Маркетплейс: ${label}` : '';
     }
 
     showWarehouseSummary() {
@@ -259,6 +321,30 @@ class ScheduleManager {
         const summary = this.stepElements.warehouseSummary;
         if (summary) {
             summary.textContent = '';
+        }
+    }
+
+    clearWarehouseStats() {
+        this.abortWarehouseStatsRequest();
+        this.warehouseStats = {
+            isLoading: false,
+            error: '',
+            data: null
+        };
+        this.currentWarehouseStatsKey = '';
+
+        const container = this.elements.warehouseStats;
+        if (container) {
+            container.classList.remove('is-visible');
+            container.innerHTML = '';
+            container.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    abortWarehouseStatsRequest() {
+        if (this.activeWarehouseStatsController) {
+            this.activeWarehouseStatsController.abort();
+            this.activeWarehouseStatsController = null;
         }
     }
 
@@ -291,52 +377,72 @@ class ScheduleManager {
     }
 
     renderMarketplaces() {
-        const select = this.elements.marketplaceSelect;
-        if (!select) return;
+        const container = this.elements.marketplaceSelect;
+        if (!container) return;
 
-        select.innerHTML = '';
+        container.innerHTML = '';
+        container.classList.remove('is-loading', 'is-disabled');
+        container.removeAttribute('aria-busy');
+        container.removeAttribute('aria-disabled');
 
         if (this.isLoadingMarketplaces) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'Загрузка маркетплейсов...';
-            option.disabled = true;
-            select.appendChild(option);
-            select.disabled = true;
+            container.classList.add('is-loading');
+            container.setAttribute('aria-busy', 'true');
+            container.appendChild(this.createMarketplaceMessage('Загрузка маркетплейсов...', { isLoading: true }));
             return;
         }
 
         if (this.marketplaceOptions.length === 0) {
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'Маркетплейсы недоступны';
-            option.disabled = true;
-            select.appendChild(option);
-            select.disabled = true;
+            container.classList.add('is-disabled');
+            container.setAttribute('aria-disabled', 'true');
+            container.appendChild(this.createMarketplaceMessage('Маркетплейсы недоступны'));
             return;
         }
 
-        const placeholderOption = document.createElement('option');
-        placeholderOption.value = '';
-        placeholderOption.textContent = 'Выберите маркетплейс';
-        select.appendChild(placeholderOption);
+        const activeValue = this.pendingSelections.marketplace || this.filters.marketplace || '';
 
         this.marketplaceOptions.forEach(optionData => {
-            const option = document.createElement('option');
-            option.value = optionData.value;
-            option.textContent = optionData.label;
-            if (optionData.description) {
-                option.title = optionData.description;
-            }
-            select.appendChild(option);
-        });
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'marketplace-card';
+            card.dataset.value = optionData.value;
+            card.dataset.label = optionData.label;
+            card.title = optionData.description || optionData.label;
 
-        select.disabled = false;
-        const selected = this.filters.marketplace || '';
-        select.value = selected;
-        if (select.value !== selected) {
-            select.value = '';
+            const title = document.createElement('span');
+            title.className = 'marketplace-card__title';
+            title.textContent = optionData.label;
+            card.appendChild(title);
+
+            if (optionData.description) {
+                const description = document.createElement('span');
+                description.className = 'marketplace-card__description';
+                description.textContent = optionData.description;
+                card.appendChild(description);
+            }
+
+            const isActive = Boolean(activeValue) && optionData.value === activeValue;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+            container.appendChild(card);
+        });
+    }
+
+    createMarketplaceMessage(text, { isLoading = false } = {}) {
+        const message = document.createElement('div');
+        message.className = 'marketplace-placeholder';
+        if (isLoading) {
+            message.classList.add('marketplace-placeholder--loading');
         }
+
+        message.setAttribute('role', isLoading ? 'status' : 'note');
+        message.setAttribute('aria-live', 'polite');
+
+        const span = document.createElement('span');
+        span.textContent = text;
+        message.appendChild(span);
+        return message;
     }
 
     getMarketplaceDescription(marketplace) {
@@ -348,6 +454,19 @@ class ScheduleManager {
         return descriptions[marketplace] || 'Торговая площадка';
     }
 
+    getMarketplaceForWarehouseStep() {
+        return this.filters.marketplace || this.pendingSelections.marketplace || '';
+    }
+
+    getMarketplaceLabel(value) {
+        if (!value) {
+            return '';
+        }
+
+        const option = this.marketplaceOptions.find(item => item.value === value);
+        return option ? option.label : value;
+    }
+
     selectMarketplace(marketplace) {
         this.filters.marketplace = marketplace;
         this.filters.warehouse = '';
@@ -357,6 +476,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
         this.clearWarehouseSummary();
+        this.clearWarehouseStats();
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = '';
@@ -470,10 +590,310 @@ class ScheduleManager {
             this.filteredSchedules = [];
             this.renderScheduleGrid();
             this.clearWarehouseSummary();
+            this.clearWarehouseStats();
             return;
         }
 
         this.loadSchedules();
+        this.fetchWarehouseOrdersStats(this.filters.marketplace, warehouse);
+        this.renderWarehouseStats();
+    }
+
+    createWarehouseStatsKey(marketplace, warehouse) {
+        if (!marketplace || !warehouse) {
+            return '';
+        }
+
+        const normalize = (value) => String(value).trim().toLowerCase();
+        return `${normalize(marketplace)}__${normalize(warehouse)}`;
+    }
+
+    async fetchWarehouseOrdersStats(marketplace, warehouse) {
+        if (!marketplace || !warehouse) {
+            this.warehouseStats = {
+                isLoading: false,
+                error: '',
+                data: null
+            };
+            this.currentWarehouseStatsKey = '';
+            this.renderWarehouseStats();
+            return;
+        }
+
+        const cacheKey = this.createWarehouseStatsKey(marketplace, warehouse);
+        this.currentWarehouseStatsKey = cacheKey;
+
+        const cached = this.warehouseStatsCache.get(cacheKey);
+        if (cached) {
+            this.warehouseStats = {
+                isLoading: false,
+                error: '',
+                data: cached
+            };
+            this.renderWarehouseStats();
+            return;
+        }
+
+        this.abortWarehouseStatsRequest();
+
+        const controller = new AbortController();
+        this.activeWarehouseStatsController = controller;
+
+        this.warehouseStats = {
+            isLoading: true,
+            error: '',
+            data: null
+        };
+        this.renderWarehouseStats();
+
+        try {
+            const params = new URLSearchParams({ marketplace, warehouse });
+            const response = await fetch(`../get_warehouse_stats.php?${params.toString()}`, {
+                credentials: 'include',
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки статистики: ${response.status}`);
+            }
+
+            const payload = await response.json();
+
+            if (!payload || payload.success === false) {
+                const message = payload && typeof payload.message === 'string'
+                    ? payload.message
+                    : 'Не удалось получить статистику заказов';
+                throw new Error(message);
+            }
+
+            const normalized = this.normalizeWarehouseStatsResponse(payload);
+            this.warehouseStatsCache.set(cacheKey, normalized);
+
+            if (this.currentWarehouseStatsKey !== cacheKey) {
+                return;
+            }
+
+            this.warehouseStats = {
+                isLoading: false,
+                error: '',
+                data: normalized
+            };
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                return;
+            }
+
+            console.error('Ошибка загрузки статистики склада:', error);
+
+            if (this.currentWarehouseStatsKey !== cacheKey) {
+                return;
+            }
+
+            this.warehouseStats = {
+                isLoading: false,
+                error: 'Не удалось загрузить статистику заказов',
+                data: null
+            };
+        } finally {
+            if (this.activeWarehouseStatsController === controller) {
+                this.activeWarehouseStatsController = null;
+            }
+
+            if (this.currentWarehouseStatsKey === cacheKey) {
+                this.renderWarehouseStats();
+            }
+        }
+    }
+
+    renderWarehouseStats() {
+        const container = this.elements.warehouseStats;
+        if (!container) {
+            return;
+        }
+
+        const warehouseStep = this.stepElements.warehouseStep;
+        const isStepActive = Boolean(warehouseStep && warehouseStep.classList.contains('is-active'));
+        const marketplace = this.getMarketplaceForWarehouseStep();
+        const warehouse = isStepActive ? (this.pendingSelections.warehouse || '') : '';
+        const shouldShow = Boolean(isStepActive && marketplace && warehouse);
+
+        container.classList.toggle('is-visible', shouldShow);
+
+        if (!shouldShow) {
+            container.innerHTML = '';
+            container.setAttribute('aria-hidden', 'true');
+            return;
+        }
+
+        container.removeAttribute('aria-hidden');
+
+        const statsKey = this.createWarehouseStatsKey(marketplace, warehouse);
+        let statsState = this.warehouseStats;
+
+        if (!statsKey) {
+            statsState = { isLoading: false, error: '', data: null };
+        } else if (this.currentWarehouseStatsKey !== statsKey) {
+            const cached = this.warehouseStatsCache.get(statsKey);
+            statsState = cached
+                ? { isLoading: false, error: '', data: cached }
+                : { isLoading: true, error: '', data: null };
+        }
+
+        const fragment = document.createDocumentFragment();
+        const header = document.createElement('div');
+        header.className = 'warehouse-stats__header';
+
+        const title = document.createElement('span');
+        title.className = 'warehouse-stats__title';
+        title.textContent = 'Статистика по складу';
+        header.appendChild(title);
+        fragment.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'warehouse-stats__grid';
+
+        if (statsState.isLoading) {
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Всего отправлений', 'Загружаем данные...'));
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Доля заявок', 'Загружаем данные...'));
+        } else if (statsState.error) {
+            grid.appendChild(this.createWarehouseStatsErrorItem('Всего отправлений', statsState.error));
+            grid.appendChild(this.createWarehouseStatsErrorItem('Доля заявок', statsState.error));
+        } else {
+            const stats = statsState.data || {
+                departuresUnique: 0,
+                departuresTotal: 0,
+                ordersTotal: 0,
+                ordersForWarehouse: 0,
+                ordersPercentage: 0
+            };
+
+            const departuresDescription = stats.departuresUnique === 0
+                ? 'Нет ближайших отправлений'
+                : 'по датам выезда';
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Всего отправлений',
+                value: this.formatNumber(stats.departuresUnique),
+                description: departuresDescription
+            }));
+
+            const ordersDescription = `${this.formatNumber(stats.ordersForWarehouse)} из ${this.formatNumber(stats.ordersTotal)} заявок`;
+            const percentageValue = this.formatPercentage(stats.ordersPercentage);
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Доля заявок',
+                value: `${percentageValue}%`,
+                description: ordersDescription
+            }));
+        }
+
+        fragment.appendChild(grid);
+
+        container.innerHTML = '';
+        container.appendChild(fragment);
+    }
+
+    createWarehouseStatsItem({ label, value = '', description = '', modifier = '' }) {
+        const item = document.createElement('div');
+        item.className = 'warehouse-stats__item';
+        if (modifier) {
+            item.classList.add(`warehouse-stats__item--${modifier}`);
+        }
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'warehouse-stats__label';
+        labelEl.textContent = label;
+        item.appendChild(labelEl);
+
+        const valueEl = document.createElement('span');
+        valueEl.className = 'warehouse-stats__value';
+
+        if (modifier === 'loading') {
+            const spinner = document.createElement('span');
+            spinner.className = 'warehouse-stats__spinner';
+            spinner.setAttribute('aria-hidden', 'true');
+            valueEl.appendChild(spinner);
+        } else if (value !== null && value !== undefined && value !== '') {
+            valueEl.textContent = value;
+        } else {
+            valueEl.textContent = '—';
+        }
+
+        item.appendChild(valueEl);
+
+        if (description) {
+            const descriptionEl = document.createElement('span');
+            descriptionEl.className = 'warehouse-stats__description';
+            descriptionEl.textContent = description;
+            item.appendChild(descriptionEl);
+        }
+
+        return item;
+    }
+
+    createWarehouseStatsLoadingItem(label, message) {
+        return this.createWarehouseStatsItem({
+            label,
+            description: message,
+            modifier: 'loading'
+        });
+    }
+
+    createWarehouseStatsErrorItem(label, message) {
+        return this.createWarehouseStatsItem({
+            label,
+            description: message,
+            modifier: 'error'
+        });
+    }
+
+    normalizeWarehouseStatsResponse(data) {
+        const ordersTotal = this.toNumber(data?.orders_total);
+        const ordersForWarehouse = this.toNumber(data?.orders_for_warehouse);
+        let ordersPercentage = Number(data?.orders_percentage);
+        if (!Number.isFinite(ordersPercentage)) {
+            ordersPercentage = ordersTotal > 0
+                ? (ordersForWarehouse / ordersTotal) * 100
+                : 0;
+        }
+
+        ordersPercentage = Math.min(Math.max(ordersPercentage, 0), 100);
+        const departuresUnique = this.toNumber(data?.departures_unique ?? data?.departure_dates);
+        const departuresTotal = this.toNumber(data?.departures_total ?? data?.schedules_total);
+
+        return {
+            marketplace: data?.marketplace || this.filters.marketplace || '',
+            warehouse: data?.warehouse || this.filters.warehouse || '',
+            ordersTotal,
+            ordersForWarehouse,
+            ordersPercentage,
+            departuresUnique,
+            departuresTotal
+        };
+    }
+
+    toNumber(value) {
+        const numeric = Number(value);
+        return Number.isFinite(numeric) ? numeric : 0;
+    }
+
+    formatNumber(value, options = {}) {
+        const numeric = Number(value);
+        const safeValue = Number.isFinite(numeric) ? numeric : 0;
+        const { maximumFractionDigits = 0 } = options;
+        return new Intl.NumberFormat('ru-RU', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits
+        }).format(safeValue);
+    }
+
+    formatPercentage(value) {
+        const numeric = Number(value);
+        const safeValue = Number.isFinite(numeric) ? numeric : 0;
+        return new Intl.NumberFormat('ru-RU', {
+            minimumFractionDigits: safeValue > 0 && safeValue < 1 ? 1 : 0,
+            maximumFractionDigits: safeValue > 0 ? 1 : 0
+        }).format(safeValue);
     }
 
     async loadSchedules() {
@@ -491,6 +911,7 @@ class ScheduleManager {
 
         this.isLoadingSchedules = true;
         this.renderScheduleGrid();
+        this.renderWarehouseStats();
 
         try {
             const params = new URLSearchParams({
@@ -523,6 +944,7 @@ class ScheduleManager {
         if (!this.filters.marketplace || !this.filters.warehouse) {
             this.filteredSchedules = [];
             this.renderScheduleGrid();
+            this.renderWarehouseStats();
             return;
         }
 
@@ -533,6 +955,7 @@ class ScheduleManager {
         });
 
         this.renderScheduleGrid();
+        this.renderWarehouseStats();
     }
 
     renderScheduleGrid() {
@@ -780,6 +1203,7 @@ class ScheduleManager {
         this.pendingSelections.marketplace = '';
         this.pendingSelections.warehouse = '';
         this.currentStep = 'marketplace';
+        this.clearWarehouseStats();
 
         this.applyStepState('marketplace', { active: true, complete: false });
         this.applyStepState('warehouse', { active: false, complete: false });
@@ -788,9 +1212,7 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
 
-        if (this.elements.marketplaceSelect) {
-            this.elements.marketplaceSelect.value = '';
-        }
+        this.setActiveMarketplaceCard('');
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = '';
@@ -799,6 +1221,7 @@ class ScheduleManager {
         this.renderMarketplaces();
         this.renderWarehouses();
         this.renderScheduleGrid();
+        this.renderWarehouseStats();
     }
 
     getCurrentSelection() {
