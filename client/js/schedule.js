@@ -994,6 +994,7 @@ class ScheduleManager {
         return departureStart >= todayStart;
     }
 
+
     normalizeScheduleForModal(schedule) {
         if (!schedule || typeof schedule !== 'object') {
             return {
@@ -1157,6 +1158,14 @@ class ScheduleManager {
 
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
+
+
+            if (!value) {
+                return Number.MAX_SAFE_INTEGER;
+            }
+            const timestamp = Date.parse(value);
+            return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+
         };
 
         const result = Array.from(groups.values()).map((group) => ({
@@ -1477,6 +1486,14 @@ class ScheduleManager {
 
         return `
             <article class="schedule-card" data-group="${safeGroupIdentifier}">
+
+
+        const groupKey = JSON.stringify(group?.key ?? '') || 'null';
+        const groupIdentifier = group?.key ?? '';
+
+        return `
+            <article class="schedule-card" data-group="${this.escapeHtml(String(groupIdentifier))}">
+
                 <div class="schedule-status-indicator status-${statusClass}"></div>
                 <div class="schedule-card-content">
                     <header class="schedule-card-header">
@@ -1521,6 +1538,10 @@ class ScheduleManager {
                             data-group-key="${safeGroupIdentifier}"
                             data-schedule-id="${safeScheduleId}"
                         >
+
+
+                        <button class="create-order-btn" onclick="window.ScheduleManager.handleCreateOrderClick(event, ${groupKey})">
+
                             <i class="fas fa-plus"></i>
                             Создать заявку
                         </button>
@@ -1571,6 +1592,45 @@ class ScheduleManager {
         if (!potentialGroupKey && button?.dataset?.groupKey) {
             potentialGroupKey = button.dataset.groupKey;
         }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+
+        if (fallbackScheduleId) {
+            this.createOrderForSchedule(fallbackScheduleId);
+        }
+    }
+
+    animateActionButton(button) {
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        button.classList.remove('is-pressed');
+        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
+        void button.offsetWidth;
+        button.classList.add('is-pressed');
+        button.addEventListener('animationend', () => {
+            button.classList.remove('is-pressed');
+        }, { once: true });
+
+        const potentialGroupKey = typeof scheduleId === 'string'
+            ? scheduleId
+            : '';
 
         if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
             this.createOrderForScheduleGroup(potentialGroupKey);
