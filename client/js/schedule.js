@@ -992,6 +992,7 @@ class ScheduleManager {
         return departureStart >= todayStart;
     }
 
+
     normalizeScheduleForModal(schedule) {
         if (!schedule || typeof schedule !== 'object') {
             return {
@@ -1087,6 +1088,7 @@ class ScheduleManager {
                 return;
             }
 
+
             const details = this.normalizeScheduleForModal(schedule);
             const departureKey = this.getScheduleDepartureKey(schedule)
                 || details.accept_date
@@ -1155,6 +1157,12 @@ class ScheduleManager {
 
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
+
+            if (!value) {
+                return Number.MAX_SAFE_INTEGER;
+            }
+            const timestamp = Date.parse(value);
+            return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
         };
 
         const result = Array.from(groups.values()).map((group) => ({
