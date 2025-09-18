@@ -32,6 +32,7 @@ function normalizeWarehouseValue(string $value): string
     return mb_strtolower(trim($value), 'UTF-8');
 }
 
+
 function countOrdersByMarketplace(mysqli $conn, string $marketplace, ?string $warehouse = null): int
 {
     $sql = "SELECT COUNT(*) AS total FROM orders WHERE is_deleted = 0 AND status <> 'Удалён клиентом'";
@@ -60,6 +61,8 @@ function countOrdersByMarketplace(mysqli $conn, string $marketplace, ?string $wa
     if ($warehouse !== null && $warehouse !== '') {
         $sql        .= ' AND LOWER(TRIM(schedule_warehouses)) = ?';
         $params[]    = normalizeWarehouseValue($warehouse);
+
+        $params[]    = mb_strtolower($warehouse, 'UTF-8');
         $types      .= 's';
     }
 
@@ -110,6 +113,9 @@ try {
     $ordersTotal = countOrdersByMarketplace($conn, $marketplace);
     $ordersForWarehouse = countOrdersByMarketplace($conn, $marketplace, $warehouse);
     $schedulesStats = countSchedulesByWarehouse($conn, $marketplace, $warehouse);
+try {
+    $ordersTotal = countOrdersByMarketplace($conn, $marketplace);
+    $ordersForWarehouse = countOrdersByMarketplace($conn, $marketplace, $warehouse);
 
     $percentage = 0.0;
     if ($ordersTotal > 0) {
@@ -125,6 +131,7 @@ try {
         'orders_percentage' => round($percentage, 2),
         'departures_unique' => $schedulesStats['departures_unique'],
         'departures_total' => $schedulesStats['schedules_total'],
+
     ], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);

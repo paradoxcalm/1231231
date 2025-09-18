@@ -179,6 +179,20 @@ class ScheduleManager {
         });
     }
 
+    setActiveMarketplaceCard(value) {
+        const container = this.elements.marketplaceSelect;
+        if (!container) {
+            return;
+        }
+
+        const cards = container.querySelectorAll('.marketplace-card');
+        cards.forEach((card) => {
+            const isActive = Boolean(value) && card.dataset.value === value;
+            card.classList.toggle('is-active', isActive);
+            card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    }
+
     updateMarketplaceConfirmState() {
         const button = this.stepElements.marketplaceConfirmBtn;
         if (button) {
@@ -720,6 +734,10 @@ class ScheduleManager {
         container.classList.toggle('is-visible', shouldShow);
 
         if (!shouldShow) {
+        const hasSelection = Boolean(this.filters.marketplace && this.filters.warehouse);
+        container.classList.toggle('is-visible', hasSelection);
+
+        if (!hasSelection) {
             container.innerHTML = '';
             container.setAttribute('aria-hidden', 'true');
             return;
@@ -747,6 +765,23 @@ class ScheduleManager {
         title.className = 'warehouse-stats__title';
         title.textContent = 'Статистика по складу';
         header.appendChild(title);
+        title.textContent = 'Статистика склада';
+        header.appendChild(title);
+
+        const meta = document.createElement('span');
+        meta.className = 'warehouse-stats__subtitle';
+        const marketplaceLabel = this.getMarketplaceLabel(this.filters.marketplace) || this.filters.marketplace;
+        const metaParts = [];
+        if (this.filters.warehouse) {
+            metaParts.push(`Склад «${this.filters.warehouse}»`);
+        }
+        if (marketplaceLabel) {
+            metaParts.push(`Маркетплейс «${marketplaceLabel}»`);
+        }
+        if (metaParts.length > 0) {
+            meta.textContent = metaParts.join(' · ');
+            header.appendChild(meta);
+        }
         fragment.appendChild(header);
 
         const grid = document.createElement('div');
@@ -762,6 +797,27 @@ class ScheduleManager {
             const stats = statsState.data || {
                 departuresUnique: 0,
                 departuresTotal: 0,
+        if (this.isLoadingSchedules) {
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Отправления', 'Загружаем расписание...'));
+        } else {
+            const stats = this.getWarehouseDepartureStats();
+            const description = stats.uniqueDepartureDates === 0
+                ? 'Нет активных отправлений'
+                : `По уникальным датам выезда (${this.formatNumber(stats.totalSchedules)} расписаний)`;
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Отправления',
+                value: this.formatNumber(stats.uniqueDepartureDates),
+                description
+            }));
+        }
+
+        if (this.warehouseStats.isLoading) {
+            grid.appendChild(this.createWarehouseStatsLoadingItem('Заказы', 'Обновляем статистику заказов...'));
+        } else if (this.warehouseStats.error) {
+            grid.appendChild(this.createWarehouseStatsErrorItem('Заказы', this.warehouseStats.error));
+        } else {
+            const stats = this.warehouseStats.data || {
                 ordersTotal: 0,
                 ordersForWarehouse: 0,
                 ordersPercentage: 0
@@ -784,10 +840,26 @@ class ScheduleManager {
                 label: 'Доля заявок',
                 value: `${percentageValue}%`,
                 description: ordersDescription
+
+            const hasOrders = stats.ordersTotal > 0;
+            const ordersValue = this.formatNumber(stats.ordersForWarehouse);
+            const description = hasOrders
+                ? `${this.formatPercentage(stats.ordersPercentage)}% от ${this.formatNumber(stats.ordersTotal)} заказов`
+                : 'Для этого маркетплейса ещё нет заказов';
+
+            grid.appendChild(this.createWarehouseStatsItem({
+                label: 'Заказы',
+                value: ordersValue,
+                description
             }));
         }
 
         fragment.appendChild(grid);
+
+        const note = document.createElement('p');
+        note.className = 'warehouse-stats__note';
+        note.textContent = 'Статистика заказов учитывает только выбранный маркетплейс.';
+        fragment.appendChild(note);
 
         container.innerHTML = '';
         container.appendChild(fragment);
@@ -847,6 +919,62 @@ class ScheduleManager {
         });
     }
 
+    getWarehouseDepartureStats() {
+        if (!Array.isArray(this.filteredSchedules) || this.filteredSchedules.length === 0) {
+            return {
+                totalSchedules: 0,
+                uniqueDepartureDates: 0
+            };
+        }
+
+        const uniqueDates = new Set();
+        let total = 0;
+
+        this.filteredSchedules.forEach((schedule) => {
+            if (!schedule) {
+                return;
+            }
+
+            total += 1;
+            const departureKey = this.getScheduleDepartureKey(schedule);
+            if (departureKey) {
+                uniqueDates.add(departureKey);
+            }
+        });
+
+        return {
+            totalSchedules: total,
+            uniqueDepartureDates: uniqueDates.size
+        };
+    }
+
+    getScheduleDepartureKey(schedule) {
+        const value = schedule?.departure_date
+            || schedule?.departureDate
+            || schedule?.accept_date
+            || schedule?.acceptDate
+            || '';
+
+        if (!value) {
+            return '';
+        }
+
+        const raw = String(value).trim();
+        if (!raw) {
+            return '';
+        }
+
+        if (raw.includes('T')) {
+            return raw.split('T')[0];
+        }
+
+        if (raw.includes(' ')) {
+            return raw.split(' ')[0];
+        }
+
+        return raw;
+    }
+
     normalizeWarehouseStatsResponse(data) {
         const ordersTotal = this.toNumber(data?.orders_total);
         const ordersForWarehouse = this.toNumber(data?.orders_for_warehouse);
@@ -869,6 +997,8 @@ class ScheduleManager {
             ordersPercentage,
             departuresUnique,
             departuresTotal
+
+            ordersPercentage
         };
     }
 
