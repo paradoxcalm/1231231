@@ -81,8 +81,8 @@ if (empty($_SESSION['user_id'])) {
                 <p>Выберите параметры, чтобы увидеть доступные отправления</p>
             </div>
 
-            <div class="schedule-panel">
-                <div class="schedule-filters">
+            <div class="schedule-panel" id="schedulePanel">
+                <div class="schedule-filters" id="scheduleFilters">
                     <div class="schedule-steps" id="scheduleSteps">
                         <div class="schedule-step is-active" data-step="marketplace">
                             <div class="step-header">
@@ -157,7 +157,19 @@ if (empty($_SESSION['user_id'])) {
                 </div>
 
                 <div class="schedule-results">
-                    <p class="schedule-info" id="scheduleSubtitle">Чтобы увидеть расписание, выберите маркетплейс и склад</p>
+                    <div class="schedule-results-header">
+                        <p class="schedule-info" id="scheduleSubtitle">Чтобы увидеть расписание, выберите маркетплейс и склад</p>
+                        <button
+                            type="button"
+                            class="filter-toggle-btn"
+                            id="filterToggleBtn"
+                            aria-expanded="true"
+                            aria-controls="scheduleFilters"
+                        >
+                            <i class="fas fa-sliders-h filter-toggle-icon" aria-hidden="true"></i>
+                            <span class="filter-toggle-label">Скрыть фильтр</span>
+                        </button>
+                    </div>
                     <div class="schedule-grid" id="scheduleGrid"></div>
                 </div>
             </div>

@@ -27,6 +27,13 @@ class ScheduleManager {
         this.scheduleGroupsByKey = new Map();
         this.boundHandleScheduleGridClick = this.handleScheduleGridClick.bind(this);
         this.scheduleGridElement = null;
+        this.schedulePanelElement = document.getElementById('schedulePanel');
+        this.filtersContainer = document.getElementById('scheduleFilters');
+        this.scheduleResultsElement = document.querySelector('.schedule-results');
+        this.filterToggleButton = document.getElementById('filterToggleBtn');
+        this.isFiltersCollapsed = false;
+        this.hasAppliedFilterCollapseState = false;
+
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
@@ -56,6 +63,7 @@ class ScheduleManager {
 
     init() {
         this.setupEventListeners();
+        this.setFiltersCollapsed(false);
         this.applyStepState('marketplace', { active: true, complete: false });
         this.applyStepState('warehouse', { active: false, complete: false });
         this.updateMarketplaceConfirmState();
@@ -68,6 +76,12 @@ class ScheduleManager {
 
     setupEventListeners() {
         const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
+
+        if (this.filterToggleButton) {
+            this.filterToggleButton.addEventListener('click', () => {
+                this.toggleFiltersCollapsed();
+            });
+        }
 
         if (marketplaceSelect) {
             marketplaceSelect.addEventListener('click', (event) => {
@@ -141,6 +155,55 @@ class ScheduleManager {
         }
     }
 
+    toggleFiltersCollapsed() {
+        const nextState = !this.isFiltersCollapsed;
+        this.setFiltersCollapsed(nextState, { scrollIntoView: nextState });
+
+        if (!nextState && this.filtersContainer instanceof HTMLElement) {
+            this.filtersContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    setFiltersCollapsed(collapsed, { scrollIntoView = false } = {}) {
+        const shouldCollapse = Boolean(collapsed);
+        const hasStateChanged = this.isFiltersCollapsed !== shouldCollapse || !this.hasAppliedFilterCollapseState;
+
+        this.isFiltersCollapsed = shouldCollapse;
+
+        if (hasStateChanged && this.schedulePanelElement instanceof HTMLElement) {
+            this.schedulePanelElement.classList.toggle('filters-collapsed', shouldCollapse);
+            this.schedulePanelElement.classList.toggle('filters-expanded', !shouldCollapse);
+        }
+
+        this.hasAppliedFilterCollapseState = true;
+        this.updateFilterToggleButton();
+
+        if (shouldCollapse && scrollIntoView && this.scheduleResultsElement instanceof HTMLElement) {
+            this.scheduleResultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    updateFilterToggleButton() {
+        const button = this.filterToggleButton;
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        const isCollapsed = this.isFiltersCollapsed;
+        const label = button.querySelector('.filter-toggle-label');
+        if (label) {
+            label.textContent = isCollapsed ? 'ФИЛЬТР' : 'Скрыть фильтр';
+        }
+
+        const icon = button.querySelector('.filter-toggle-icon');
+        if (icon) {
+            icon.className = `fas ${isCollapsed ? 'fa-sliders-h' : 'fa-chevron-up'} filter-toggle-icon`;
+        }
+
+        button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        button.setAttribute('aria-label', isCollapsed ? 'Открыть фильтр расписания' : 'Скрыть фильтр расписания');
+    }
+
     applyStepState(stepName, { active = false, complete = false } = {}) {
         const stepKey = `${stepName}Step`;
         const step = this.stepElements[stepKey];
@@ -202,6 +265,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = '';
         this.updateWarehouseConfirmState();
         this.clearWarehouseSummary();
+        this.setFiltersCollapsed(false);
     }
 
     openMarketplaceStep() {
@@ -214,6 +278,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
         this.setActiveMarketplaceCard(this.pendingSelections.marketplace);
+        this.setFiltersCollapsed(false);
     }
 
     openWarehouseStep() {
@@ -227,6 +292,7 @@ class ScheduleManager {
         this.applyStepState('warehouse', { active: true, complete: false });
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
+        this.setFiltersCollapsed(false);
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = this.filters.warehouse || '';
@@ -240,6 +306,7 @@ class ScheduleManager {
 
         if (!value) {
             this.clearWarehouseSummary();
+            this.setFiltersCollapsed(false);
         }
     }
 
@@ -260,6 +327,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
         this.applyStepState('warehouse', { active: false, complete: true });
+        this.setFiltersCollapsed(true, { scrollIntoView: true });
     }
 
     showMarketplaceSummary() {
@@ -572,6 +640,7 @@ class ScheduleManager {
             this.renderScheduleGrid();
             this.clearWarehouseSummary();
             this.clearWarehouseStats();
+            this.setFiltersCollapsed(false);
             return;
         }
 
@@ -994,7 +1063,6 @@ class ScheduleManager {
         return departureStart >= todayStart;
     }
 
-
     normalizeScheduleForModal(schedule) {
         if (!schedule || typeof schedule !== 'object') {
             return {
@@ -1160,11 +1228,13 @@ class ScheduleManager {
             return normalized.getTime();
 
 
+
             if (!value) {
                 return Number.MAX_SAFE_INTEGER;
             }
             const timestamp = Date.parse(value);
             return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+
 
         };
 
@@ -1232,6 +1302,29 @@ class ScheduleManager {
         }
 
         return `Доступно ${safeCount} города`;
+    }
+
+    createExtraSectionId(groupIdentifier, scheduleId, index = 0) {
+        const parts = [];
+
+        if (groupIdentifier) {
+            parts.push(groupIdentifier);
+        }
+
+        if (scheduleId) {
+            parts.push(scheduleId);
+        }
+
+        parts.push(index);
+
+        const base = parts
+            .map((part) => String(part))
+            .join('-')
+            .replace(/[^a-zA-Z0-9_-]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-|-$/g, '');
+
+        return `schedule-extra-${base || `group-${index}`}`;
     }
 
     formatDeliverySummary(group) {
@@ -1452,6 +1545,121 @@ class ScheduleManager {
 
         this.updateScheduleSubtitle(`Доступные даты отправления: ${this.groupedSchedules.length}`);
         container.innerHTML = this.groupedSchedules
+            .map((group, index) => this.renderScheduleCard(group, index))
+            .join('');
+    }
+
+    renderScheduleCard(group, index = 0) {
+        const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
+            ? group.scheduleDetails[0]
+            : this.normalizeScheduleForModal(null);
+
+        const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
+        const marketplace = this.escapeHtml(marketplaceLabel || '—');
+        const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
+        const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
+        const warehouse = this.escapeHtml(warehouseName || '—');
+        const departureDate = this.escapeHtml(this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate));
+        const deliveryDate = this.escapeHtml(this.formatDeliverySummary(group));
+        const acceptTime = this.escapeHtml(this.formatAcceptTimeInfo(group));
+        const driver = this.escapeHtml(baseDetails.driver_name || baseDetails.driverName || '—');
+        const carInfo = this.escapeHtml([
+            baseDetails.car_brand || baseDetails.carBrand,
+            baseDetails.car_number || baseDetails.carNumber
+        ].filter(Boolean).join(' ') || '—');
+        const statusInfo = this.getGroupStatusInfo(group);
+        const statusText = this.escapeHtml(statusInfo.text || '—');
+        const statusClass = statusInfo.className;
+        const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
+        const citiesSummary = this.escapeHtml(this.formatCityCount(citiesCount));
+        const groupIdentifier = group?.key ?? '';
+        const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
+        const safeGroupIdentifier = this.escapeHtml(String(groupIdentifier || ''));
+        const safeScheduleId = this.escapeHtml(String(primaryScheduleId || ''));
+        const extraSectionId = this.escapeHtml(
+            this.createExtraSectionId(groupIdentifier, primaryScheduleId, index)
+        );
+        const ariaControlsAttribute = extraSectionId ? ` aria-controls="${extraSectionId}"` : '';
+
+        return `
+            <article class="schedule-card" data-group="${safeGroupIdentifier}">
+                <div class="schedule-status-indicator status-${statusClass}"></div>
+                <div class="schedule-card-body">
+                    <div class="schedule-card-main">
+                        <header class="schedule-card-header">
+                            <span class="schedule-card-warehouse">${warehouse}</span>
+                            <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
+                        </header>
+                        <div class="schedule-card-dates">
+                            <div class="schedule-dates-flow">
+                                <span>Дата выезда</span>
+                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                                <span>Дата сдачи</span>
+                            </div>
+                            <div class="schedule-dates-values">
+                                <div class="date-item">
+                                    <i class="fas fa-truck date-icon" aria-hidden="true"></i>
+                                    <div class="date-text">
+                                        <span class="date-label">Выезд</span>
+                                        <span class="date-value">${departureDate || '—'}</span>
+                                    </div>
+                                </div>
+                                <div class="date-item">
+                                    <i class="fas fa-box-open date-icon" aria-hidden="true"></i>
+                                    <div class="date-text">
+                                        <span class="date-label">Сдача</span>
+                                        <span class="date-value">${deliveryDate}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
+                        <div class="schedule-status status-${statusClass}">
+                            <span class="status-dot"></span>
+                            ${statusText}
+                        </div>
+                        <div class="schedule-meta">
+                            <div class="meta-item">
+                                <span class="meta-label">Время приёмки</span>
+                                <span class="meta-value">${acceptTime}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Водитель</span>
+                                <span class="meta-value">${driver}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Автомобиль</span>
+                                <span class="meta-value">${carInfo}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Города</span>
+                                <span class="meta-value">${citiesSummary}</span>
+                            </div>
+                        </div>
+                        <div class="schedule-action">
+                            <button
+                                type="button"
+                                class="create-order-btn"
+                                data-group-key="${safeGroupIdentifier}"
+                                data-schedule-id="${safeScheduleId}"
+                            >
+                                <i class="fas fa-plus"></i>
+                                Создать заявку
+                            </button>
+                        </div>
+                    </div>
+                    <div class="schedule-card-footer">
+                        <button
+                            type="button"
+                            class="schedule-card-toggle"
+                            data-toggle-group="${safeGroupIdentifier}"
+                            aria-expanded="false"${ariaControlsAttribute}
+                        >
+                            <span class="toggle-label">Развернуть</span>
+                            <i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
+                        </button>
+
             .map(group => this.renderScheduleCard(group))
             .join('');
     }
@@ -1617,6 +1825,107 @@ class ScheduleManager {
             this.createOrderForSchedule(fallbackScheduleId);
         }
     }
+
+    handleScheduleGridClick(event) {
+        if (!event || !(event.target instanceof HTMLElement)) {
+            return;
+        }
+
+        const toggleButton = event.target.closest('.schedule-card-toggle');
+        if (toggleButton) {
+            const card = toggleButton.closest('.schedule-card');
+            if (card) {
+                event.preventDefault();
+                this.toggleScheduleCardExpansion(card, toggleButton);
+            }
+            return;
+        }
+
+        const button = event.target.closest('.create-order-btn');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const currentTarget = event.currentTarget;
+        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
+            return;
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    toggleScheduleCardExpansion(card, explicitButton) {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldExpand = !card.classList.contains('is-expanded');
+        card.classList.toggle('is-expanded', shouldExpand);
+
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : card.querySelector('.schedule-card-toggle');
+
+        const extraSection = card.querySelector('.schedule-card-extra');
+        if (extraSection instanceof HTMLElement) {
+            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
+        }
+
+        if (button) {
+            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+            const label = button.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
+            }
+
+            const icon = button.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
+            }
+        }
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+
 
     animateActionButton(button) {
         if (!(button instanceof HTMLElement)) {
@@ -1847,6 +2156,7 @@ class ScheduleManager {
         this.clearWarehouseSummary();
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
+        this.setFiltersCollapsed(false);
 
         this.setActiveMarketplaceCard('');
 
