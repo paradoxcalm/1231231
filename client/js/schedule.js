@@ -84,6 +84,16 @@ class ScheduleManager {
                 }
 
                 this.handleWarehouseChange(value);
+
+        if (marketplaceSelect) {
+            marketplaceSelect.addEventListener('change', (event) => {
+                this.handleMarketplaceChange(event.target.value);
+            });
+        }
+
+        if (warehouseSelect) {
+            warehouseSelect.addEventListener('change', (event) => {
+                this.handleWarehouseChange(event.target.value);
             });
         }
 
@@ -146,6 +156,7 @@ class ScheduleManager {
             step.classList.remove('is-active');
             step.classList.remove('is-animating');
         }
+        step.classList.toggle('is-active', active);
         step.classList.toggle('is-complete', complete);
     }
 
@@ -184,6 +195,7 @@ class ScheduleManager {
         this.pendingSelections.marketplace = this.filters.marketplace;
         this.showMarketplaceSummary();
         this.renderMarketplaces();
+
         this.applyStepState('marketplace', { active: false, complete: true });
         this.applyStepState('warehouse', { active: true, complete: false });
         this.currentStep = 'warehouse';
@@ -204,6 +216,10 @@ class ScheduleManager {
         this.updateWarehouseConfirmState();
         this.renderMarketplaces();
         this.renderWarehouses();
+
+        if (this.elements.marketplaceSelect) {
+            this.elements.marketplaceSelect.value = this.filters.marketplace || '';
+        }
     }
 
     openWarehouseStep() {
@@ -219,6 +235,9 @@ class ScheduleManager {
         this.updateWarehouseConfirmState();
 
         this.renderWarehouses();
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = this.filters.warehouse || '';
+        }
     }
 
     handleWarehouseChange(value) {
@@ -253,6 +272,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
         this.renderWarehouses();
+
         this.applyStepState('warehouse', { active: false, complete: true });
     }
 
@@ -385,6 +405,10 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
         this.clearWarehouseSummary();
+
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = '';
+        }
 
         this.warehouseOptions = [];
         this.schedules = [];
@@ -917,6 +941,14 @@ class ScheduleManager {
         this.clearWarehouseSummary();
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
+
+        if (this.elements.marketplaceSelect) {
+            this.elements.marketplaceSelect.value = '';
+        }
+
+        if (this.elements.warehouseSelect) {
+            this.elements.warehouseSelect.value = '';
+        }
 
         this.renderMarketplaces();
         this.renderWarehouses();

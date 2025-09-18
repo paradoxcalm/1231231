@@ -101,6 +101,10 @@ if (empty($_SESSION['user_id'])) {
                                     <div class="option-grid marketplace-grid" id="marketplaceOptions" role="group" aria-label="Выбор маркетплейса">
                                         <div class="option-placeholder">Загрузка маркетплейсов...</div>
                                     </div>
+                                    <label for="marketplaceFilter">Маркетплейс</label>
+                                    <select id="marketplaceFilter" class="filter-select">
+                                        <option value="">Загрузка...</option>
+                                    </select>
                                 </div>
                                 <div class="step-actions">
                                     <button type="button" class="step-next-btn" id="confirmMarketplace" disabled>Далее</button>
@@ -126,6 +130,11 @@ if (empty($_SESSION['user_id'])) {
                                     <div class="option-grid warehouse-grid is-disabled" id="warehouseOptions" role="group" aria-label="Выбор склада">
                                         <div class="option-placeholder">Сначала выберите маркетплейс</div>
                                     </div>
+
+                                    <label for="warehouseFilter">Склад</label>
+                                    <select id="warehouseFilter" class="filter-select" disabled>
+                                        <option value="">Сначала выберите маркетплейс</option>
+                                    </select>
                                 </div>
                                 <div class="step-actions">
                                     <button type="button" class="step-prev-btn" id="backToMarketplaceBtn">Назад</button>
