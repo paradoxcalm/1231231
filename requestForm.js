@@ -209,6 +209,45 @@ function normalizeSchedule(scheduleOrId, fallbackCity = '', fallbackWarehouse = 
     const sender = schedule.sender || schedule.company_name || '';
     const marketplace = schedule.marketplace || fallbackMarketplace || '';
 
+    const mapScheduleDetails = (item = {}) => {
+        const itemCity = item.city || item.city_name || item.route_city || '';
+        const itemWarehouse = item.warehouses || item.warehouse || item.route_warehouse || warehouse || '';
+        const itemAccept = item.accept_date || item.acceptDate || item.departure_date || item.departureDate || acceptDate || '';
+        const itemDelivery = item.delivery_date || item.deliveryDate || deliveryDate || '';
+        const itemAcceptTime = item.accept_time || item.acceptTime || '';
+        const itemDriverName = item.driver_name || item.driverName || '';
+        const itemDriverPhone = item.driver_phone || item.driverPhone || '';
+        const itemCarNumber = item.car_number || item.carNumber || '';
+        const itemCarBrand = item.car_brand || item.carBrand || '';
+        const itemSender = item.sender || item.company_name || sender || '';
+        const itemMarketplace = item.marketplace || marketplace || '';
+
+        return {
+            id: item.id ?? item.schedule_id ?? '',
+            city: itemCity,
+            warehouse: itemWarehouse,
+            acceptDate: itemAccept,
+            deliveryDate: itemDelivery,
+            acceptTime: itemAcceptTime,
+            driverName: itemDriverName,
+            driverPhone: itemDriverPhone,
+            carNumber: itemCarNumber,
+            carBrand: itemCarBrand,
+            sender: itemSender,
+            marketplace: itemMarketplace
+        };
+    };
+
+    const rawAvailable = Array.isArray(schedule.available_schedules)
+        ? schedule.available_schedules
+        : Array.isArray(schedule.availableSchedules)
+            ? schedule.availableSchedules
+            : [];
+
+    const availableSchedules = rawAvailable
+        .map((item) => mapScheduleDetails(item))
+        .filter((item) => item.city || item.id);
+
     return {
         id: schedule.id ?? schedule.schedule_id ?? '',
         city,
@@ -221,7 +260,8 @@ function normalizeSchedule(scheduleOrId, fallbackCity = '', fallbackWarehouse = 
         carNumber,
         carBrand,
         sender,
-        marketplace
+        marketplace,
+        availableSchedules
     };
 }
 
@@ -311,6 +351,16 @@ function fillLegacyFormFields(container, scheduleData) {
         formElement.dataset.marketplace = marketplace || '';
         formElement.dataset.initialCity = city || '';
         formElement.dataset.initialWarehouse = warehouse || '';
+        if (Array.isArray(scheduleData.availableSchedules) && scheduleData.availableSchedules.length > 0) {
+            try {
+                formElement.dataset.availableSchedules = JSON.stringify(scheduleData.availableSchedules);
+            } catch (err) {
+                console.warn('Не удалось сохранить список расписаний в атрибуте формы заявки:', err);
+                delete formElement.dataset.availableSchedules;
+            }
+        } else {
+            delete formElement.dataset.availableSchedules;
+        }
     }
 
     const status = container.querySelector('#status');
