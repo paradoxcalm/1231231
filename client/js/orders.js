@@ -11,15 +11,11 @@ class OrdersManager {
         this.setupTabs();
         const btn = document.getElementById('createOrderBtn');
         btn?.addEventListener('click', () => {
-            if (typeof window.openClientRequestFormModal === 'function') {
-                window.openClientRequestFormModal({});
-            } else if (typeof window.openRequestFormModal === 'function') {
-                window.openRequestFormModal({}, '', '', '', {
-                    modalId: 'clientRequestModal',
-                    contentId: 'clientRequestModalContent'
-                });
+            if (window.app && typeof window.app.switchSection === 'function') {
+                window.app.switchSection('schedule');
+                this.syncNavigationState('schedule');
             } else {
-                console.error('openRequestFormModal is not loaded');
+                console.error('App instance is not available');
             }
         });
         this.loadOrders();
@@ -42,6 +38,26 @@ class OrdersManager {
         this.currentTab = tab;
         this.filterOrders();
         this.renderOrders();
+    }
+
+    syncNavigationState(sectionName) {
+        const desktopNavLinks = document.querySelectorAll('.nav-link');
+        desktopNavLinks.forEach(link => {
+            if (link.dataset.section === sectionName) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+
+        const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
+        mobileNavItems.forEach(item => {
+            if (item.dataset.section === sectionName) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
     }
 
     async loadOrders() {
