@@ -25,6 +25,8 @@ class ScheduleManager {
         this.currentWarehouseStatsKey = '';
         this.activeWarehouseStatsController = null;
         this.scheduleGroupsByKey = new Map();
+        this.boundHandleScheduleGridClick = this.handleScheduleGridClick.bind(this);
+        this.scheduleGridElement = null;
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
@@ -1088,7 +1090,6 @@ class ScheduleManager {
                 return;
             }
 
-
             const details = this.normalizeScheduleForModal(schedule);
             const departureKey = this.getScheduleDepartureKey(schedule)
                 || details.accept_date
@@ -1392,6 +1393,14 @@ class ScheduleManager {
         const container = document.getElementById('scheduleGrid');
         if (!container) return;
 
+        if (this.scheduleGridElement !== container) {
+            if (this.scheduleGridElement) {
+                this.scheduleGridElement.removeEventListener('click', this.boundHandleScheduleGridClick);
+            }
+            container.addEventListener('click', this.boundHandleScheduleGridClick);
+            this.scheduleGridElement = container;
+        }
+
         container.classList.remove('is-empty');
 
         if (!this.filters.marketplace) {
@@ -1468,6 +1477,14 @@ class ScheduleManager {
         const statusClass = statusInfo.className;
         const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
         const citiesSummary = this.escapeHtml(this.formatCityCount(citiesCount));
+        const groupIdentifier = group?.key ?? '';
+        const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
+        const safeGroupIdentifier = this.escapeHtml(String(groupIdentifier || ''));
+        const safeScheduleId = this.escapeHtml(String(primaryScheduleId || ''));
+
+        return `
+            <article class="schedule-card" data-group="${safeGroupIdentifier}">
+
         const groupKey = JSON.stringify(group?.key ?? '') || 'null';
         const groupIdentifier = group?.key ?? '';
 
@@ -1511,6 +1528,13 @@ class ScheduleManager {
                         </div>
                     </div>
                     <div class="schedule-action">
+                        <button
+                            type="button"
+                            class="create-order-btn"
+                            data-group-key="${safeGroupIdentifier}"
+                            data-schedule-id="${safeScheduleId}"
+                        >
+
                         <button class="create-order-btn" onclick="window.ScheduleManager.handleCreateOrderClick(event, ${groupKey})">
                             <i class="fas fa-plus"></i>
                             Создать заявку
@@ -1521,17 +1545,81 @@ class ScheduleManager {
         `;
     }
 
-    handleCreateOrderClick(event, scheduleId) {
-        if (event && event.currentTarget instanceof HTMLElement) {
-            const button = event.currentTarget;
-            button.classList.remove('is-pressed');
-            // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
-            void button.offsetWidth;
-            button.classList.add('is-pressed');
-            button.addEventListener('animationend', () => {
-                button.classList.remove('is-pressed');
-            }, { once: true });
+    handleScheduleGridClick(event) {
+        if (!event || !(event.target instanceof HTMLElement)) {
+            return;
         }
+
+        const button = event.target.closest('.create-order-btn');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const currentTarget = event.currentTarget;
+        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
+            return;
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+
+        if (fallbackScheduleId) {
+            this.createOrderForSchedule(fallbackScheduleId);
+        }
+    }
+
+    animateActionButton(button) {
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        button.classList.remove('is-pressed');
+        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
+        void button.offsetWidth;
+        button.classList.add('is-pressed');
+        button.addEventListener('animationend', () => {
+            button.classList.remove('is-pressed');
+        }, { once: true });
 
         const potentialGroupKey = typeof scheduleId === 'string'
             ? scheduleId
