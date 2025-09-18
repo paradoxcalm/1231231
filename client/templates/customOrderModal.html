@@ -6,6 +6,8 @@
   <section class="modal-body request-modal__body">
     <div class="section-container modal-section request-modal__content">
       <form id="dataForm" enctype="multipart/form-data">
+        <h3 class="section-subtitle">ПРИЁМКА</h3>
+
         <input type="hidden" name="schedule_id" id="formScheduleId" value="">
         <input type="hidden" name="accept_date" id="acceptDateField" value="">
         <input type="hidden" name="delivery_date" id="deliveryDateField" value="">
@@ -13,54 +15,41 @@
         <input type="hidden" name="accept_time" id="acceptTimeField" value="">
         <input type="hidden" name="direction" id="directionField" value="">
 
-        <div class="request-modal__overview" role="group" aria-label="Основные параметры заявки">
-          <div class="request-overview__line request-overview__line--city">
-            <span class="request-overview__icon" aria-hidden="true">📍</span>
-            <div class="request-overview__content">
-              <label class="request-overview__label" for="city">Город отправления</label>
-              <div class="request-overview__control request-form__city-control">
-                <select id="city" name="city" class="request-form__city-select request-overview__select" autocomplete="off" required>
-                  <option value="" disabled selected>Выберите город</option>
-                </select>
-              </div>
-            </div>
+        <div class="request-modal__summary">
+          <div class="modal-row request-modal__summary-row">
+            <span class="modal-label">Направление:</span>
+            <span class="modal-value" id="legacyDirection">—</span>
           </div>
-          <div class="request-overview__line request-overview__line--direction">
-            <span class="request-overview__icon" aria-hidden="true">➡️</span>
-            <div class="request-overview__content">
-              <span class="request-overview__label">Направление</span>
-              <span class="request-overview__value request-overview__value--accent" id="legacyDirection" role="text" aria-live="polite">—</span>
-            </div>
-          </div>
-          <div class="request-overview__line request-overview__line--dates">
-            <span class="request-overview__icon" aria-hidden="true">🗓</span>
-            <div class="request-overview__content">
-              <span class="request-overview__label">Даты</span>
-              <span class="request-overview__value request-overview__value--accent" id="legacyDates" role="text" aria-live="polite">—</span>
-            </div>
+
+          <div class="modal-row request-modal__summary-row">
+            <span class="modal-label">Выезд → Сдача:</span>
+            <span class="modal-value" id="legacyDates">—</span>
           </div>
         </div>
 
-        <div class="request-modal__selection request-modal__selection--compact" aria-live="polite">
-          <div class="request-selection__details">
-            <div class="request-selection__line">
-              <span class="request-selection__icon" aria-hidden="true">🛒</span>
-              <div class="request-selection__content">
-                <span class="request-overview__label">Маркетплейс</span>
-                <span class="request-overview__value request-overview__value--accent" id="legacyMarketplace" role="text">—</span>
-              </div>
+        <div class="request-modal__selection" aria-live="polite">
+          <div class="request-modal__selection-info">
+            <div class="request-modal__selection-item">
+              <span class="request-modal__selection-label">Маркетплейс</span>
+              <span class="request-modal__selection-value" id="legacyMarketplace">—</span>
             </div>
-            <div class="request-selection__line">
-              <span class="request-selection__icon" aria-hidden="true">🏬</span>
-              <div class="request-selection__content">
-                <span class="request-overview__label">Склад</span>
-                <span class="request-overview__value request-overview__value--accent" id="legacyWarehouse" role="text">—</span>
-              </div>
+            <div class="request-modal__selection-item">
+              <span class="request-modal__selection-label">Склад</span>
+              <span class="request-modal__selection-value" id="legacyWarehouse">—</span>
             </div>
           </div>
           <button type="button" class="request-modal__selection-change" data-action="change-marketplace" aria-label="Изменить маркетплейс и склад">
             Изменить
           </button>
+        </div>
+
+        <div class="form-group request-form__group request-form__city-group">
+          <label for="city">Город:</label>
+          <div class="request-form__city-control">
+            <select id="city" name="city" class="request-form__city-select" autocomplete="off" required>
+              <option value="" disabled selected>Выберите город</option>
+            </select>
+          </div>
         </div>
         <input type="hidden" id="warehouses" name="warehouses" value="">
         <input type="hidden" id="driver_name" name="driver_name" value="">
