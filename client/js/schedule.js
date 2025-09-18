@@ -1602,27 +1602,15 @@ class ScheduleManager {
                     </header>
 
                     <div class="schedule-card-dates">
-                        <div class="schedule-dates-flow">
-                            <span>Дата выезда</span>
-                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                            <span>Дата сдачи</span>
+                        <div class="schedule-dates-header">
+                            <span class="schedule-dates-label schedule-dates-label--departure">ВЫЕЗД:</span>
+                            <i class="fas fa-truck schedule-dates-icon" aria-hidden="true"></i>
+                            <span class="schedule-dates-label schedule-dates-label--delivery">СДАЧА:</span>
                         </div>
 
                         <div class="schedule-dates-values">
-                            <div class="date-item">
-                                <i class="fas fa-truck date-icon" aria-hidden="true"></i>
-                                <div class="date-text">
-                                    <span class="date-label">Выезд</span>
-                                    <span class="date-value">${departureDate || '—'}</span>
-                                </div>
-                            </div>
-                            <div class="date-item">
-                                <i class="fas fa-box-open date-icon" aria-hidden="true"></i>
-                                <div class="date-text">
-                                    <span class="date-label">Сдача</span>
-                                    <span class="date-value">${deliveryDate}</span>
-                                </div>
-                            </div>
+                            <span class="date-value date-value--departure">${departureDate || '—'}</span>
+                            <span class="date-value date-value--delivery">${deliveryDate}</span>
                         </div>
                     </div>
 
