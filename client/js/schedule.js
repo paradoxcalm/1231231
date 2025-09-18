@@ -1888,70 +1888,6 @@ class ScheduleManager {
             return;
         }
 
-        const button = event.target.closest('.create-order-btn');
-        if (!button || button.disabled) {
-            return;
-        }
-
-        const currentTarget = event.currentTarget;
-        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
-            return;
-        }
-
-        event.preventDefault();
-        const { groupKey = '', scheduleId = '' } = button.dataset || {};
-        const identifier = groupKey || scheduleId;
-
-        this.handleCreateOrderClick(event, identifier, button);
-    }
-
-    handleCreateOrderClick(event, scheduleId, explicitButton) {
-        const button = explicitButton instanceof HTMLElement
-            ? explicitButton
-            : event?.target instanceof HTMLElement
-                ? event.target.closest('.create-order-btn')
-                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
-                    ? event.currentTarget
-                    : null;
-
-        this.animateActionButton(button);
-
-        let potentialGroupKey = '';
-        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
-            potentialGroupKey = String(scheduleId);
-        }
-
-        if (!potentialGroupKey && button?.dataset?.groupKey) {
-            potentialGroupKey = button.dataset.groupKey;
-        }
-
-        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
-            this.createOrderForScheduleGroup(potentialGroupKey);
-            return;
-
-        }
-
-        let fallbackScheduleId = '';
-        if (button?.dataset?.scheduleId) {
-            fallbackScheduleId = button.dataset.scheduleId;
-        }
-
-        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
-            fallbackScheduleId = String(scheduleId);
-        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
-            fallbackScheduleId = String(scheduleId.id);
-        }
-
-        if (fallbackScheduleId) {
-            this.createOrderForSchedule(fallbackScheduleId);
-        }
-    }
-
-    handleScheduleGridClick(event) {
-        if (!event || !(event.target instanceof HTMLElement)) {
-            return;
-        }
-
         const toggleButton = event.target.closest('.schedule-card-toggle');
         if (toggleButton) {
             const card = toggleButton.closest('.schedule-card');
@@ -2020,199 +1956,20 @@ class ScheduleManager {
                     ? event.currentTarget
                     : null;
 
-        this.animateActionButton(button);
-
-        let potentialGroupKey = '';
-        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
-            potentialGroupKey = String(scheduleId);
-        }
-
-        if (!potentialGroupKey && button?.dataset?.groupKey) {
-            potentialGroupKey = button.dataset.groupKey;
-        }
-
-        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
-            this.createOrderForScheduleGroup(potentialGroupKey);
-            return;
-        }
-
-        let fallbackScheduleId = '';
-        if (button?.dataset?.scheduleId) {
-            fallbackScheduleId = button.dataset.scheduleId;
-        }
-
-
-        }
-
-        event.preventDefault();
-        const { groupKey = '', scheduleId = '' } = button.dataset || {};
-        const identifier = groupKey || scheduleId;
-
-        this.handleCreateOrderClick(event, identifier, button);
-    }
-
-    toggleScheduleCardExpansion(card, explicitButton) {
-        if (!(card instanceof HTMLElement)) {
-            return;
-        }
-
-        const shouldExpand = !card.classList.contains('is-expanded');
-        card.classList.toggle('is-expanded', shouldExpand);
-
-        const button = explicitButton instanceof HTMLElement
-            ? explicitButton
-            : card.querySelector('.schedule-card-toggle');
-
-        const extraSection = card.querySelector('.schedule-card-extra');
-        if (extraSection instanceof HTMLElement) {
-            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
-        }
-
-        if (button) {
-            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
-            const label = button.querySelector('.toggle-label');
-            if (label) {
-                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
-            }
-
-            const icon = button.querySelector('.toggle-icon');
-            if (icon) {
-                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
-                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
-            }
-        }
-    }
-
-    handleCreateOrderClick(event, scheduleId, explicitButton) {
-        const button = explicitButton instanceof HTMLElement
-            ? explicitButton
-            : event?.target instanceof HTMLElement
-                ? event.target.closest('.create-order-btn')
-                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
-                    ? event.currentTarget
-                    : null;
-
-        this.animateActionButton(button);
-
-        let potentialGroupKey = '';
-        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
-            potentialGroupKey = String(scheduleId);
-        }
-
-        if (!potentialGroupKey && button?.dataset?.groupKey) {
-            potentialGroupKey = button.dataset.groupKey;
-        }
-
-        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
-            this.createOrderForScheduleGroup(potentialGroupKey);
-            return;
-        }
-
-
-        }
-
-        const button = event.target.closest('.create-order-btn');
-        if (!button || button.disabled) {
-            return;
-        }
-
-        const currentTarget = event.currentTarget;
-        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
-            return;
-        }
-
-        event.preventDefault();
-        const { groupKey = '', scheduleId = '' } = button.dataset || {};
-        const identifier = groupKey || scheduleId;
-
-        this.handleCreateOrderClick(event, identifier, button);
-    }
-
-    toggleScheduleCardExpansion(card, explicitButton) {
-        if (!(card instanceof HTMLElement)) {
-            return;
-        }
-
-        const shouldExpand = !card.classList.contains('is-expanded');
-        card.classList.toggle('is-expanded', shouldExpand);
-
-        const button = explicitButton instanceof HTMLElement
-            ? explicitButton
-            : card.querySelector('.schedule-card-toggle');
-
-        const extraSection = card.querySelector('.schedule-card-extra');
-        if (extraSection instanceof HTMLElement) {
-            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
-        }
-
-        if (button) {
-            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
-            const label = button.querySelector('.toggle-label');
-            if (label) {
-                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
-            }
-
-            const icon = button.querySelector('.toggle-icon');
-            if (icon) {
-                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
-                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
-            }
-        }
-    }
-
-    handleCreateOrderClick(event, scheduleId, explicitButton) {
-        const button = explicitButton instanceof HTMLElement
-            ? explicitButton
-            : event?.target instanceof HTMLElement
-                ? event.target.closest('.create-order-btn')
-                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
-                    ? event.currentTarget
-                    : null;
-
-        this.animateActionButton(button);
-
-        let potentialGroupKey = '';
-        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
-            potentialGroupKey = String(scheduleId);
-        }
-
-        if (!potentialGroupKey && button?.dataset?.groupKey) {
-            potentialGroupKey = button.dataset.groupKey;
-        }
-
-        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
-            this.createOrderForScheduleGroup(potentialGroupKey);
-            return;
-        }
-
-        let fallbackScheduleId = '';
-        if (button?.dataset?.scheduleId) {
-            fallbackScheduleId = button.dataset.scheduleId;
-        }
-
-        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
-            fallbackScheduleId = String(scheduleId);
-        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
-            fallbackScheduleId = String(scheduleId.id);
-        }
-    }
-
-    animateActionButton(button) {
         if (!(button instanceof HTMLElement)) {
             return;
         }
 
-        button.classList.remove('is-pressed');
-        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
-        void button.offsetWidth;
-        button.classList.add('is-pressed');
-        button.addEventListener('animationend', () => {
-            button.classList.remove('is-pressed');
-        }, { once: true });
+        this.animateActionButton(button);
 
-        const potentialGroupKey = typeof scheduleId === 'string'
-            ? scheduleId
-            : '';
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
 
         if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
             this.createOrderForScheduleGroup(potentialGroupKey);
@@ -2220,7 +1977,7 @@ class ScheduleManager {
         }
 
         let fallbackScheduleId = '';
-        if (button?.dataset?.scheduleId) {
+        if (button.dataset?.scheduleId) {
             fallbackScheduleId = button.dataset.scheduleId;
         }
 
@@ -2248,7 +2005,6 @@ class ScheduleManager {
             button.classList.remove('is-pressed');
         }, { once: true });
     }
-
     getMarketplaceBadgeClass(marketplace) {
         if (!marketplace) {
             return '';
