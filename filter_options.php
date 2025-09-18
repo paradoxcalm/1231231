@@ -72,17 +72,27 @@ switch ($action) {
 
         // --- ВСЕ СКЛАДЫ (по всем городам/маркетплейсам или по конкретному городу) ---
         case 'all_warehouses':
-        $sql = "SELECT DISTINCT warehouses FROM schedules 
-                WHERE warehouses IS NOT NULL 
-                  AND warehouses != '' 
-                  AND status != 'Завершено' 
+        $sql = "SELECT DISTINCT warehouses FROM schedules
+                WHERE warehouses IS NOT NULL
+                  AND warehouses != ''
+                  AND status != 'Завершено'
                   AND accept_date >= CURDATE()";
         $params = [];
         $types  = "";
-        if (!empty($_GET['city'])) {
-            $sql       .= " AND city = ?";
-            $params[]   = $_GET['city'];
-            $types     .= "s";
+
+        $marketplace = isset($_GET['marketplace']) ? trim($_GET['marketplace']) : '';
+        $city = isset($_GET['city']) ? trim($_GET['city']) : '';
+
+        if ($marketplace !== '') {
+            $sql     .= " AND marketplace = ?";
+            $params[] = $marketplace;
+            $types   .= "s";
+        }
+
+        if ($city !== '') {
+            $sql     .= " AND city = ?";
+            $params[] = $city;
+            $types   .= "s";
         }
         $stmt = $conn->prepare($sql);
         if ($params) {
