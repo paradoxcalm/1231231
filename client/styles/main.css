@@ -1160,8 +1160,8 @@ body {
 .schedule-card-main {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    padding: 20px 20px 16px;
+    gap: 18px;
+    padding: 20px;
 }
 
 .schedule-card-header {
@@ -1307,8 +1307,13 @@ body {
 }
 
 .schedule-action {
-    margin-top: 4px;
     display: flex;
+    align-items: stretch;
+    width: 100%;
+}
+
+.schedule-card-main .schedule-action {
+    margin-top: 0;
 }
 
 .schedule-card-footer {
@@ -1479,6 +1484,7 @@ body {
 
 .schedule-card .create-order-btn {
     width: 100%;
+    min-height: 52px;
 }
 
 .orders-grid {
