@@ -1550,125 +1550,11 @@ class ScheduleManager {
     }
 
     renderScheduleCard(group, index = 0) {
-        const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
-            ? group.scheduleDetails[0]
-            : this.normalizeScheduleForModal(null);
-
-        const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
-        const marketplace = this.escapeHtml(marketplaceLabel || '—');
-        const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
-        const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
-        const warehouse = this.escapeHtml(warehouseName || '—');
-        const departureDate = this.escapeHtml(this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate));
-        const deliveryDate = this.escapeHtml(this.formatDeliverySummary(group));
-        const acceptTime = this.escapeHtml(this.formatAcceptTimeInfo(group));
-        const driver = this.escapeHtml(baseDetails.driver_name || baseDetails.driverName || '—');
-        const carInfo = this.escapeHtml([
-            baseDetails.car_brand || baseDetails.carBrand,
-            baseDetails.car_number || baseDetails.carNumber
-        ].filter(Boolean).join(' ') || '—');
-        const statusInfo = this.getGroupStatusInfo(group);
-        const statusText = this.escapeHtml(statusInfo.text || '—');
-        const statusClass = statusInfo.className;
-        const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
-        const citiesSummary = this.escapeHtml(this.formatCityCount(citiesCount));
-        const groupIdentifier = group?.key ?? '';
-        const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
-        const safeGroupIdentifier = this.escapeHtml(String(groupIdentifier || ''));
-        const safeScheduleId = this.escapeHtml(String(primaryScheduleId || ''));
-        const extraSectionId = this.escapeHtml(
-            this.createExtraSectionId(groupIdentifier, primaryScheduleId, index)
-        );
-        const ariaControlsAttribute = extraSectionId ? ` aria-controls="${extraSectionId}"` : '';
-
-        return `
-            <article class="schedule-card" data-group="${safeGroupIdentifier}">
-                <div class="schedule-status-indicator status-${statusClass}"></div>
-                <div class="schedule-card-body">
-                    <div class="schedule-card-main">
-                        <header class="schedule-card-header">
-                            <span class="schedule-card-warehouse">${warehouse}</span>
-                            <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
-                        </header>
-                        <div class="schedule-card-dates">
-                            <div class="schedule-dates-flow">
-                                <span>Дата выезда</span>
-                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                                <span>Дата сдачи</span>
-                            </div>
-                            <div class="schedule-dates-values">
-                                <div class="date-item">
-                                    <i class="fas fa-truck date-icon" aria-hidden="true"></i>
-                                    <div class="date-text">
-                                        <span class="date-label">Выезд</span>
-                                        <span class="date-value">${departureDate || '—'}</span>
-                                    </div>
-                                </div>
-                                <div class="date-item">
-                                    <i class="fas fa-box-open date-icon" aria-hidden="true"></i>
-                                    <div class="date-text">
-                                        <span class="date-label">Сдача</span>
-                                        <span class="date-value">${deliveryDate}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
-                        <div class="schedule-status status-${statusClass}">
-                            <span class="status-dot"></span>
-                            ${statusText}
-                        </div>
-                        <div class="schedule-meta">
-                            <div class="meta-item">
-                                <span class="meta-label">Время приёмки</span>
-                                <span class="meta-value">${acceptTime}</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Водитель</span>
-                                <span class="meta-value">${driver}</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Автомобиль</span>
-                                <span class="meta-value">${carInfo}</span>
-                            </div>
-                            <div class="meta-item">
-                                <span class="meta-label">Города</span>
-                                <span class="meta-value">${citiesSummary}</span>
-                            </div>
-                        </div>
-                        <div class="schedule-action">
-                            <button
-                                type="button"
-                                class="create-order-btn"
-                                data-group-key="${safeGroupIdentifier}"
-                                data-schedule-id="${safeScheduleId}"
-                            >
-                                <i class="fas fa-plus"></i>
-                                Создать заявку
-                            </button>
-                        </div>
-                    </div>
-                    <div class="schedule-card-footer">
-                        <button
-                            type="button"
-                            class="schedule-card-toggle"
-                            data-toggle-group="${safeGroupIdentifier}"
-                            aria-expanded="false"${ariaControlsAttribute}
-                        >
-                            <span class="toggle-label">Развернуть</span>
-                            <i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
-                        </button>
-
-            .map(group => this.renderScheduleCard(group))
-            .join('');
-    }
-
-   renderScheduleCard(group) {
     const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
         ? group.scheduleDetails[0]
         : this.normalizeScheduleForModal(null);
 
+    // marketplace / warehouse
     const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
     const marketplace = this.escapeHtml(marketplaceLabel || '—');
     const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
@@ -1676,12 +1562,14 @@ class ScheduleManager {
     const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
     const warehouse = this.escapeHtml(warehouseName || '—');
 
+    // dates & times
     const departureDate = this.escapeHtml(
         this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate)
     );
     const deliveryDate = this.escapeHtml(this.formatDeliverySummary(group));
     const acceptTime = this.escapeHtml(this.formatAcceptTimeInfo(group));
 
+    // driver & car
     const driver = this.escapeHtml(baseDetails.driver_name || baseDetails.driverName || '—');
     const carInfo = this.escapeHtml(
         [baseDetails.car_brand || baseDetails.carBrand, baseDetails.car_number || baseDetails.carNumber]
@@ -1689,77 +1577,120 @@ class ScheduleManager {
             .join(' ') || '—'
     );
 
-    const statusInfo = this.getGroupStatusInfo(group);
+    // status
+    const statusInfo = this.getGroupStatusInfo(group) || {};
     const statusText = this.escapeHtml(statusInfo.text || '—');
-    const statusClass = statusInfo.className;
+    const statusClass = statusInfo.className || 'default';
 
+    // cities
     const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
     const citiesSummary = this.escapeHtml(this.formatCityCount(citiesCount));
 
+    // ids
     const groupIdentifier = group?.key ?? '';
     const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
 
     const safeGroupIdentifier = this.escapeHtml(String(groupIdentifier || ''));
     const safeScheduleId = this.escapeHtml(String(primaryScheduleId || ''));
 
+    // extra section id (для aria-controls)
+    const extraSectionId = this.escapeHtml(
+        this.createExtraSectionId(groupIdentifier, primaryScheduleId, index)
+    );
+    const ariaControlsAttribute = extraSectionId ? ` aria-controls="${extraSectionId}"` : '';
+
     return `
         <article class="schedule-card" data-group="${safeGroupIdentifier}">
             <div class="schedule-status-indicator status-${statusClass}"></div>
-            <div class="schedule-card-content">
-                <header class="schedule-card-header">
-                    <div class="schedule-card-title">
+
+            <div class="schedule-card-body">
+                <div class="schedule-card-main">
+                    <header class="schedule-card-header">
                         <span class="schedule-card-warehouse">${warehouse}</span>
-                        <span class="schedule-card-city">${citiesSummary}</span>
-                    </div>
-                    <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
-                </header>
+                        <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
+                    </header>
 
-                <div class="schedule-status status-${statusClass}">
-                    <span class="status-dot"></span>
-                    ${statusText}
-                </div>
+                    <div class="schedule-card-dates">
+                        <div class="schedule-dates-flow">
+                            <span>Дата выезда</span>
+                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            <span>Дата сдачи</span>
+                        </div>
 
-                <div class="schedule-dates">
-                    <div class="date-item">
-                        <span class="date-label">Дата выезда</span>
-                        <span class="date-value">${departureDate || '—'}</span>
-                    </div>
-                    <div class="date-item">
-                        <span class="date-label">Дата сдачи</span>
-                        <span class="date-value">${deliveryDate}</span>
-                    </div>
-                </div>
+                        <div class="schedule-dates-values">
+                            <div class="date-item">
+                                <i class="fas fa-truck date-icon" aria-hidden="true"></i>
+                                <div class="date-text">
+                                    <span class="date-label">Выезд</span>
+                                    <span class="date-value">${departureDate || '—'}</span>
+                                </div>
+                            </div>
 
-                <div class="schedule-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">Время приёмки</span>
-                        <span class="meta-value">${acceptTime}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Водитель</span>
-                        <span class="meta-value">${driver}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Автомобиль</span>
-                        <span class="meta-value">${carInfo}</span>
+                            <div class="date-item">
+                                <i class="fas fa-box-open date-icon" aria-hidden="true"></i>
+                                <div class="date-text">
+                                    <span class="date-label">Сдача</span>
+                                    <span class="date-value">${deliveryDate}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="schedule-action">
+                <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
+                    <div class="schedule-status status-${statusClass}">
+                        <span class="status-dot"></span>
+                        ${statusText}
+                    </div>
+
+                    <div class="schedule-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Время приёмки</span>
+                            <span class="meta-value">${acceptTime}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Водитель</span>
+                            <span class="meta-value">${driver}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Автомобиль</span>
+                            <span class="meta-value">${carInfo}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Города</span>
+                            <span class="meta-value">${citiesSummary}</span>
+                        </div>
+                    </div>
+
+                    <div class="schedule-action">
+                        <button
+                            type="button"
+                            class="create-order-btn"
+                            data-group-key="${safeGroupIdentifier}"
+                            data-schedule-id="${safeScheduleId}"
+                        >
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
+                    </div>
+                </div>
+
+                <div class="schedule-card-footer">
                     <button
                         type="button"
-                        class="create-order-btn"
-                        data-group-key="${safeGroupIdentifier}"
-                        data-schedule-id="${safeScheduleId}"
+                        class="schedule-card-toggle"
+                        data-toggle-group="${safeGroupIdentifier}"
+                        aria-expanded="false"${ariaControlsAttribute}
                     >
-                        <i class="fas fa-plus"></i>
-                        Создать заявку
+                        <span class="toggle-label">Развернуть</span>
+                        <i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
         </article>
     `;
 }
+
 
 
     handleScheduleGridClick(event) {
@@ -1925,7 +1856,7 @@ class ScheduleManager {
         } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
             fallbackScheduleId = String(scheduleId.id);
         }
-
+    }
 
     animateActionButton(button) {
         if (!(button instanceof HTMLElement)) {
