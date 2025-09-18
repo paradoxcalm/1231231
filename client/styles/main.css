@@ -1164,7 +1164,7 @@ body {
     padding: 20px 20px 16px;
 }
 
-.schedule-card-header {
+.schedule-card-main {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1207,6 +1207,187 @@ body {
     justify-content: center;
     color: var(--primary);
     font-size: 1.25rem;
+}
+
+.date-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.date-value {
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 20px 16px;
+}
+
+.schedule-card-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.schedule-card-warehouse {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.schedule-card-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0 20px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-top: 1px solid transparent;
+    transition:
+        max-height 0.4s ease,
+        opacity 0.25s ease,
+        padding 0.4s ease,
+        border-top-color 0.3s ease;
+}
+
+.schedule-card.is-expanded .schedule-card-extra {
+    padding: 18px 20px 20px;
+    max-height: 640px;
+    opacity: 1;
+    border-top-color: var(--border-light);
+
+.schedule-card-dates {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+}
+
+.schedule-dates-values {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    width: 100%;
+}
+
+.date-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.schedule-date-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.25rem;
+}
+
+.date-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.date-value {
+
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 20px 16px;
+}
+
+.schedule-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.schedule-card-warehouse {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.schedule-card-extra {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 0 20px;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-top: 1px solid transparent;
+    transition:
+        max-height 0.4s ease,
+        opacity 0.25s ease,
+        padding 0.4s ease,
+        border-top-color 0.3s ease;
+}
+
+
+.schedule-card.is-expanded .schedule-card-extra {
+    padding: 18px 20px 20px;
+    max-height: 640px;
+    opacity: 1;
+    border-top-color: var(--border-light);
+
+.schedule-card-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+}
+
+.schedule-dates-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.schedule-dates-flow i {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+
+.schedule-dates-values {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.date-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.date-icon {
+    font-size: 1.1rem;
+    color: var(--primary);
+}
+
+.date-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .date-label {
@@ -1263,6 +1444,7 @@ body {
     border-radius: 50%;
     background: currentColor;
 }
+
 
 .schedule-meta {
     display: grid;

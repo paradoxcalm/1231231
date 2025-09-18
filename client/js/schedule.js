@@ -33,6 +33,10 @@ class ScheduleManager {
         this.filterToggleButton = document.getElementById('filterToggleBtn');
         this.isFiltersCollapsed = false;
         this.hasAppliedFilterCollapseState = false;
+
+
+
+
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
@@ -1225,6 +1229,18 @@ class ScheduleManager {
 
             const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
             return normalized.getTime();
+
+
+
+
+
+            if (!value) {
+                return Number.MAX_SAFE_INTEGER;
+            }
+            const timestamp = Date.parse(value);
+            return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+
+
         };
 
         const result = Array.from(groups.values()).map((group) => ({
@@ -1734,6 +1750,201 @@ class ScheduleManager {
         footer.appendChild(toggleButton);
 
         return card;
+        container.innerHTML = this.groupedSchedules
+            .map((group, index) => this.renderScheduleCard(group, index))
+            .join('');
+    }
+
+    renderScheduleCard(group, index = 0) {
+    // ------- данные -------
+    const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
+        ? group.scheduleDetails[0]
+        : this.normalizeScheduleForModal(null);
+
+    const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
+    const marketplace = this.escapeHtml(marketplaceLabel || '—');
+    const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
+
+    const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
+    const warehouse = this.escapeHtml(warehouseName || '—');
+
+    const departureDate = this.escapeHtml(
+        this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate)
+    );
+    const deliveryDate = this.escapeHtml(this.formatDeliverySummary(group));
+    const acceptTime = this.escapeHtml(this.formatAcceptTimeInfo(group));
+
+    const driver = this.escapeHtml(baseDetails.driver_name || baseDetails.driverName || '—');
+    const carInfo = this.escapeHtml(
+        [baseDetails.car_brand || baseDetails.carBrand, baseDetails.car_number || baseDetails.carNumber]
+            .filter(Boolean).join(' ') || '—'
+    );
+
+    const statusInfo = this.getGroupStatusInfo(group) || {};
+    const statusText = this.escapeHtml(statusInfo.text || '—');
+    const statusClass = statusInfo.className || 'default';
+
+    const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
+    const citiesSummary = this.escapeHtml(this.formatCityCount(citiesCount));
+
+    const groupIdentifier = group?.key ?? '';
+    const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
+    const safeGroupIdentifier = this.escapeHtml(String(groupIdentifier || ''));
+    const safeScheduleId = this.escapeHtml(String(primaryScheduleId || ''));
+
+    const extraSectionId = this.escapeHtml(
+        this.createExtraSectionId(groupIdentifier, primaryScheduleId, index)
+    );
+    const ariaControlsAttribute = extraSectionId ? ` aria-controls="${extraSectionId}"` : '';
+
+    // ------- шаблон -------
+    return `
+        <article class="schedule-card" data-group="${safeGroupIdentifier}">
+            <div class="schedule-status-indicator status-${statusClass}"></div>
+
+            <div class="schedule-card-body">
+                <div class="schedule-card-main">
+                    <header class="schedule-card-header">
+                        <span class="schedule-card-warehouse">${warehouse}</span>
+                        <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
+                    </header>
+
+                    <div class="schedule-card-dates">
+                        <div class="schedule-dates-values">
+                            <div class="date-item">
+                                <span class="date-label">Дата выезда</span>
+                                <span class="date-value">${departureDate || '—'}</span>
+                            </div>
+                            <div class="schedule-date-arrow" aria-hidden="true">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                            <div class="date-item">
+                                <span class="date-label">Дата сдачи</span>
+                                <span class="date-value">${deliveryDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="schedule-card-extra" id="${extraSectionId}" aria-hidden="true">
+                    <div class="schedule-status status-${statusClass}">
+                        <span class="status-dot"></span>
+                        ${statusText}
+                    </div>
+
+                    <div class="schedule-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Время приёмки</span>
+                            <span class="meta-value">${acceptTime}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Водитель</span>
+                            <span class="meta-value">${driver}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Автомобиль</span>
+                            <span class="meta-value">${carInfo}</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Города</span>
+                            <span class="meta-value">${citiesSummary}</span>
+                        </div>
+                    </div>
+
+                    <div class="schedule-action">
+                        <button
+                            type="button"
+                            class="create-order-btn"
+                            data-group-key="${safeGroupIdentifier}"
+                            data-schedule-id="${safeScheduleId}"
+                        >
+                            <i class="fas fa-plus"></i>
+                            Создать заявку
+                        </button>
+                    </div>
+                </div>
+
+                <div class="schedule-card-footer">
+                    <button
+                        type="button"
+                        class="schedule-card-toggle"
+                        data-toggle-group="${safeGroupIdentifier}"
+                        aria-expanded="false"${ariaControlsAttribute}
+                    >
+                        <span class="toggle-label">Развернуть</span>
+                        <i class="fas fa-chevron-down toggle-icon" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+
+
+
+    handleScheduleGridClick(event) {
+        if (!event || !(event.target instanceof HTMLElement)) {
+            return;
+        }
+
+        const button = event.target.closest('.create-order-btn');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const currentTarget = event.currentTarget;
+        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
+            return;
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+
+        if (fallbackScheduleId) {
+            this.createOrderForSchedule(fallbackScheduleId);
+        }
     }
 
     handleScheduleGridClick(event) {
@@ -1819,6 +2030,189 @@ class ScheduleManager {
         if (!potentialGroupKey && button?.dataset?.groupKey) {
             potentialGroupKey = button.dataset.groupKey;
         }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    toggleScheduleCardExpansion(card, explicitButton) {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldExpand = !card.classList.contains('is-expanded');
+        card.classList.toggle('is-expanded', shouldExpand);
+
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : card.querySelector('.schedule-card-toggle');
+
+        const extraSection = card.querySelector('.schedule-card-extra');
+        if (extraSection instanceof HTMLElement) {
+            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
+        }
+
+        if (button) {
+            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+            const label = button.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
+            }
+
+            const icon = button.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
+            }
+        }
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+
+        }
+
+        const button = event.target.closest('.create-order-btn');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const currentTarget = event.currentTarget;
+        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
+            return;
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    toggleScheduleCardExpansion(card, explicitButton) {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldExpand = !card.classList.contains('is-expanded');
+        card.classList.toggle('is-expanded', shouldExpand);
+
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : card.querySelector('.schedule-card-toggle');
+
+        const extraSection = card.querySelector('.schedule-card-extra');
+        if (extraSection instanceof HTMLElement) {
+            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
+        }
+
+        if (button) {
+            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+            const label = button.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
+            }
+
+            const icon = button.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
+            }
+        }
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+    }
+
+    animateActionButton(button) {
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        button.classList.remove('is-pressed');
+        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
+        void button.offsetWidth;
+        button.classList.add('is-pressed');
+        button.addEventListener('animationend', () => {
+            button.classList.remove('is-pressed');
+        }, { once: true });
+
+        const potentialGroupKey = typeof scheduleId === 'string'
+            ? scheduleId
+            : '';
 
         if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
             this.createOrderForScheduleGroup(potentialGroupKey);
