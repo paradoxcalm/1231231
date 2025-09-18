@@ -5,6 +5,7 @@ class ScheduleManager {
     constructor() {
         this.schedules = [];
         this.filteredSchedules = [];
+        this.groupedSchedules = [];
         this.filters = {
             marketplace: '',
             warehouse: ''
@@ -23,6 +24,15 @@ class ScheduleManager {
         this.warehouseStatsCache = new Map();
         this.currentWarehouseStatsKey = '';
         this.activeWarehouseStatsController = null;
+        this.scheduleGroupsByKey = new Map();
+        this.boundHandleScheduleGridClick = this.handleScheduleGridClick.bind(this);
+        this.scheduleGridElement = null;
+        this.schedulePanelElement = document.getElementById('schedulePanel');
+        this.filtersContainer = document.getElementById('scheduleFilters');
+        this.scheduleResultsElement = document.querySelector('.schedule-results');
+        this.filterToggleButton = document.getElementById('filterToggleBtn');
+        this.isFiltersCollapsed = false;
+        this.hasAppliedFilterCollapseState = false;
         this.elements = {
             marketplaceSelect: document.getElementById('marketplaceFilter'),
             warehouseSelect: document.getElementById('warehouseFilter'),
@@ -52,6 +62,7 @@ class ScheduleManager {
 
     init() {
         this.setupEventListeners();
+        this.setFiltersCollapsed(false);
         this.applyStepState('marketplace', { active: true, complete: false });
         this.applyStepState('warehouse', { active: false, complete: false });
         this.updateMarketplaceConfirmState();
@@ -64,6 +75,12 @@ class ScheduleManager {
 
     setupEventListeners() {
         const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
+
+        if (this.filterToggleButton) {
+            this.filterToggleButton.addEventListener('click', () => {
+                this.toggleFiltersCollapsed();
+            });
+        }
 
         if (marketplaceSelect) {
             marketplaceSelect.addEventListener('click', (event) => {
@@ -137,6 +154,55 @@ class ScheduleManager {
         }
     }
 
+    toggleFiltersCollapsed() {
+        const nextState = !this.isFiltersCollapsed;
+        this.setFiltersCollapsed(nextState, { scrollIntoView: nextState });
+
+        if (!nextState && this.filtersContainer instanceof HTMLElement) {
+            this.filtersContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    setFiltersCollapsed(collapsed, { scrollIntoView = false } = {}) {
+        const shouldCollapse = Boolean(collapsed);
+        const hasStateChanged = this.isFiltersCollapsed !== shouldCollapse || !this.hasAppliedFilterCollapseState;
+
+        this.isFiltersCollapsed = shouldCollapse;
+
+        if (hasStateChanged && this.schedulePanelElement instanceof HTMLElement) {
+            this.schedulePanelElement.classList.toggle('filters-collapsed', shouldCollapse);
+            this.schedulePanelElement.classList.toggle('filters-expanded', !shouldCollapse);
+        }
+
+        this.hasAppliedFilterCollapseState = true;
+        this.updateFilterToggleButton();
+
+        if (shouldCollapse && scrollIntoView && this.scheduleResultsElement instanceof HTMLElement) {
+            this.scheduleResultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    updateFilterToggleButton() {
+        const button = this.filterToggleButton;
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        const isCollapsed = this.isFiltersCollapsed;
+        const label = button.querySelector('.filter-toggle-label');
+        if (label) {
+            label.textContent = isCollapsed ? 'ФИЛЬТР' : 'Скрыть фильтр';
+        }
+
+        const icon = button.querySelector('.filter-toggle-icon');
+        if (icon) {
+            icon.className = `fas ${isCollapsed ? 'fa-sliders-h' : 'fa-chevron-up'} filter-toggle-icon`;
+        }
+
+        button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        button.setAttribute('aria-label', isCollapsed ? 'Открыть фильтр расписания' : 'Скрыть фильтр расписания');
+    }
+
     applyStepState(stepName, { active = false, complete = false } = {}) {
         const stepKey = `${stepName}Step`;
         const step = this.stepElements[stepKey];
@@ -198,6 +264,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = '';
         this.updateWarehouseConfirmState();
         this.clearWarehouseSummary();
+        this.setFiltersCollapsed(false);
     }
 
     openMarketplaceStep() {
@@ -210,6 +277,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
         this.setActiveMarketplaceCard(this.pendingSelections.marketplace);
+        this.setFiltersCollapsed(false);
     }
 
     openWarehouseStep() {
@@ -223,6 +291,7 @@ class ScheduleManager {
         this.applyStepState('warehouse', { active: true, complete: false });
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
+        this.setFiltersCollapsed(false);
 
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = this.filters.warehouse || '';
@@ -236,6 +305,7 @@ class ScheduleManager {
 
         if (!value) {
             this.clearWarehouseSummary();
+            this.setFiltersCollapsed(false);
         }
     }
 
@@ -256,6 +326,7 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
         this.applyStepState('warehouse', { active: false, complete: true });
+        this.setFiltersCollapsed(true, { scrollIntoView: true });
     }
 
     showMarketplaceSummary() {
@@ -458,7 +529,9 @@ class ScheduleManager {
         this.warehouseOptions = [];
         this.schedules = [];
         this.filteredSchedules = [];
+        this.groupedSchedules = [];
         this.isLoadingSchedules = false;
+        this.scheduleGroupsByKey.clear();
 
         this.renderMarketplaces();
         this.renderWarehouses();
@@ -561,9 +634,12 @@ class ScheduleManager {
 
         if (!warehouse) {
             this.filteredSchedules = [];
+            this.groupedSchedules = [];
+            this.scheduleGroupsByKey.clear();
             this.renderScheduleGrid();
             this.clearWarehouseSummary();
             this.clearWarehouseStats();
+            this.setFiltersCollapsed(false);
             return;
         }
 
@@ -883,6 +959,397 @@ class ScheduleManager {
         return raw;
     }
 
+    getScheduleDeliveryKey(schedule) {
+        const value = schedule?.delivery_date
+            || schedule?.deliveryDate
+            || '';
+
+        if (!value) {
+            return '';
+        }
+
+        const raw = String(value).trim();
+        if (!raw) {
+            return '';
+        }
+
+        if (raw.includes('T')) {
+            return raw.split('T')[0];
+        }
+
+        if (raw.includes(' ')) {
+            return raw.split(' ')[0];
+        }
+
+        return raw;
+    }
+
+    parseLocalDate(value) {
+        if (!value) {
+            return null;
+        }
+
+        const raw = String(value).trim();
+        if (!raw) {
+            return null;
+        }
+
+        const [sanitized] = raw.split(/[T ]/);
+
+        const isoMatch = sanitized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoMatch) {
+            const year = Number(isoMatch[1]);
+            const month = Number(isoMatch[2]);
+            const day = Number(isoMatch[3]);
+
+            if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+                const date = new Date(year, month - 1, day);
+                if (!Number.isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+        }
+
+        const dottedMatch = sanitized.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+        if (dottedMatch) {
+            const day = Number(dottedMatch[1]);
+            const month = Number(dottedMatch[2]);
+            const year = Number(dottedMatch[3]);
+
+            if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+                const date = new Date(year, month - 1, day);
+                if (!Number.isNaN(date.getTime())) {
+                    return date;
+                }
+            }
+        }
+
+        const fallback = Date.parse(raw);
+        if (!Number.isNaN(fallback)) {
+            const parsed = new Date(fallback);
+            const date = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+            if (!Number.isNaN(date.getTime())) {
+                return date;
+            }
+        }
+
+        return null;
+    }
+
+    isScheduleInFuture(schedule) {
+        const departureKey = this.getScheduleDepartureKey(schedule);
+        if (!departureKey) {
+            return true;
+        }
+
+        const departureDate = this.parseLocalDate(departureKey);
+        if (!departureDate) {
+            return true;
+        }
+
+        const today = new Date();
+        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+        const departureStart = new Date(
+            departureDate.getFullYear(),
+            departureDate.getMonth(),
+            departureDate.getDate()
+        ).getTime();
+
+        if (Number.isNaN(departureStart)) {
+            return true;
+        }
+
+        return departureStart >= todayStart;
+    }
+
+    normalizeScheduleForModal(schedule) {
+        if (!schedule || typeof schedule !== 'object') {
+            return {
+                id: '',
+                city: '',
+                warehouse: '',
+                warehouses: '',
+                accept_date: '',
+                acceptDate: '',
+                delivery_date: '',
+                deliveryDate: '',
+                accept_time: '',
+                acceptTime: '',
+                driver_name: '',
+                driverName: '',
+                driver_phone: '',
+                driverPhone: '',
+                car_number: '',
+                carNumber: '',
+                car_brand: '',
+                carBrand: '',
+                sender: '',
+                marketplace: ''
+            };
+        }
+
+        const city = schedule.city
+            || schedule.city_name
+            || schedule.route_city
+            || '';
+        const warehouse = schedule.warehouses
+            || schedule.warehouse
+            || schedule.route_warehouse
+            || '';
+        const acceptDate = schedule.accept_date
+            || schedule.acceptDate
+            || schedule.departure_date
+            || schedule.departureDate
+            || '';
+        const deliveryDate = schedule.delivery_date
+            || schedule.deliveryDate
+            || '';
+        const acceptTime = schedule.accept_time
+            || schedule.acceptTime
+            || '';
+        const driverName = schedule.driver_name
+            || schedule.driverName
+            || '';
+        const driverPhone = schedule.driver_phone
+            || schedule.driverPhone
+            || '';
+        const carNumber = schedule.car_number
+            || schedule.carNumber
+            || '';
+        const carBrand = schedule.car_brand
+            || schedule.carBrand
+            || '';
+        const sender = schedule.sender
+            || schedule.company_name
+            || '';
+        const marketplace = schedule.marketplace
+            || '';
+
+        return {
+            id: schedule.id ?? schedule.schedule_id ?? '',
+            city,
+            warehouse,
+            warehouses: warehouse,
+            accept_date: acceptDate,
+            acceptDate,
+            delivery_date: deliveryDate,
+            deliveryDate,
+            accept_time: acceptTime,
+            acceptTime,
+            driver_name: driverName,
+            driverName,
+            driver_phone: driverPhone,
+            driverPhone,
+            car_number: carNumber,
+            carNumber,
+            car_brand: carBrand,
+            carBrand,
+            sender,
+            marketplace
+        };
+    }
+
+    groupSchedulesByDate(schedules) {
+        const groups = new Map();
+
+        (Array.isArray(schedules) ? schedules : []).forEach((schedule) => {
+            if (!schedule || !this.isScheduleInFuture(schedule)) {
+                return;
+            }
+
+            const details = this.normalizeScheduleForModal(schedule);
+            const departureKey = this.getScheduleDepartureKey(schedule)
+                || details.accept_date
+                || details.acceptDate
+                || '';
+
+            const key = departureKey || `schedule_${details.id || Math.random().toString(36).slice(2)}`;
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    key,
+                    departureDate: departureKey,
+                    schedules: [],
+                    scheduleDetails: [],
+                    cities: new Set(),
+                    deliveryDates: new Set(),
+                    acceptTimes: new Set(),
+                    statuses: new Set(),
+                    marketplace: details.marketplace || '',
+                    warehouse: details.warehouse || details.warehouses || '',
+                    primaryScheduleId: details.id || ''
+                });
+            }
+
+            const group = groups.get(key);
+            group.schedules.push(schedule);
+            group.scheduleDetails.push(details);
+
+            if (details.city) {
+                group.cities.add(details.city);
+            }
+
+            const deliveryKey = this.getScheduleDeliveryKey(schedule)
+                || details.delivery_date
+                || details.deliveryDate;
+            if (deliveryKey) {
+                group.deliveryDates.add(deliveryKey);
+            }
+
+            const acceptTime = details.accept_time || details.acceptTime;
+            if (acceptTime) {
+                group.acceptTimes.add(acceptTime);
+            }
+
+            if (schedule && schedule.status) {
+                group.statuses.add(schedule.status);
+            }
+
+            if (!group.marketplace && details.marketplace) {
+                group.marketplace = details.marketplace;
+            }
+
+            if (!group.warehouse && (details.warehouse || details.warehouses)) {
+                group.warehouse = details.warehouse || details.warehouses;
+            }
+
+            if (!group.primaryScheduleId && details.id) {
+                group.primaryScheduleId = details.id;
+            }
+        });
+
+        const toTimestamp = (value) => {
+            const date = this.parseLocalDate(value);
+            if (!date) {
+                return Number.MAX_SAFE_INTEGER;
+            }
+
+            const normalized = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            return normalized.getTime();
+        };
+
+        const result = Array.from(groups.values()).map((group) => ({
+            ...group,
+            cities: Array.from(group.cities),
+            deliveryDates: Array.from(group.deliveryDates),
+            acceptTimes: Array.from(group.acceptTimes),
+            statuses: Array.from(group.statuses)
+        }));
+
+        result.sort((a, b) => {
+            const timeA = toTimestamp(a.departureDate || '');
+            const timeB = toTimestamp(b.departureDate || '');
+            if (timeA !== timeB) {
+                return timeA - timeB;
+            }
+
+            return String(a.key).localeCompare(String(b.key), 'ru');
+        });
+
+        return result;
+    }
+
+    getGroupStatusInfo(group) {
+        const statuses = Array.isArray(group?.statuses) ? group.statuses.filter(Boolean) : [];
+        if (statuses.length === 0) {
+            return {
+                text: '—',
+                className: this.getStatusClass('')
+            };
+        }
+
+        const priority = ['Приём заявок', 'Ожидает отправки', 'В пути', 'Завершено'];
+        const sorted = statuses.slice().sort((a, b) => {
+            const indexA = priority.indexOf(a);
+            const indexB = priority.indexOf(b);
+            const safeA = indexA === -1 ? priority.length : indexA;
+            const safeB = indexB === -1 ? priority.length : indexB;
+            if (safeA !== safeB) {
+                return safeA - safeB;
+            }
+            return a.localeCompare(b, 'ru');
+        });
+
+        const text = sorted[0];
+        return {
+            text,
+            className: this.getStatusClass(text)
+        };
+    }
+
+    formatCityCount(count) {
+        const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+        if (safeCount <= 0) {
+            return 'Город будет выбран при оформлении';
+        }
+
+        if (safeCount === 1) {
+            return 'Доступен 1 город';
+        }
+
+        if (safeCount >= 5) {
+            return `Доступно ${safeCount} городов`;
+        }
+
+        return `Доступно ${safeCount} города`;
+    }
+
+    createExtraSectionId(groupIdentifier, scheduleId, index = 0) {
+        const parts = [];
+
+        if (groupIdentifier) {
+            parts.push(groupIdentifier);
+        }
+
+        if (scheduleId) {
+            parts.push(scheduleId);
+        }
+
+        parts.push(index);
+
+        const base = parts
+            .map((part) => String(part))
+            .join('-')
+            .replace(/[^a-zA-Z0-9_-]+/g, '-')
+            .replace(/-{2,}/g, '-')
+            .replace(/^-|-$/g, '');
+
+        return `schedule-extra-${base || `group-${index}`}`;
+    }
+
+    formatDeliverySummary(group) {
+        const dates = Array.isArray(group?.deliveryDates) ? group.deliveryDates : [];
+        if (dates.length === 0) {
+            return '—';
+        }
+
+        const formatted = dates
+            .map(date => this.formatDate(date))
+            .filter(Boolean);
+
+        if (formatted.length === 0) {
+            return '—';
+        }
+
+        if (formatted.length === 1) {
+            return formatted[0];
+        }
+
+        return `${formatted[0]} и ещё ${formatted.length - 1}`;
+    }
+
+    formatAcceptTimeInfo(group) {
+        const times = Array.isArray(group?.acceptTimes) ? group.acceptTimes.filter(Boolean) : [];
+        if (times.length === 0) {
+            return '—';
+        }
+
+        if (times.length === 1) {
+            return times[0];
+        }
+
+        return `${times.length} вариантов`;
+    }
+
     normalizeWarehouseStatsResponse(data) {
         const ordersTotal = this.toNumber(data?.orders_total);
         const ordersForWarehouse = this.toNumber(data?.orders_for_warehouse);
@@ -975,16 +1442,32 @@ class ScheduleManager {
     applyFilters() {
         if (!this.filters.marketplace || !this.filters.warehouse) {
             this.filteredSchedules = [];
+            this.groupedSchedules = [];
+            this.scheduleGroupsByKey.clear();
             this.renderScheduleGrid();
             this.renderWarehouseStats();
             return;
         }
 
-        this.filteredSchedules = this.schedules.filter(schedule => {
+        this.filteredSchedules = this.schedules.filter((schedule) => {
+            if (!schedule) {
+                return false;
+            }
+
             const matchMarketplace = schedule.marketplace === this.filters.marketplace;
             const matchWarehouse = schedule.warehouses === this.filters.warehouse;
-            return matchMarketplace && matchWarehouse;
+
+            if (!matchMarketplace || !matchWarehouse) {
+                return false;
+            }
+
+            return this.isScheduleInFuture(schedule);
         });
+
+        this.groupedSchedules = this.groupSchedulesByDate(this.filteredSchedules);
+        this.scheduleGroupsByKey = new Map(
+            this.groupedSchedules.map(group => [group.key, group])
+        );
 
         this.renderScheduleGrid();
         this.renderWarehouseStats();
@@ -994,138 +1477,382 @@ class ScheduleManager {
         const container = document.getElementById('scheduleGrid');
         if (!container) return;
 
+        if (this.scheduleGridElement !== container) {
+            if (this.scheduleGridElement) {
+                this.scheduleGridElement.removeEventListener('click', this.boundHandleScheduleGridClick);
+            }
+            container.addEventListener('click', this.boundHandleScheduleGridClick);
+            this.scheduleGridElement = container;
+        }
+
         container.classList.remove('is-empty');
+        container.innerHTML = '';
 
         if (!this.filters.marketplace) {
             this.updateScheduleSubtitle('Чтобы увидеть расписание, выберите маркетплейс и склад');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-layer-group',
                 'Расписание недоступно',
                 'Укажите маркетплейс и склад, чтобы мы показали подходящие отправления.'
-            );
+            ));
             return;
         }
 
         if (!this.filters.warehouse) {
             this.updateScheduleSubtitle('Сначала выберите склад, чтобы увидеть доступные отправления');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-warehouse',
                 'Не выбран склад',
                 'Выберите склад, чтобы показать подходящее расписание.'
-            );
+            ));
             return;
         }
 
         if (this.isLoadingSchedules) {
             this.updateScheduleSubtitle(`Загружаем расписание для склада «${this.filters.warehouse}»...`);
             container.classList.add('is-empty');
-            container.innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Подгружаем отправления...
-                </div>
-            `;
+
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            loading.appendChild(spinner);
+
+            loading.appendChild(document.createTextNode('Подгружаем отправления...'));
+
+            container.appendChild(loading);
             return;
         }
 
-        if (this.filteredSchedules.length === 0) {
+        if (!Array.isArray(this.groupedSchedules) || this.groupedSchedules.length === 0) {
             this.updateScheduleSubtitle('На выбранный склад пока нет активных отправлений');
             container.classList.add('is-empty');
-            container.innerHTML = this.renderEmptyState(
+            container.appendChild(this.renderEmptyState(
                 'fa-calendar-times',
                 'Нет доступных отправлений',
                 'Попробуйте выбрать другой склад или загляните позже.'
-            );
+            ));
             return;
         }
 
-        this.updateScheduleSubtitle(`Доступно отправлений: ${this.filteredSchedules.length}`);
-        container.innerHTML = this.filteredSchedules
-            .map(schedule => this.renderScheduleCard(schedule))
-            .join('');
+        this.updateScheduleSubtitle(`Доступные даты отправления: ${this.groupedSchedules.length}`);
+
+        const fragment = document.createDocumentFragment();
+        this.groupedSchedules.forEach((group, index) => {
+            fragment.appendChild(this.createScheduleCardElement(group, index));
+        });
+
+        container.appendChild(fragment);
     }
 
-    renderScheduleCard(schedule) {
-        const marketplace = this.escapeHtml(schedule.marketplace || '—');
-        const marketplaceClass = this.getMarketplaceBadgeClass(schedule.marketplace);
-        const city = this.escapeHtml(schedule.city || '—');
-        const warehouse = this.escapeHtml(schedule.warehouses || '—');
-        const departureDate = this.escapeHtml(this.formatDate(schedule.accept_date));
-        const acceptTime = this.escapeHtml(schedule.accept_time || '—');
-        const deliveryDate = this.escapeHtml(this.formatDate(schedule.delivery_date));
-        const driver = this.escapeHtml(schedule.driver_name || '—');
-        const carInfo = this.escapeHtml([schedule.car_brand, schedule.car_number].filter(Boolean).join(' ') || '—');
-        const statusText = this.escapeHtml(schedule.status || '—');
-        const statusClass = this.getStatusClass(schedule.status);
-        const hasId = schedule && Object.prototype.hasOwnProperty.call(schedule, 'id');
-        const scheduleIdValue = hasId ? schedule.id : '';
-        const scheduleId = hasId ? JSON.stringify(schedule.id) : 'null';
+    createScheduleCardElement(group, index = 0) {
+        const baseDetails = Array.isArray(group?.scheduleDetails) && group.scheduleDetails.length > 0
+            ? group.scheduleDetails[0]
+            : this.normalizeScheduleForModal(null);
 
-        return `
-            <article class="schedule-card" data-id="${this.escapeHtml(String(scheduleIdValue))}">
-                <div class="schedule-status-indicator status-${statusClass}"></div>
-                <div class="schedule-card-content">
-                    <header class="schedule-card-header">
-                        <div class="schedule-card-title">
-                            <span class="schedule-card-warehouse">${warehouse}</span>
-                            <span class="schedule-card-city">${city}</span>
-                        </div>
-                        <span class="schedule-marketplace ${marketplaceClass}">${marketplace}</span>
-                    </header>
-                    <div class="schedule-status status-${statusClass}">
-                        <span class="status-dot"></span>
-                        ${statusText}
-                    </div>
-                    <div class="schedule-dates">
-                        <div class="date-item">
-                            <span class="date-label">Дата выезда</span>
-                            <span class="date-value">${departureDate}</span>
-                        </div>
-                        <div class="date-item">
-                            <span class="date-label">Дата сдачи</span>
-                            <span class="date-value">${deliveryDate}</span>
-                        </div>
-                    </div>
-                    <div class="schedule-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">Время приёмки</span>
-                            <span class="meta-value">${acceptTime}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Водитель</span>
-                            <span class="meta-value">${driver}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Автомобиль</span>
-                            <span class="meta-value">${carInfo}</span>
-                        </div>
-                    </div>
-                    <div class="schedule-action">
-                        <button class="create-order-btn" onclick="window.ScheduleManager.handleCreateOrderClick(event, ${scheduleId})">
-                            <i class="fas fa-plus"></i>
-                            Создать заявку
-                        </button>
-                    </div>
-                </div>
-            </article>
-        `;
-    }
+        const marketplaceLabel = baseDetails.marketplace || this.filters.marketplace || '';
+        const warehouseName = baseDetails.warehouse || baseDetails.warehouses || this.filters.warehouse || '';
+        const departureDate = this.formatDate(group?.departureDate || baseDetails.accept_date || baseDetails.acceptDate);
+        const deliveryDate = this.formatDeliverySummary(group);
+        const acceptTime = this.formatAcceptTimeInfo(group);
+        const driver = baseDetails.driver_name || baseDetails.driverName || '—';
+        const carParts = [baseDetails.car_brand || baseDetails.carBrand, baseDetails.car_number || baseDetails.carNumber]
+            .filter(Boolean);
+        const carInfo = carParts.length ? carParts.join(' ') : '—';
+        const statusInfo = this.getGroupStatusInfo(group);
+        const statusText = statusInfo.text || '—';
+        const statusClass = statusInfo.className || 'default';
+        const citiesCount = Array.isArray(group?.cities) ? group.cities.length : 0;
+        const citiesSummary = this.formatCityCount(citiesCount);
+        const groupIdentifier = group?.key ?? '';
+        const primaryScheduleId = group?.primaryScheduleId ?? baseDetails.id ?? '';
+        const extraSectionId = this.createExtraSectionId(groupIdentifier, primaryScheduleId, index);
 
-    handleCreateOrderClick(event, scheduleId) {
-        if (event && event.currentTarget instanceof HTMLElement) {
-            const button = event.currentTarget;
-            button.classList.remove('is-pressed');
-            // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
-            void button.offsetWidth;
-            button.classList.add('is-pressed');
-            button.addEventListener('animationend', () => {
-                button.classList.remove('is-pressed');
-            }, { once: true });
+        const card = document.createElement('article');
+        card.className = 'schedule-card';
+        card.setAttribute('data-group', groupIdentifier != null ? String(groupIdentifier) : '');
+
+        const statusIndicator = document.createElement('div');
+        statusIndicator.className = `schedule-status-indicator status-${statusClass}`;
+        card.appendChild(statusIndicator);
+
+        const body = document.createElement('div');
+        body.className = 'schedule-card-body';
+        card.appendChild(body);
+
+        const main = document.createElement('div');
+        main.className = 'schedule-card-main';
+        body.appendChild(main);
+
+        const header = document.createElement('header');
+        header.className = 'schedule-card-header';
+        main.appendChild(header);
+
+        const warehouseSpan = document.createElement('span');
+        warehouseSpan.className = 'schedule-card-warehouse';
+        warehouseSpan.textContent = warehouseName || '—';
+        header.appendChild(warehouseSpan);
+
+        const marketplaceSpan = document.createElement('span');
+        const marketplaceClass = this.getMarketplaceBadgeClass(marketplaceLabel);
+        marketplaceSpan.className = ['schedule-marketplace', marketplaceClass].filter(Boolean).join(' ').trim();
+        marketplaceSpan.textContent = marketplaceLabel || '—';
+        header.appendChild(marketplaceSpan);
+
+        const datesWrapper = document.createElement('div');
+        datesWrapper.className = 'schedule-card-dates';
+        main.appendChild(datesWrapper);
+
+        const datesValues = document.createElement('div');
+        datesValues.className = 'schedule-dates-values';
+        datesWrapper.appendChild(datesValues);
+
+        const departureItem = document.createElement('div');
+        departureItem.className = 'date-item';
+        datesValues.appendChild(departureItem);
+
+        const departureLabel = document.createElement('span');
+        departureLabel.className = 'date-label';
+        departureLabel.textContent = 'Дата выезда';
+        departureItem.appendChild(departureLabel);
+
+        const departureValue = document.createElement('span');
+        departureValue.className = 'date-value';
+        departureValue.textContent = departureDate || '—';
+        departureItem.appendChild(departureValue);
+
+        const arrowWrapper = document.createElement('div');
+        arrowWrapper.className = 'schedule-date-arrow';
+        arrowWrapper.setAttribute('aria-hidden', 'true');
+        const arrowIcon = document.createElement('i');
+        arrowIcon.className = 'fas fa-arrow-right';
+        arrowIcon.setAttribute('aria-hidden', 'true');
+        arrowWrapper.appendChild(arrowIcon);
+        datesValues.appendChild(arrowWrapper);
+
+        const deliveryItem = document.createElement('div');
+        deliveryItem.className = 'date-item';
+        datesValues.appendChild(deliveryItem);
+
+        const deliveryLabel = document.createElement('span');
+        deliveryLabel.className = 'date-label';
+        deliveryLabel.textContent = 'Дата сдачи';
+        deliveryItem.appendChild(deliveryLabel);
+
+        const deliveryValue = document.createElement('span');
+        deliveryValue.className = 'date-value';
+        deliveryValue.textContent = deliveryDate || '—';
+        deliveryItem.appendChild(deliveryValue);
+
+        const actionWrapper = document.createElement('div');
+        actionWrapper.className = 'schedule-action';
+        main.appendChild(actionWrapper);
+
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.className = 'create-order-btn';
+        actionButton.dataset.groupKey = groupIdentifier != null ? String(groupIdentifier) : '';
+        actionButton.dataset.scheduleId = primaryScheduleId != null ? String(primaryScheduleId) : '';
+
+        const plusIcon = document.createElement('i');
+        plusIcon.className = 'fas fa-plus';
+        plusIcon.setAttribute('aria-hidden', 'true');
+        actionButton.appendChild(plusIcon);
+        actionButton.appendChild(document.createTextNode(' Создать заявку'));
+
+        actionWrapper.appendChild(actionButton);
+
+        const extraSection = document.createElement('div');
+        extraSection.className = 'schedule-card-extra';
+        extraSection.id = extraSectionId;
+        extraSection.setAttribute('aria-hidden', 'true');
+        body.appendChild(extraSection);
+
+        const statusBlock = document.createElement('div');
+        statusBlock.className = `schedule-status status-${statusClass}`;
+        extraSection.appendChild(statusBlock);
+
+        const statusDot = document.createElement('span');
+        statusDot.className = 'status-dot';
+        statusBlock.appendChild(statusDot);
+        statusBlock.appendChild(document.createTextNode(` ${statusText}`));
+
+        const metaWrapper = document.createElement('div');
+        metaWrapper.className = 'schedule-meta';
+        extraSection.appendChild(metaWrapper);
+
+        const metaItems = [
+            { label: 'Время приёмки', value: acceptTime || '—' },
+            { label: 'Водитель', value: driver || '—' },
+            { label: 'Автомобиль', value: carInfo || '—' },
+            { label: 'Города', value: citiesSummary || '—' }
+        ];
+
+        metaItems.forEach(({ label, value }) => {
+            const item = document.createElement('div');
+            item.className = 'meta-item';
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'meta-label';
+            labelSpan.textContent = label;
+            item.appendChild(labelSpan);
+
+            const valueSpan = document.createElement('span');
+            valueSpan.className = 'meta-value';
+            valueSpan.textContent = value || '—';
+            item.appendChild(valueSpan);
+
+            metaWrapper.appendChild(item);
+        });
+
+        const footer = document.createElement('div');
+        footer.className = 'schedule-card-footer';
+        body.appendChild(footer);
+
+        const toggleButton = document.createElement('button');
+        toggleButton.type = 'button';
+        toggleButton.className = 'schedule-card-toggle';
+        toggleButton.dataset.toggleGroup = groupIdentifier != null ? String(groupIdentifier) : '';
+        toggleButton.setAttribute('aria-expanded', 'false');
+        if (extraSectionId) {
+            toggleButton.setAttribute('aria-controls', extraSectionId);
         }
 
-        this.createOrderForSchedule(scheduleId);
+        const toggleLabel = document.createElement('span');
+        toggleLabel.className = 'toggle-label';
+        toggleLabel.textContent = 'Развернуть';
+        toggleButton.appendChild(toggleLabel);
+
+        const toggleIcon = document.createElement('i');
+        toggleIcon.className = 'fas fa-chevron-down toggle-icon';
+        toggleIcon.setAttribute('aria-hidden', 'true');
+        toggleButton.appendChild(toggleIcon);
+
+        footer.appendChild(toggleButton);
+
+        return card;
+    }
+
+    handleScheduleGridClick(event) {
+        if (!event || !(event.target instanceof HTMLElement)) {
+            return;
+        }
+
+        const toggleButton = event.target.closest('.schedule-card-toggle');
+        if (toggleButton) {
+            const card = toggleButton.closest('.schedule-card');
+            if (card) {
+                event.preventDefault();
+                this.toggleScheduleCardExpansion(card, toggleButton);
+            }
+            return;
+        }
+
+        const button = event.target.closest('.create-order-btn');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const currentTarget = event.currentTarget;
+        if (currentTarget instanceof HTMLElement && !currentTarget.contains(button)) {
+            return;
+        }
+
+        event.preventDefault();
+        const { groupKey = '', scheduleId = '' } = button.dataset || {};
+        const identifier = groupKey || scheduleId;
+
+        this.handleCreateOrderClick(event, identifier, button);
+    }
+
+    toggleScheduleCardExpansion(card, explicitButton) {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldExpand = !card.classList.contains('is-expanded');
+        card.classList.toggle('is-expanded', shouldExpand);
+
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : card.querySelector('.schedule-card-toggle');
+
+        const extraSection = card.querySelector('.schedule-card-extra');
+        if (extraSection instanceof HTMLElement) {
+            extraSection.setAttribute('aria-hidden', shouldExpand ? 'false' : 'true');
+        }
+
+        if (button) {
+            button.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+            const label = button.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = shouldExpand ? 'Свернуть' : 'Развернуть';
+            }
+
+            const icon = button.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.remove('fa-chevron-down', 'fa-chevron-up');
+                icon.classList.add(shouldExpand ? 'fa-chevron-up' : 'fa-chevron-down');
+            }
+        }
+    }
+
+    handleCreateOrderClick(event, scheduleId, explicitButton) {
+        const button = explicitButton instanceof HTMLElement
+            ? explicitButton
+            : event?.target instanceof HTMLElement
+                ? event.target.closest('.create-order-btn')
+                : event?.currentTarget instanceof HTMLElement && event.currentTarget.classList.contains('create-order-btn')
+                    ? event.currentTarget
+                    : null;
+
+        this.animateActionButton(button);
+
+        let potentialGroupKey = '';
+        if (typeof scheduleId === 'string' || typeof scheduleId === 'number') {
+            potentialGroupKey = String(scheduleId);
+        }
+
+        if (!potentialGroupKey && button?.dataset?.groupKey) {
+            potentialGroupKey = button.dataset.groupKey;
+        }
+
+        if (potentialGroupKey && this.scheduleGroupsByKey.has(potentialGroupKey)) {
+            this.createOrderForScheduleGroup(potentialGroupKey);
+            return;
+        }
+
+        let fallbackScheduleId = '';
+        if (button?.dataset?.scheduleId) {
+            fallbackScheduleId = button.dataset.scheduleId;
+        }
+
+        if (!fallbackScheduleId && (typeof scheduleId === 'string' || typeof scheduleId === 'number')) {
+            fallbackScheduleId = String(scheduleId);
+        } else if (!fallbackScheduleId && scheduleId && typeof scheduleId === 'object' && 'id' in scheduleId) {
+            fallbackScheduleId = String(scheduleId.id);
+        }
+
+        if (fallbackScheduleId) {
+            this.createOrderForSchedule(fallbackScheduleId);
+        }
+    }
+
+    animateActionButton(button) {
+        if (!(button instanceof HTMLElement)) {
+            return;
+        }
+
+        button.classList.remove('is-pressed');
+        // Перезапускаем анимацию, если пользователь кликает повторно до её окончания
+        void button.offsetWidth;
+        button.classList.add('is-pressed');
+        button.addEventListener('animationend', () => {
+            button.classList.remove('is-pressed');
+        }, { once: true });
     }
 
     getMarketplaceBadgeClass(marketplace) {
@@ -1147,29 +1874,27 @@ class ScheduleManager {
     }
 
     renderEmptyState(icon, title, description) {
-        const safeIcon = this.escapeHtml(icon);
-        const safeTitle = this.escapeHtml(title);
-        const safeDescription = this.escapeHtml(description);
-        return `
-            <div class="empty-state">
-                <i class="fas ${safeIcon}"></i>
-                <h3>${safeTitle}</h3>
-                <p>${safeDescription}</p>
-            </div>
-        `;
-    }
+        const wrapper = document.createElement('div');
+        wrapper.className = 'empty-state';
 
-    escapeHtml(value) {
-        if (value === null || value === undefined) {
-            return '';
+        const iconElement = document.createElement('i');
+        const iconClasses = ['fas'];
+        if (typeof icon === 'string' && icon.trim()) {
+            iconClasses.push(icon.trim());
         }
+        iconElement.className = iconClasses.join(' ');
+        iconElement.setAttribute('aria-hidden', 'true');
+        wrapper.appendChild(iconElement);
 
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        const titleElement = document.createElement('h3');
+        titleElement.textContent = title;
+        wrapper.appendChild(titleElement);
+
+        const descriptionElement = document.createElement('p');
+        descriptionElement.textContent = description;
+        wrapper.appendChild(descriptionElement);
+
+        return wrapper;
     }
 
     getStatusClass(status) {
@@ -1183,8 +1908,12 @@ class ScheduleManager {
     }
 
     formatDate(dateStr) {
-        if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('ru-RU', {
+        const date = this.parseLocalDate(dateStr);
+        if (!date) {
+            return '—';
+        }
+
+        return date.toLocaleDateString('ru-RU', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
@@ -1215,6 +1944,62 @@ class ScheduleManager {
         }
     }
 
+    createOrderForScheduleGroup(groupKey) {
+        const group = this.scheduleGroupsByKey.get(groupKey);
+        if (!group || !Array.isArray(group.scheduleDetails) || group.scheduleDetails.length === 0) {
+            console.warn('Не удалось найти отправления для выбранной даты', groupKey);
+            return;
+        }
+
+        const clonedDetails = group.scheduleDetails.map((details) => ({ ...details }));
+        const primaryDetails = { ...clonedDetails[0] };
+
+        primaryDetails.available_schedules = clonedDetails;
+        primaryDetails.availableSchedules = clonedDetails;
+
+        if (!primaryDetails.id && group.primaryScheduleId) {
+            primaryDetails.id = group.primaryScheduleId;
+        }
+
+        if (!primaryDetails.accept_date && group.departureDate) {
+            primaryDetails.accept_date = group.departureDate;
+            primaryDetails.acceptDate = group.departureDate;
+        }
+
+        if (!primaryDetails.delivery_date && Array.isArray(group.deliveryDates) && group.deliveryDates.length > 0) {
+            const delivery = group.deliveryDates[0];
+            primaryDetails.delivery_date = delivery;
+            primaryDetails.deliveryDate = delivery;
+        }
+
+        if (clonedDetails.length > 1) {
+            primaryDetails.city = '';
+        }
+
+        if (!primaryDetails.marketplace) {
+            primaryDetails.marketplace = this.filters.marketplace || '';
+        }
+        if (!primaryDetails.warehouse && !primaryDetails.warehouses) {
+            const warehouse = this.filters.warehouse || '';
+            primaryDetails.warehouse = warehouse;
+            primaryDetails.warehouses = warehouse;
+        }
+
+        const detailsModal = document.getElementById('scheduleDetailsModal');
+        if (detailsModal) {
+            window.app.closeModal(detailsModal);
+        }
+
+        if (typeof window.openClientRequestFormModal === 'function') {
+            window.openClientRequestFormModal(primaryDetails);
+        } else if (typeof window.openRequestFormModal === 'function') {
+            window.openRequestFormModal(primaryDetails, '', '', '', {
+                modalId: 'clientRequestModal',
+                contentId: 'clientRequestModalContent'
+            });
+        }
+    }
+
     showError(message) {
         if (window.app && typeof window.app.showError === 'function') {
             window.app.showError(message);
@@ -1230,12 +2015,14 @@ class ScheduleManager {
         };
         this.schedules = [];
         this.filteredSchedules = [];
+        this.groupedSchedules = [];
         this.warehouseOptions = [];
         this.isLoadingSchedules = false;
         this.pendingSelections.marketplace = '';
         this.pendingSelections.warehouse = '';
         this.currentStep = 'marketplace';
         this.clearWarehouseStats();
+        this.scheduleGroupsByKey.clear();
 
         this.applyStepState('marketplace', { active: true, complete: false });
         this.applyStepState('warehouse', { active: false, complete: false });
@@ -1243,6 +2030,7 @@ class ScheduleManager {
         this.clearWarehouseSummary();
         this.updateMarketplaceConfirmState();
         this.updateWarehouseConfirmState();
+        this.setFiltersCollapsed(false);
 
         this.setActiveMarketplaceCard('');
 
