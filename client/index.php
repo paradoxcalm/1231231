@@ -97,10 +97,6 @@ if (empty($_SESSION['user_id'])) {
                             </div>
                             <div class="step-body">
                                 <div class="schedule-filter">
-                                    <span class="filter-label">Маркетплейс</span>
-                                    <div class="option-grid marketplace-grid" id="marketplaceOptions" role="group" aria-label="Выбор маркетплейса">
-                                        <div class="option-placeholder">Загрузка маркетплейсов...</div>
-                                    </div>
                                     <label for="marketplaceFilter">Маркетплейс</label>
                                     <select id="marketplaceFilter" class="filter-select">
                                         <option value="">Загрузка...</option>
@@ -126,11 +122,6 @@ if (empty($_SESSION['user_id'])) {
                             </div>
                             <div class="step-body">
                                 <div class="schedule-filter">
-                                    <span class="filter-label">Склад</span>
-                                    <div class="option-grid warehouse-grid is-disabled" id="warehouseOptions" role="group" aria-label="Выбор склада">
-                                        <div class="option-placeholder">Сначала выберите маркетплейс</div>
-                                    </div>
-
                                     <label for="warehouseFilter">Склад</label>
                                     <select id="warehouseFilter" class="filter-select" disabled>
                                         <option value="">Сначала выберите маркетплейс</option>

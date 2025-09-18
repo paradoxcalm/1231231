@@ -16,8 +16,8 @@ class ScheduleManager {
         this.isLoadingSchedules = false;
         this.schedulesCache = new Map();
         this.elements = {
-            marketplaceContainer: document.getElementById('marketplaceOptions'),
-            warehouseContainer: document.getElementById('warehouseOptions'),
+            marketplaceSelect: document.getElementById('marketplaceFilter'),
+            warehouseSelect: document.getElementById('warehouseFilter'),
             resetButton: document.getElementById('resetScheduleFilters'),
             subtitle: document.getElementById('scheduleSubtitle')
         };
@@ -53,37 +53,7 @@ class ScheduleManager {
     }
 
     setupEventListeners() {
-        const { marketplaceContainer, warehouseContainer, resetButton } = this.elements;
-
-        if (marketplaceContainer) {
-            marketplaceContainer.addEventListener('click', (event) => {
-                const target = event.target instanceof HTMLElement ? event.target.closest('.option-card') : null;
-                if (!target || target.classList.contains('is-disabled')) {
-                    return;
-                }
-
-                const value = target.getAttribute('data-value') || '';
-                if (!value) {
-                    return;
-                }
-
-                this.handleMarketplaceChange(value);
-            });
-        }
-
-        if (warehouseContainer) {
-            warehouseContainer.addEventListener('click', (event) => {
-                const target = event.target instanceof HTMLElement ? event.target.closest('.option-card') : null;
-                if (!target || target.classList.contains('is-disabled')) {
-                    return;
-                }
-
-                const value = target.getAttribute('data-value') || '';
-                if (!value) {
-                    return;
-                }
-
-                this.handleWarehouseChange(value);
+        const { marketplaceSelect, warehouseSelect, resetButton } = this.elements;
 
         if (marketplaceSelect) {
             marketplaceSelect.addEventListener('change', (event) => {
@@ -149,13 +119,6 @@ class ScheduleManager {
             return;
         }
 
-        if (active) {
-            step.classList.add('is-active');
-            this.triggerStepAnimation(step);
-        } else {
-            step.classList.remove('is-active');
-            step.classList.remove('is-animating');
-        }
         step.classList.toggle('is-active', active);
         step.classList.toggle('is-complete', complete);
     }
@@ -167,12 +130,6 @@ class ScheduleManager {
         this.updateWarehouseConfirmState();
         this.applyStepState('warehouse', { active: false, complete: false });
         this.clearWarehouseSummary();
-        this.renderMarketplaces();
-        this.renderWarehouses();
-
-        if (this.elements.marketplaceContainer) {
-            this.animateOptionSelection(this.elements.marketplaceContainer, value);
-        }
 
         if (!value) {
             this.clearMarketplaceSummary();
@@ -194,15 +151,12 @@ class ScheduleManager {
         this.selectMarketplace(this.pendingSelections.marketplace);
         this.pendingSelections.marketplace = this.filters.marketplace;
         this.showMarketplaceSummary();
-        this.renderMarketplaces();
-
         this.applyStepState('marketplace', { active: false, complete: true });
         this.applyStepState('warehouse', { active: true, complete: false });
         this.currentStep = 'warehouse';
         this.pendingSelections.warehouse = '';
         this.updateWarehouseConfirmState();
         this.clearWarehouseSummary();
-        this.renderWarehouses();
     }
 
     openMarketplaceStep() {
@@ -214,8 +168,6 @@ class ScheduleManager {
         this.updateMarketplaceConfirmState();
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
-        this.renderMarketplaces();
-        this.renderWarehouses();
 
         if (this.elements.marketplaceSelect) {
             this.elements.marketplaceSelect.value = this.filters.marketplace || '';
@@ -234,7 +186,6 @@ class ScheduleManager {
         this.pendingSelections.warehouse = this.filters.warehouse || '';
         this.updateWarehouseConfirmState();
 
-        this.renderWarehouses();
         if (this.elements.warehouseSelect) {
             this.elements.warehouseSelect.value = this.filters.warehouse || '';
         }
@@ -244,11 +195,6 @@ class ScheduleManager {
         this.pendingSelections.warehouse = value;
         this.updateWarehouseConfirmState();
         this.applyStepState('warehouse', { active: true, complete: false });
-        this.renderWarehouses();
-
-        if (this.elements.warehouseContainer) {
-            this.animateOptionSelection(this.elements.warehouseContainer, value);
-        }
 
         if (!value) {
             this.clearWarehouseSummary();
@@ -271,8 +217,6 @@ class ScheduleManager {
         this.selectWarehouse(this.pendingSelections.warehouse);
         this.pendingSelections.warehouse = this.filters.warehouse;
         this.showWarehouseSummary();
-        this.renderWarehouses();
-
         this.applyStepState('warehouse', { active: false, complete: true });
     }
 
@@ -347,44 +291,52 @@ class ScheduleManager {
     }
 
     renderMarketplaces() {
-        const container = this.elements.marketplaceContainer;
-        if (!container) return;
+        const select = this.elements.marketplaceSelect;
+        if (!select) return;
 
-        container.classList.toggle('is-loading', this.isLoadingMarketplaces);
+        select.innerHTML = '';
 
         if (this.isLoadingMarketplaces) {
-            container.innerHTML = this.renderOptionSkeleton(3);
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Загрузка маркетплейсов...';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
         if (this.marketplaceOptions.length === 0) {
-            container.innerHTML = '<div class="option-placeholder">Маркетплейсы недоступны</div>';
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Маркетплейсы недоступны';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
-        const selectedValue = this.pendingSelections.marketplace || this.filters.marketplace || '';
-        container.innerHTML = this.marketplaceOptions.map((optionData) => {
-            const isSelected = optionData.value === selectedValue;
-            const classes = ['option-card', 'marketplace-option', this.getMarketplaceAccentClass(optionData.value)];
-            if (isSelected) {
-                classes.push('is-selected');
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'Выберите маркетплейс';
+        select.appendChild(placeholderOption);
+
+        this.marketplaceOptions.forEach(optionData => {
+            const option = document.createElement('option');
+            option.value = optionData.value;
+            option.textContent = optionData.label;
+            if (optionData.description) {
+                option.title = optionData.description;
             }
+            select.appendChild(option);
+        });
 
-            const safeValue = this.escapeHtml(optionData.value);
-            const safeLabel = this.escapeHtml(optionData.label);
-            const initial = this.escapeHtml(this.getMarketplaceInitial(optionData.label));
-            const safeDescription = optionData.description ? this.escapeHtml(optionData.description) : '';
-
-            return `
-                <button type="button" class="${classes.filter(Boolean).join(' ')}" data-value="${safeValue}">
-                    <span class="option-icon" aria-hidden="true">${initial}</span>
-                    <span class="option-info">
-                        <span class="option-title">${safeLabel}</span>
-                        ${safeDescription ? `<span class="option-description">${safeDescription}</span>` : ''}
-                    </span>
-                </button>
-            `;
-        }).join('');
+        select.disabled = false;
+        const selected = this.filters.marketplace || '';
+        select.value = selected;
+        if (select.value !== selected) {
+            select.value = '';
+        }
     }
 
     getMarketplaceDescription(marketplace) {
@@ -455,164 +407,58 @@ class ScheduleManager {
     }
 
     renderWarehouses() {
-        const container = this.elements.warehouseContainer;
-        if (!container) return;
+        const select = this.elements.warehouseSelect;
+        if (!select) return;
 
-        const hasMarketplace = Boolean(this.filters.marketplace);
-        container.classList.toggle('is-disabled', !hasMarketplace);
+        select.innerHTML = '';
 
-        if (!hasMarketplace) {
-            container.innerHTML = '<div class="option-placeholder">Сначала выберите маркетплейс</div>';
+        if (!this.filters.marketplace) {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Сначала выберите маркетплейс';
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
-        container.classList.toggle('is-loading', this.isLoadingWarehouses);
-
         if (this.isLoadingWarehouses) {
-            container.innerHTML = this.renderOptionSkeleton(4);
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Загрузка складов...';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
         if (this.warehouseOptions.length === 0) {
-            container.innerHTML = '<div class="option-placeholder">Нет доступных складов</div>';
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Нет доступных складов';
+            option.disabled = true;
+            select.appendChild(option);
+            select.disabled = true;
             return;
         }
 
-        const selectedValue = this.pendingSelections.warehouse || this.filters.warehouse || '';
-        container.innerHTML = this.warehouseOptions.map((optionData) => {
-            const isSelected = optionData.value === selectedValue;
-            const classes = ['option-card', 'warehouse-option'];
-            if (isSelected) {
-                classes.push('is-selected');
-            }
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'Выберите склад';
+        select.appendChild(placeholderOption);
 
-            const safeValue = this.escapeHtml(optionData.value);
-            const safeLabel = this.escapeHtml(optionData.label);
-            const shortNameRaw = this.getWarehouseShortName(optionData.label);
-            const shortName = this.escapeHtml(shortNameRaw);
-            const showFullName = shortNameRaw !== optionData.label;
+        this.warehouseOptions.forEach(optionData => {
+            const option = document.createElement('option');
+            option.value = optionData.value;
+            option.textContent = optionData.label;
+            select.appendChild(option);
+        });
 
-            return `
-                <button type="button" class="${classes.join(' ')}" data-value="${safeValue}" title="${safeLabel}">
-                    <span class="option-title">${shortName}</span>
-                    ${showFullName ? `<span class="option-description">${safeLabel}</span>` : ''}
-                </button>
-            `;
-        }).join('');
-    }
-
-    renderOptionSkeleton(count = 3) {
-        return Array.from({ length: count })
-            .map(() => `
-                <div class="option-card is-skeleton">
-                    <span class="option-icon" aria-hidden="true"></span>
-                    <span class="option-info">
-                        <span class="option-title skeleton-line"></span>
-                        <span class="option-description skeleton-line"></span>
-                    </span>
-                </div>
-            `)
-            .join('');
-    }
-
-    animateOptionSelection(container, value) {
-        if (!container || !value) {
-            return;
+        select.disabled = false;
+        const selected = this.filters.warehouse || '';
+        select.value = selected;
+        if (select.value !== selected) {
+            select.value = '';
         }
-
-        const selector = `.option-card[data-value="${this.escapeSelector(value)}"]`;
-        const button = container.querySelector(selector);
-        if (!button) {
-            return;
-        }
-
-        button.classList.remove('is-just-selected');
-        void button.offsetWidth;
-        button.classList.add('is-just-selected');
-        button.addEventListener('animationend', () => {
-            button.classList.remove('is-just-selected');
-        }, { once: true });
-    }
-
-    triggerStepAnimation(step) {
-        if (!step) {
-            return;
-        }
-
-        step.classList.remove('is-animating');
-        void step.offsetWidth;
-        step.classList.add('is-animating');
-        step.addEventListener('animationend', () => {
-            step.classList.remove('is-animating');
-        }, { once: true });
-    }
-
-    getMarketplaceInitial(label) {
-        if (!label) {
-            return '';
-        }
-
-        const trimmed = label.trim();
-        if (!trimmed) {
-            return '';
-        }
-
-        return trimmed.charAt(0).toUpperCase();
-    }
-
-    getMarketplaceAccentClass(marketplace) {
-        if (!marketplace) {
-            return 'accent-default';
-        }
-
-        const normalized = marketplace.toLowerCase();
-        if (normalized.includes('wildberries')) {
-            return 'accent-wb';
-        }
-        if (normalized.includes('ozon')) {
-            return 'accent-ozon';
-        }
-        if (normalized.includes('yandex') || normalized.includes('яндекс')) {
-            return 'accent-yandex';
-        }
-        if (normalized.includes('sber') || normalized.includes('сбер')) {
-            return 'accent-sber';
-        }
-        return 'accent-default';
-    }
-
-    getWarehouseShortName(name) {
-        if (!name) {
-            return '';
-        }
-
-        const trimmed = name.trim();
-        if (trimmed.length <= 28) {
-            return trimmed;
-        }
-
-        const parts = trimmed.split(',');
-        if (parts.length >= 2) {
-            const city = parts[0].trim();
-            const rest = parts.slice(1).join(',').trim();
-            const cityShort = city.length > 9 ? `${city.slice(0, 9)}…` : city;
-            const restShort = rest.length > 14 ? `${rest.slice(0, 14)}…` : rest;
-            return `${cityShort} ${restShort}`.trim();
-        }
-
-        return `${trimmed.slice(0, 27)}…`;
-    }
-
-    escapeSelector(value) {
-        if (!value) {
-            return '';
-        }
-
-        if (window.CSS && typeof window.CSS.escape === 'function') {
-            return window.CSS.escape(value);
-        }
-
-        return String(value).replace(/([!"#$%&'()*+,./:;<=>?@[\\\]^`{|}~])/g, '\\$1');
     }
 
     selectWarehouse(warehouse) {
