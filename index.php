@@ -8,7 +8,7 @@ if (!isset($_SESSION['role'])) {
 $role = $_SESSION['role'];
 
 if ($role === 'client') {
-    header('Location: /client/index.html');
+    header('Location: /client/index.php');
     exit();
 } elseif ($role === 'deliverer') {
     header('Location: /deliver/index.php');
