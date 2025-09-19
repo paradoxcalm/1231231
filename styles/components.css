@@ -535,9 +535,6 @@
     cursor: pointer;
 }
 
-.request-modal__option input[type="radio"] {
-    accent-color: var(--request-modal-accent);
-}
 
 .request-modal__dimensions {
     display: flex;

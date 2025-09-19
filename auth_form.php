@@ -207,7 +207,7 @@ if (isset($_SESSION['role'])) {
                 <div class="contact-card">
                     <div class="contact-icon">📞</div>
                     <h3>Телефон</h3>
-                    <a class="link" href="tel:+71234567890">+7 (123) 456-78-90</a>
+                    <a class="link" href="tel:+71234567890">+7 (922) 704-83-04</a>
                 </div>
                 <div class="contact-card">
                     <div class="contact-icon">✉️</div>
@@ -222,7 +222,7 @@ if (isset($_SESSION['role'])) {
                 <div class="contact-card">
                     <div class="contact-icon">🕒</div>
                     <h3>Режим работы</h3>
-                    <p>Пн-Пт: 9:00-18:00<br>Сб-Вс: 10:00-16:00</p>
+                    <p>Пн-Сб: 9:00-18:00<br>Вс: Выходной</p>
                 </div>
             </div>
         </div>

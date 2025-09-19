@@ -302,7 +302,7 @@ if (empty($_SESSION['user_id'])) {
         </section>
     </main>
 
-    <!-- Мобильная навигация -->
+     <!-- Мобильная навигация -->
     <nav class="mobile-nav">
         <button class="mobile-nav-item active" data-section="schedule">
             <i class="fas fa-calendar-alt"></i>
