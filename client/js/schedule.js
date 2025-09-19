@@ -178,9 +178,9 @@ class ScheduleManager {
         this.hasAppliedFilterCollapseState = true;
         this.updateFilterToggleButton();
 
-        if (shouldCollapse && scrollIntoView && this.scheduleResultsElement instanceof HTMLElement) {
-            this.scheduleResultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        // Ранее при сворачивании фильтра выполнялась прокрутка к результатам расписания.
+        // Это приводило к неожиданному изменению положения страницы, поэтому вызов
+        // scrollIntoView намеренно удалён.
     }
 
     updateFilterToggleButton() {
