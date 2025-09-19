@@ -1041,7 +1041,9 @@ function generateBoxFields(count) {
 
         return `
       <div class="request-modal__box-group request-form__box-group box-group-item">
-        <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${groupIndex + 1}:</strong>
+        <div class="request-modal__box-group-header request-form__box-group-header">
+          <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${groupIndex + 1}:</strong>
+        </div>
         <div class="request-modal__box-group-inputs request-form__box-group-inputs">
 ${fieldsHtml}
         </div>
