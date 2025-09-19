@@ -462,6 +462,11 @@
     font-weight: 500;
 }
 
+.request-form__input-error {
+    border: 1px solid var(--schedule-danger, #d64545);
+    background: #fef2f2;
+}
+
 /* Группы коробок */
 .request-modal__custom-fields {
     display: flex;
