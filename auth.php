@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Определяем, выбрал ли пользователь "Запомнить меня"
         $remember = !empty($_POST['remember']);
 
-        $secure = !empty($_SERVER['HTTPS']);  // true, если используется HTTPS
+        $cookieSecurity = ff_get_cookie_security_options();  // включает secure/samesite с учётом HTTPS
 
         session_start();
 
@@ -92,8 +92,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $update->execute();
                 $update->close();
                 // Устанавливаем cookie с токеном и ID пользователя на 60 дней (Secure, HttpOnly)
-                setcookie('remember_token', $token, $tokenExpiry, "/", "", $secure, true);
-                setcookie('remember_user', (string)$user['id'], $tokenExpiry, "/", "", $secure, true);
+                $cookieOptions = array_merge([
+                    'expires' => $tokenExpiry,
+                    'path' => '/',
+                ], $cookieSecurity);
+                setcookie('remember_token', $token, $cookieOptions);
+                setcookie('remember_user', (string)$user['id'], $cookieOptions);
             }
         } else {
             // Если пользователь не хочет "запомнить", очищаем предыдущие токены
