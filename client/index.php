@@ -320,6 +320,10 @@ if (empty($_SESSION['user_id'])) {
             <i class="fas fa-user"></i>
             <span>Профиль</span>
         </button>
+        <button class="mobile-nav-item" data-action="logout">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Выйти</span>
+        </button>
     </nav>
 
     <div class="modal" id="orderDetailsModal">
@@ -352,6 +356,27 @@ if (empty($_SESSION['user_id'])) {
 
     <div class="modal" id="clientRequestModal">
         <div class="modal-content" id="clientRequestModalContent"></div>
+    </div>
+
+    <div class="modal" id="logoutConfirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Подтверждение выхода</h3>
+                <button class="modal-close" type="button">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Вы действительно хотите завершить сеанс?</p>
+                <div class="modal-actions">
+                    <button type="button" class="confirm-btn" id="confirmLogoutBtn">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Выйти
+                    </button>
+                    <button type="button" class="reject-btn" id="cancelLogoutBtn">Отмена</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Уведомления -->

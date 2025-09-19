@@ -1826,6 +1826,27 @@ body {
     padding: 24px;
 }
 
+#logoutConfirmModal .modal-body {
+    text-align: center;
+}
+
+#logoutConfirmModal .modal-body p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+}
+
+#logoutConfirmModal .modal-actions {
+    margin-top: 24px;
+}
+
+#logoutConfirmModal .modal-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
 .radio-group,
 .checkbox-group {
     display: flex;
