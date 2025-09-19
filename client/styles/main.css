@@ -762,6 +762,7 @@ body {
     font-weight: 700;
     font-size: 0.95rem;
     transition: var(--transition);
+    flex-shrink: 0;
 }
 
 .schedule-step.is-active .step-index {
