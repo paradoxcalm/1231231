@@ -68,6 +68,15 @@ class OrdersManager {
         });
     }
 
+    canDeleteOrder(order) {
+        if (!order) return false;
+
+        const allowedStatuses = ['Выгрузите товар', 'Ожидает выгрузки'];
+        const status = (order.status || '').trim();
+
+        return allowedStatuses.includes(status);
+    }
+
     renderOrders() {
         const grid = document.getElementById('ordersGrid');
         if (!grid) return;
@@ -95,7 +104,15 @@ class OrdersManager {
                 <div class="order-card" data-id="${order.order_id}">
                     <div class="order-header">
                         <div class="order-id">Заказ #${order.order_id}</div>
-                        <div class="order-status ${statusClass}">${order.status}</div>
+                        <div class="order-header-actions">
+                            <div class="order-status ${statusClass}">${order.status}</div>
+                            ${this.canDeleteOrder(order) ? `
+                                <button type="button" class="action-btn order-delete-btn" onclick="window.OrdersManager.deleteOrder(${order.order_id}, event)">
+                                    <i class="fas fa-trash-alt"></i>
+                                    Удалить
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
 
                     <div class="order-info">
@@ -635,6 +652,70 @@ class OrdersManager {
                 trackingModal.remove();
             }
         });
+    }
+
+    async deleteOrder(orderId, event) {
+        event?.stopPropagation?.();
+        event?.preventDefault?.();
+
+        const showError = (message) => {
+            if (window.app?.showError) {
+                window.app.showError(message);
+            } else {
+                alert(message);
+            }
+        };
+
+        const showSuccess = (message) => {
+            if (window.app?.showSuccess) {
+                window.app.showSuccess(message);
+            } else {
+                alert(message);
+            }
+        };
+
+        const order = this.orders.find(o => o.order_id === orderId);
+
+        if (!order) {
+            showError('Заказ не найден');
+            return;
+        }
+
+        if (!this.canDeleteOrder(order)) {
+            showError('Удаление возможно только до выгрузки товара');
+            return;
+        }
+
+        const confirmed = confirm('Вы уверены, что хотите удалить этот заказ?');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch('../delete_order.php', {
+                method: 'POST',
+                body: JSON.stringify({ order_id: orderId }),
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
+
+            let result;
+            try {
+                result = await response.json();
+            } catch (jsonError) {
+                throw new Error('Некорректный ответ сервера');
+            }
+
+            if (!response.ok || !result.success) {
+                throw new Error(result?.message || 'Не удалось удалить заказ');
+            }
+
+            this.orders = this.orders.filter(o => o.order_id !== orderId);
+            this.filterOrders();
+            this.renderOrders();
+            showSuccess(result?.message || 'Заказ удалён');
+        } catch (error) {
+            console.error('Ошибка удаления заказа:', error);
+            showError(error.message || 'Не удалось удалить заказ');
+        }
     }
 
     async cancelOrder(orderId) {
