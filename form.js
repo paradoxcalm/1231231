@@ -1978,71 +1978,80 @@ async function initializeForm() {
     }
 
     // 4) Обработка отправки формы
+    let isSubmitting = false;
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (isSubmitting) {
+            return;
+        }
+        isSubmitting = true;
+
         const status = document.getElementById('status');
+        const btn = form.querySelector('button[type="submit"]');
 
         // Проверка координат, если выбран забор груза
         const pickCb   = document.getElementById('pickupCheckbox');
         const latInput = document.getElementById('pickupLat');
         const lngInput = document.getElementById('pickupLng');
 
-        if (pickCb && pickCb.checked) {
-            if (!window.__pickupMapInited) {
-                try {
-                    await initPickupMap();
-                } catch (err) {
-                    console.warn('Не удалось инициализировать карту перед проверкой координат:', err);
-                }
-            }
-            const lat = latInput ? latInput.value.trim() : '';
-            const lng = lngInput ? lngInput.value.trim() : '';
-            if (!lat || !lng) {
-                if (status) {
-                    status.textContent = 'Пожалуйста, выберите точку на карте';
-                    status.style.color = 'red';
-                }
-                return;
-            }
-        }
-
-        const cityValue = (cityEl && typeof cityEl.value === 'string') ? cityEl.value.trim() : '';
-        if (cityValue) {
-            let confirmed = true;
-            try {
-                confirmed = await openCityConfirmationModal({ cityName: cityValue, cityElement: cityEl });
-            } catch (err) {
-                console.warn('Не удалось показать подтверждение города перед отправкой формы:', err);
-                confirmed = true;
-            }
-
-            if (!confirmed) {
-                return;
-            }
-        }
-
-        const btn = form.querySelector('button[type="submit"]');
-        if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
         try {
-            const submitUrl = resolveFormPath('log_data.php');
-            const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
-            const result = await res.json();
-            if (result && result.status === 'success') {
-                const pay = document.getElementById('payment');
-                showSuccessModal(result.qr_code, pay ? pay.value : '');
-            } else {
-                if (status) {
-                    status.textContent = `⚠️ Ошибка: ${result && result.message ? result.message : 'Неизвестная ошибка'}`;
-                    status.style.color = 'red';
+            if (pickCb && pickCb.checked) {
+                if (!window.__pickupMapInited) {
+                    try {
+                        await initPickupMap();
+                    } catch (err) {
+                        console.warn('Не удалось инициализировать карту перед проверкой координат:', err);
+                    }
+                }
+                const lat = latInput ? latInput.value.trim() : '';
+                const lng = lngInput ? lngInput.value.trim() : '';
+                if (!lat || !lng) {
+                    if (status) {
+                        status.textContent = 'Пожалуйста, выберите точку на карте';
+                        status.style.color = 'red';
+                    }
+                    return;
                 }
             }
-        } catch (err) {
-            if (status) {
-                status.textContent = 'Ошибка подключения: ' + err.message;
-                status.style.color = 'red';
+
+            const cityValue = (cityEl && typeof cityEl.value === 'string') ? cityEl.value.trim() : '';
+            if (cityValue) {
+                let confirmed = true;
+                try {
+                    confirmed = await openCityConfirmationModal({ cityName: cityValue, cityElement: cityEl });
+                } catch (err) {
+                    console.warn('Не удалось показать подтверждение города перед отправкой формы:', err);
+                    confirmed = true;
+                }
+
+                if (!confirmed) {
+                    return;
+                }
+            }
+
+            if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
+            try {
+                const submitUrl = resolveFormPath('log_data.php');
+                const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
+                const result = await res.json();
+                if (result && result.status === 'success') {
+                    const pay = document.getElementById('payment');
+                    showSuccessModal(result.qr_code, pay ? pay.value : '');
+                } else {
+                    if (status) {
+                        status.textContent = `⚠️ Ошибка: ${result && result.message ? result.message : 'Неизвестная ошибка'}`;
+                        status.style.color = 'red';
+                    }
+                }
+            } catch (err) {
+                if (status) {
+                    status.textContent = 'Ошибка подключения: ' + err.message;
+                    status.style.color = 'red';
+                }
             }
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+            isSubmitting = false;
         }
     });
 
