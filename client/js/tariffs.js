@@ -362,7 +362,7 @@ class TariffsManager {
         }).join('');
 
         tableContainer.innerHTML = `
-            <table class="tariffs-table">
+            <table class="tariffs-table tariffs-table--compact">
                 <thead>
                     <tr>
                         <th>Склад назначения</th>

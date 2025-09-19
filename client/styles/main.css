@@ -1558,6 +1558,29 @@ body {
     color: var(--primary);
 }
 
+@media (max-width: 640px) {
+    .tariffs-table--compact th:nth-child(4),
+    .tariffs-table--compact td:nth-child(4),
+    .tariffs-table--compact .price-note,
+    .tariffs-table--compact .warehouse-location {
+        display: none;
+    }
+
+    .tariffs-table--compact th,
+    .tariffs-table--compact td {
+        padding: 12px 8px;
+        font-size: 0.9rem;
+    }
+
+    .tariffs-table--compact .warehouse-name {
+        font-size: 1rem;
+    }
+
+    .tariffs-table--compact .price-value {
+        font-size: 1rem;
+    }
+}
+
 /* Orders */
 .orders-controls {
     display: flex;
