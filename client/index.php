@@ -183,6 +183,14 @@ if (empty($_SESSION['user_id'])) {
             </div>
 
             <div class="tariffs-container">
+                <div class="tariffs-filters">
+                    <div class="tariffs-filter-control">
+                        <label class="tariffs-filter-label" for="tariffsMarketplaceFilter">Маркетплейс</label>
+                        <select id="tariffsMarketplaceFilter" class="tariffs-filter-select" aria-label="Фильтр по маркетплейсу">
+                            <option value="all">Загрузка...</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="city-tabs" id="cityTabs">
                     <!-- Табы городов генерируются динамически -->
                 </div>
