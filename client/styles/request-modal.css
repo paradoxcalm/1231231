@@ -138,6 +138,28 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
+.city-confirm-button[disabled],
+.city-confirm-button--disabled {
+    background: var(--bg-secondary, #f3f4f6);
+    border-color: var(--border, #d1d5db);
+    color: var(--text-disabled, #9ca3af);
+    box-shadow: none;
+    transform: none;
+    cursor: default;
+    pointer-events: none;
+}
+
+.city-confirm-button[disabled]:hover,
+.city-confirm-button--disabled:hover,
+.city-confirm-button[disabled]:focus-visible,
+.city-confirm-button--disabled:focus-visible {
+    box-shadow: none;
+    transform: none;
+    background: var(--bg-secondary, #f3f4f6);
+    border-color: var(--border, #d1d5db);
+    color: var(--text-disabled, #9ca3af);
+}
+
 .city-confirm-button:focus-visible {
     outline: none;
     box-shadow: 0 0 0 4px rgba(40, 199, 111, 0.25);
