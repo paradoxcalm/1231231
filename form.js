@@ -986,6 +986,12 @@ function setupPackagingToggle() {
 // 6️⃣ Генерация полей для своих коробов + привязка recalcBox
 function generateBoxFields(count) {
     const block = document.getElementById("customBoxFields");
+    const existingValues = {
+        length: Array.from(block.querySelectorAll('input[name="box_length[]"]')).map(input => input.value),
+        width: Array.from(block.querySelectorAll('input[name="box_width[]"]')).map(input => input.value),
+        height: Array.from(block.querySelectorAll('input[name="box_height[]"]')).map(input => input.value),
+        count: Array.from(block.querySelectorAll('input[name="box_count[]"]')).map(input => input.value),
+    };
     if (count < 1 || count > 10) {
         block.innerHTML = '<p class="request-modal__warning request-form__warning form-error text-danger">Укажите от 1 до 10 групп</p>';
         return;
@@ -1003,15 +1009,29 @@ function generateBoxFields(count) {
     `).join('');
     block.innerHTML = html;
     // привязываем recalcBox ко всем новым полям
-    if (typeof window.recalcBox === 'function') {
-        block.querySelectorAll('input').forEach(i => i.addEventListener('input', window.recalcBox));
-    }
+    const inputs = {
+        length: block.querySelectorAll('input[name="box_length[]"]'),
+        width: block.querySelectorAll('input[name="box_width[]"]'),
+        height: block.querySelectorAll('input[name="box_height[]"]'),
+        count: block.querySelectorAll('input[name="box_count[]"]'),
+    };
+
+    ['length', 'width', 'height', 'count'].forEach(key => {
+        inputs[key].forEach((input, index) => {
+            if (existingValues[key][index] !== undefined) {
+                input.value = existingValues[key][index];
+            }
+            if (typeof window.recalcBox === 'function') {
+                input.addEventListener('input', window.recalcBox);
+            }
+        });
+    });
 }
 
 // 7️⃣ Триггер генерации своих коробов
 function setupBoxFieldsTrigger() {
     const qtyInput = document.getElementById("customBoxGroupCount");
-    qtyInput?.addEventListener("input", () => {
+    qtyInput?.addEventListener("change", () => {
         const cnt = parseInt(qtyInput.value) || 0;
         generateBoxFields(cnt);
         if (typeof window.recalcBox === 'function') window.recalcBox();
