@@ -266,7 +266,7 @@ body.city-confirm-open {
 }
 
 #clientRequestModal .request-modal__body {
-    padding: clamp(16px, 3vw, 28px);
+    padding: clamp(8px, 3vw, 28px);
     flex: 1;
     max-height: none;
     overflow-y: auto;
@@ -1160,7 +1160,6 @@ body.city-confirm-open {
   }
 
   #clientRequestModal .modal-content > .request-modal .modal-header-with-close {
-    padding: var(--client-modal-spacing);
   }
 
   #clientRequestModal .modal-content > .request-modal .modal-close-btn {
@@ -1170,7 +1169,6 @@ body.city-confirm-open {
 
   #clientRequestModal .modal-content > .request-modal .request-modal__body {
     flex: 1;
-    padding: var(--client-modal-spacing);
     overflow-y: auto;
   }
 
@@ -1287,9 +1285,7 @@ body.city-confirm-open {
   }
 
   #clientRequestModal .request-modal__summary .modal-row {
-    flex-direction: column;
     align-items: flex-start;
-    padding: clamp(10px, 6vw, 14px) clamp(10px, 6vw, 14px);
   }
 
   #clientRequestModal .request-modal__summary .modal-row-icon {

@@ -350,7 +350,6 @@
 .request-modal {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
 }
 
 .request-modal > .modal-header-with-close {
@@ -388,7 +387,6 @@
 .request-modal__content form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
     text-align: left;
 }
 
