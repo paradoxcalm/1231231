@@ -11,18 +11,32 @@ class OrdersManager {
         this.setupTabs();
         const btn = document.getElementById('createOrderBtn');
         btn?.addEventListener('click', () => {
-            if (typeof window.openClientRequestFormModal === 'function') {
-                window.openClientRequestFormModal({});
-            } else if (typeof window.openRequestFormModal === 'function') {
-                window.openRequestFormModal({}, '', '', '', {
-                    modalId: 'clientRequestModal',
-                    contentId: 'clientRequestModalContent'
-                });
-            } else {
-                console.error('openRequestFormModal is not loaded');
-            }
+            this.navigateToScheduleSection();
         });
         this.loadOrders();
+    }
+
+    navigateToScheduleSection() {
+        if (typeof window.app?.switchSection === 'function') {
+            window.app.switchSection('schedule');
+        }
+
+        const scheduleSection = document.getElementById('scheduleSection');
+        scheduleSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        const updateActiveState = (elements) => {
+            elements.forEach(element => {
+                const section = element.dataset.section;
+                if (!section) {
+                    return;
+                }
+
+                element.classList.toggle('active', section === 'schedule');
+            });
+        };
+
+        updateActiveState(document.querySelectorAll('.nav-link'));
+        updateActiveState(document.querySelectorAll('.mobile-nav-item'));
     }
 
     setupTabs() {
