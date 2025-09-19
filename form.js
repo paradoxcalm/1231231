@@ -256,7 +256,38 @@ function openCityConfirmationModal({ cityName = '', cityElement = null } = {}) {
         const editBtn = overlay.querySelector('[data-role="edit"]');
         const closeBtn = overlay.querySelector('[data-role="close"]');
 
-        confirmBtn?.addEventListener('click', () => finish(true));
+        if (confirmBtn) {
+            const disableConfirmButton = () => {
+                if (!confirmBtn.disabled) {
+                    confirmBtn.disabled = true;
+                }
+                if (confirmBtn.getAttribute('aria-disabled') !== 'true') {
+                    confirmBtn.setAttribute('aria-disabled', 'true');
+                }
+                confirmBtn.classList.add('city-confirm-button--disabled');
+            };
+
+            const isConfirmButtonDisabled = () => (
+                confirmBtn.disabled
+                || confirmBtn.getAttribute('aria-disabled') === 'true'
+                || confirmBtn.classList.contains('city-confirm-button--disabled')
+            );
+
+            confirmBtn.addEventListener('click', (event) => {
+                if (isConfirmButtonDisabled()) {
+                    event.preventDefault();
+                    if (typeof event.stopImmediatePropagation === 'function') {
+                        event.stopImmediatePropagation();
+                    } else {
+                        event.stopPropagation();
+                    }
+                    return;
+                }
+
+                disableConfirmButton();
+                finish(true);
+            });
+        }
         editBtn?.addEventListener('click', closeAndFocusCity);
         closeBtn?.addEventListener('click', closeAndFocusCity);
 
