@@ -34,9 +34,19 @@ class App {
         mobileNavItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
+
+                if (item.dataset.action === 'logout') {
+                    this.openModal(document.getElementById('logoutConfirmModal'));
+                    return;
+                }
+
                 const section = item.dataset.section;
+                if (!section) {
+                    return;
+                }
+
                 this.switchSection(section);
-                
+
                 // Обновляем активные состояния
                 mobileNavItems.forEach(i => i.classList.remove('active'));
                 item.classList.add('active');
@@ -136,6 +146,22 @@ class App {
                 }
             });
         });
+
+        const confirmLogoutBtn = document.getElementById('confirmLogoutBtn');
+        const cancelLogoutBtn = document.getElementById('cancelLogoutBtn');
+        const logoutModal = document.getElementById('logoutConfirmModal');
+
+        if (confirmLogoutBtn) {
+            confirmLogoutBtn.addEventListener('click', () => {
+                this.logout();
+            });
+        }
+
+        if (cancelLogoutBtn) {
+            cancelLogoutBtn.addEventListener('click', () => {
+                this.closeModal(logoutModal);
+            });
+        }
 
     }
 
