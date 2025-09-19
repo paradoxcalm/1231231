@@ -1509,6 +1509,12 @@ body {
     margin-bottom: 16px;
 }
 
+.order-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .order-id {
     font-size: 1.2rem;
     font-weight: 700;
@@ -1550,6 +1556,19 @@ body {
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+}
+
+.order-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-tertiary);
+    color: var(--error);
+}
+
+.order-delete-btn:hover {
+    background: var(--error);
+    color: #ffffff;
 }
 
 .action-btn {
