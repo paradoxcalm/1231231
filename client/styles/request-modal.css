@@ -594,6 +594,19 @@ body.city-confirm-open {
   gap: 16px;
 }
 
+.request-form__box-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.request-form__box-field-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary, #4b5563);
+  line-height: 1.35;
+}
+
 .request-form__dimension-input,
 .request-form__group-count,
 .request-form__pickup-input,
