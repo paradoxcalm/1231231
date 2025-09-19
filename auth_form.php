@@ -6,6 +6,9 @@ require_once 'session_init.php';
 session_start();
 require_once 'db_connection.php';
 
+$cookieSecurity = ff_get_cookie_security_options();
+$sessionLifetime = 60 * 24 * 60 * 60;
+
 // Подхватываем контент из БД (если используется)
 $contentAbout    = '';
 $contentServices = '';
@@ -35,12 +38,19 @@ if (!isset($_SESSION['role']) && isset($_COOKIE['remember_token'], $_COOKIE['rem
                 session_regenerate_id(true);
                 $_SESSION['user_id'] = $u['id'];
                 $_SESSION['role']    = $u['role'];
-                $secure = !empty($_SERVER['HTTPS']);
                 // Прежняя семантика сохранена
-                setcookie(session_name(), session_id(), time()+60*24*60*60, "/", "", $secure, true);
+                $sessionRenewOptions = array_merge([
+                    'expires' => time() + $sessionLifetime,
+                    'path' => '/',
+                ], $cookieSecurity);
+                setcookie(session_name(), session_id(), $sessionRenewOptions);
             } else {
-                setcookie('remember_token','',time()-3600,'/');
-                setcookie('remember_user','',time()-3600,'/');
+                $expiredOptions = array_merge([
+                    'expires' => time() - 3600,
+                    'path' => '/',
+                ], $cookieSecurity);
+                setcookie('remember_token', '', $expiredOptions);
+                setcookie('remember_user', '', $expiredOptions);
             }
         }
         $stmt->close();

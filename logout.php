@@ -12,13 +12,17 @@ if (!empty($_SESSION['user_id'])) {
     $stmt->close();
 }
 
-// Удаление cookie «Запомнить меня»
-$secure = !empty($_SERVER['HTTPS']);
-setcookie('remember_token', '', time() - 3600, "/", "", $secure, true);
-setcookie('remember_user', '', time() - 3600, "/", "", $secure, true);
+// Удаление cookie «Запомнить меня» и сессии
+$cookieSecurity = ff_get_cookie_security_options();
+$expiredOptions = array_merge([
+    'expires' => time() - 3600,
+    'path' => '/',
+], $cookieSecurity);
+setcookie('remember_token', '', $expiredOptions);
+setcookie('remember_user', '', $expiredOptions);
 
 // Удаление cookie сессии (чтобы браузер не хранил устаревший PHPSESSID)
-setcookie(session_name(), '', time() - 3600, "/", "", $secure, true);
+setcookie(session_name(), '', $expiredOptions);
 
 // Завершение сессии на сервере
 $_SESSION = [];
