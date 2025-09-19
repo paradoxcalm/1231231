@@ -158,10 +158,6 @@ class ScheduleManager {
     toggleFiltersCollapsed() {
         const nextState = !this.isFiltersCollapsed;
         this.setFiltersCollapsed(nextState, { scrollIntoView: nextState });
-
-        if (!nextState && this.filtersContainer instanceof HTMLElement) {
-            this.filtersContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
     }
 
     setFiltersCollapsed(collapsed, { scrollIntoView = false } = {}) {
@@ -169,21 +165,24 @@ class ScheduleManager {
         const wasStateApplied = this.hasAppliedFilterCollapseState;
         const hasStateChanged = this.isFiltersCollapsed !== shouldCollapse || !wasStateApplied;
 
+        const schedulePanel = this.schedulePanelElement instanceof HTMLElement ? this.schedulePanelElement : null;
+        const shouldPerformScroll = Boolean(shouldCollapse && scrollIntoView && wasStateApplied && schedulePanel);
+
         this.isFiltersCollapsed = shouldCollapse;
 
-        if (hasStateChanged && this.schedulePanelElement instanceof HTMLElement) {
-            this.schedulePanelElement.classList.toggle('filters-collapsed', shouldCollapse);
-            this.schedulePanelElement.classList.toggle('filters-expanded', !shouldCollapse);
+        if (hasStateChanged && schedulePanel) {
+            schedulePanel.classList.toggle('filters-collapsed', shouldCollapse);
+            schedulePanel.classList.toggle('filters-expanded', !shouldCollapse);
         }
 
-        if (shouldCollapse && scrollIntoView && wasStateApplied && this.schedulePanelElement instanceof HTMLElement) {
+        if (shouldPerformScroll) {
             const performScroll = () => {
-                this.schedulePanelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                schedulePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             };
 
-            const filtersContainer = this.filtersContainer;
+            const filtersContainer = this.filtersContainer instanceof HTMLElement ? this.filtersContainer : null;
 
-            if (filtersContainer instanceof HTMLElement) {
+            if (hasStateChanged && filtersContainer) {
                 const parseTimeToMs = (value) => {
                     if (typeof value !== 'string') {
                         return 0;
