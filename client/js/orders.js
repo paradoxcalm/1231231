@@ -220,7 +220,7 @@ class OrdersManager {
             actions.push(`
                 <button class="action-btn action-btn-secondary" onclick="window.OrdersManager.showQR('${order.qr_code}', ${order.order_id})">
                     <i class="fas fa-qrcode"></i>
-                    QR-код
+                    QR-код / Печать
                 </button>
             `);
         }
