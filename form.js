@@ -986,39 +986,79 @@ function setupPackagingToggle() {
 // 6️⃣ Генерация полей для своих коробов + привязка recalcBox
 function generateBoxFields(count) {
     const block = document.getElementById("customBoxFields");
-    const existingValues = {
-        length: Array.from(block.querySelectorAll('input[name="box_length[]"]')).map(input => input.value),
-        width: Array.from(block.querySelectorAll('input[name="box_width[]"]')).map(input => input.value),
-        height: Array.from(block.querySelectorAll('input[name="box_height[]"]')).map(input => input.value),
-        count: Array.from(block.querySelectorAll('input[name="box_count[]"]')).map(input => input.value),
-    };
+    const fieldConfigs = [
+        {
+            key: 'length',
+            name: 'box_length[]',
+            label: 'Длина, см',
+            placeholder: 'Длина, см',
+            min: '1',
+            step: '0.1',
+        },
+        {
+            key: 'width',
+            name: 'box_width[]',
+            label: 'Ширина, см',
+            placeholder: 'Ширина, см',
+            min: '1',
+            step: '0.1',
+        },
+        {
+            key: 'height',
+            name: 'box_height[]',
+            label: 'Высота, см',
+            placeholder: 'Высота, см',
+            min: '1',
+            step: '0.1',
+        },
+        {
+            key: 'count',
+            name: 'box_count[]',
+            label: 'Кол-во',
+            placeholder: 'Кол-во',
+            min: '1',
+            step: '1',
+        },
+    ];
+
+    const existingValues = fieldConfigs.reduce((acc, field) => {
+        acc[field.key] = Array.from(block.querySelectorAll(`input[name="${field.name}"]`)).map(input => input.value);
+        return acc;
+    }, {});
+
     if (count < 1 || count > 10) {
         block.innerHTML = '<p class="request-modal__warning request-form__warning form-error text-danger">Укажите от 1 до 10 групп</p>';
         return;
     }
-    const html = Array.from({ length: count }, (_, i) => `
+
+    const html = Array.from({ length: count }, (_, groupIndex) => {
+        const fieldsHtml = fieldConfigs.map((field) => [
+            '          <label class="request-modal__box-field request-form__box-field">',
+            `            <span class="request-form__box-field-title">${escapeHtmlContent(field.label)}</span>`,
+            `            <input type="number" name="${escapeAttributeValue(field.name)}" placeholder="${escapeAttributeValue(field.placeholder)}" min="${escapeAttributeValue(field.min)}" step="${escapeAttributeValue(field.step)}" required class="request-modal__dimension-input request-form__dimension-input">`,
+            '          </label>',
+        ].join('\n')).join('\n');
+
+        return `
       <div class="request-modal__box-group request-form__box-group box-group-item">
-        <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${i + 1}:</strong>
+        <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${groupIndex + 1}:</strong>
         <div class="request-modal__box-group-inputs request-form__box-group-inputs">
-          <input type="number" name="box_length[]" placeholder="Длина, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_width[]"  placeholder="Ширина, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_height[]" placeholder="Высота, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_count[]"  placeholder="Кол-во"    min="1" step="1" required class="request-modal__dimension-input request-form__dimension-input">
+${fieldsHtml}
         </div>
       </div>
-    `).join('');
-    block.innerHTML = html;
-    // привязываем recalcBox ко всем новым полям
-    const inputs = {
-        length: block.querySelectorAll('input[name="box_length[]"]'),
-        width: block.querySelectorAll('input[name="box_width[]"]'),
-        height: block.querySelectorAll('input[name="box_height[]"]'),
-        count: block.querySelectorAll('input[name="box_count[]"]'),
-    };
+    `;
+    }).join('');
 
-    ['length', 'width', 'height', 'count'].forEach(key => {
+    block.innerHTML = html;
+
+    const inputs = fieldConfigs.reduce((acc, field) => {
+        acc[field.key] = block.querySelectorAll(`input[name="${field.name}"]`);
+        return acc;
+    }, {});
+
+    fieldConfigs.forEach(({ key }) => {
         inputs[key].forEach((input, index) => {
-            if (existingValues[key][index] !== undefined) {
+            if (existingValues[key] && existingValues[key][index] !== undefined) {
                 input.value = existingValues[key][index];
             }
             if (typeof window.recalcBox === 'function') {
