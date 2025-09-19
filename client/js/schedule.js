@@ -166,7 +166,8 @@ class ScheduleManager {
 
     setFiltersCollapsed(collapsed, { scrollIntoView = false } = {}) {
         const shouldCollapse = Boolean(collapsed);
-        const hasStateChanged = this.isFiltersCollapsed !== shouldCollapse || !this.hasAppliedFilterCollapseState;
+        const wasStateApplied = this.hasAppliedFilterCollapseState;
+        const hasStateChanged = this.isFiltersCollapsed !== shouldCollapse || !wasStateApplied;
 
         this.isFiltersCollapsed = shouldCollapse;
 
@@ -175,12 +176,12 @@ class ScheduleManager {
             this.schedulePanelElement.classList.toggle('filters-expanded', !shouldCollapse);
         }
 
+        if (shouldCollapse && scrollIntoView && wasStateApplied && this.schedulePanelElement instanceof HTMLElement) {
+            this.schedulePanelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         this.hasAppliedFilterCollapseState = true;
         this.updateFilterToggleButton();
-
-        // Ранее при сворачивании фильтра выполнялась прокрутка к результатам расписания.
-        // Это приводило к неожиданному изменению положения страницы, поэтому вызов
-        // scrollIntoView намеренно удалён.
     }
 
     updateFilterToggleButton() {
