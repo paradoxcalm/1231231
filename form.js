@@ -1000,10 +1000,10 @@ function generateBoxFields(count) {
       <div class="request-modal__box-group request-form__box-group box-group-item">
         <strong class="request-modal__box-group-title request-form__box-group-title">Группа ${i + 1}:</strong>
         <div class="request-modal__box-group-inputs request-form__box-group-inputs">
-          <input type="number" name="box_length[]" placeholder="Длина, см" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_width[]"  placeholder="Ширина, см" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_height[]" placeholder="Высота, см" required class="request-modal__dimension-input request-form__dimension-input">
-          <input type="number" name="box_count[]"  placeholder="Кол-во"    required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_length[]" placeholder="Длина, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_width[]"  placeholder="Ширина, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_height[]" placeholder="Высота, см" min="1" step="0.1" required class="request-modal__dimension-input request-form__dimension-input">
+          <input type="number" name="box_count[]"  placeholder="Кол-во"    min="1" step="1" required class="request-modal__dimension-input request-form__dimension-input">
         </div>
       </div>
     `).join('');
@@ -1054,6 +1054,45 @@ function setupVolumeCalculator(basePrice = 500, coef = 1, palletPrice = 1000, bo
           getPack = () => document.querySelector('input[name="packaging_type"]:checked').value,
           getBoxType = () => document.querySelector('input[name="box_type"]:checked').value;
 
+    const MIN_ERROR_CLASS = 'request-form__input-error';
+
+    function validateMinValue(input) {
+        if (!input) return false;
+
+        const minAttr = input.getAttribute('min');
+        if (!minAttr) {
+            input.classList.remove(MIN_ERROR_CLASS);
+            input.removeAttribute('aria-invalid');
+            if (typeof input.setCustomValidity === 'function') {
+                input.setCustomValidity('');
+            }
+            return false;
+        }
+
+        const minValue = parseFloat(minAttr);
+        const valueStr = input.value;
+        const hasValue = valueStr !== '';
+        const numericValue = parseFloat(valueStr);
+        const isNumber = Number.isFinite(numericValue);
+        const isInvalid = hasValue && isNumber && numericValue < minValue;
+
+        if (isInvalid) {
+            input.classList.add(MIN_ERROR_CLASS);
+            input.setAttribute('aria-invalid', 'true');
+            if (typeof input.setCustomValidity === 'function') {
+                input.setCustomValidity(`Минимальное значение ${minAttr}`);
+            }
+        } else {
+            input.classList.remove(MIN_ERROR_CLASS);
+            input.removeAttribute('aria-invalid');
+            if (typeof input.setCustomValidity === 'function') {
+                input.setCustomValidity('');
+            }
+        }
+
+        return isInvalid;
+    }
+
     window.recalcBox = function() {
         if (getBoxType() === 'custom') {
             const totalBoxes = parseInt(Cnt.value) || 0;
@@ -1067,6 +1106,31 @@ function setupVolumeCalculator(basePrice = 500, coef = 1, palletPrice = 1000, bo
             } else {
                 hideRequestFormElement(warning);
             }
+        }
+
+        const fieldsToValidate = [
+            L,
+            W,
+            H,
+            Cnt,
+            ...document.querySelectorAll('#customBoxFields input[type="number"]')
+        ];
+
+        let hasMinError = false;
+        fieldsToValidate.forEach((input) => {
+            if (validateMinValue(input)) {
+                hasMinError = true;
+            }
+        });
+
+        if (hasMinError) {
+            if (Vol) {
+                Vol.textContent = '—';
+            }
+            if (Pay) {
+                Pay.value = '';
+            }
+            return;
         }
 
         let totalVol = 0;
