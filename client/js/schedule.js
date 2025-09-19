@@ -177,7 +177,82 @@ class ScheduleManager {
         }
 
         if (shouldCollapse && scrollIntoView && wasStateApplied && this.schedulePanelElement instanceof HTMLElement) {
-            this.schedulePanelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const performScroll = () => {
+                this.schedulePanelElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            };
+
+            const filtersContainer = this.filtersContainer;
+
+            if (filtersContainer instanceof HTMLElement) {
+                const parseTimeToMs = (value) => {
+                    if (typeof value !== 'string') {
+                        return 0;
+                    }
+
+                    const trimmedValue = value.trim();
+                    if (!trimmedValue) {
+                        return 0;
+                    }
+
+                    if (trimmedValue.endsWith('ms')) {
+                        return Number.parseFloat(trimmedValue);
+                    }
+
+                    if (trimmedValue.endsWith('s')) {
+                        return Number.parseFloat(trimmedValue) * 1000;
+                    }
+
+                    return 0;
+                };
+
+                const computeFallbackDelay = () => {
+                    const styles = window.getComputedStyle(filtersContainer);
+                    const rawDurations = styles.transitionDuration.split(',');
+                    const rawDelays = styles.transitionDelay.split(',');
+
+                    const maxEntries = Math.max(rawDurations.length, rawDelays.length);
+                    let maxTime = 0;
+
+                    for (let index = 0; index < maxEntries; index += 1) {
+                        const duration = parseTimeToMs(rawDurations[index] ?? rawDurations[rawDurations.length - 1] ?? '0s');
+                        const delay = parseTimeToMs(rawDelays[index] ?? rawDelays[rawDelays.length - 1] ?? '0s');
+
+                        maxTime = Math.max(maxTime, duration + delay);
+                    }
+
+                    return maxTime || 300;
+                };
+
+                let fallbackTimeoutId = null;
+
+                const cleanup = () => {
+                    if (fallbackTimeoutId !== null) {
+                        window.clearTimeout(fallbackTimeoutId);
+                        fallbackTimeoutId = null;
+                    }
+
+                    filtersContainer.removeEventListener('transitionend', handleTransitionEnd);
+                };
+
+                const handleTransitionEnd = (event) => {
+                    if (event.propertyName !== 'max-height') {
+                        filtersContainer.addEventListener('transitionend', handleTransitionEnd, { once: true });
+                        return;
+                    }
+
+                    cleanup();
+                    performScroll();
+                };
+
+                filtersContainer.addEventListener('transitionend', handleTransitionEnd, { once: true });
+
+                fallbackTimeoutId = window.setTimeout(() => {
+                    cleanup();
+                    performScroll();
+                }, computeFallbackDelay());
+            } else {
+                performScroll();
+            }
         }
 
         this.hasAppliedFilterCollapseState = true;
