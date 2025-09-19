@@ -177,6 +177,19 @@ class ScheduleManager {
 
         if (shouldPerformScroll) {
             const performScroll = () => {
+                const desktopNav = document.querySelector('.desktop-nav');
+
+                if (desktopNav instanceof HTMLElement) {
+                    const headerRect = desktopNav.getBoundingClientRect();
+                    const scheduleRect = schedulePanel.getBoundingClientRect();
+                    const headerHeight = headerRect.height;
+                    const currentScroll = window.pageYOffset || document.documentElement.scrollTop || 0;
+                    const targetScroll = Math.max(0, scheduleRect.top + currentScroll - headerHeight);
+
+                    window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                    return;
+                }
+
                 schedulePanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
             };
 
