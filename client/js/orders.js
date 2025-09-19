@@ -471,16 +471,46 @@ class OrdersManager {
                             Покажите этот QR-код менеджеру при сдаче товара
                         </div>
                     </div>
+                    <div class="qr-actions">
+                        <button type="button" class="action-btn action-btn-secondary qr-action-print">
+                            <i class="fas fa-print"></i>
+                            Распечатать
+                        </button>
+                        <button type="button" class="action-btn action-btn-primary qr-action-download">
+                            <i class="fas fa-download"></i>
+                            Скачать
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
 
         document.body.appendChild(qrModal);
 
+        let qrDataURL = '';
+        const updateQRDataURL = () => {
+            const qrContainer = document.getElementById('qrCodeModal');
+            if (!qrContainer) {
+                return;
+            }
+
+            const qrElement = qrContainer.querySelector('img') || qrContainer.querySelector('canvas');
+            if (!qrElement) {
+                return;
+            }
+
+            if (qrElement.tagName.toLowerCase() === 'canvas') {
+                qrDataURL = qrElement.toDataURL('image/png');
+            } else {
+                qrDataURL = qrElement.src;
+            }
+        };
+
         // Генерируем QR-код
         setTimeout(() => {
             const qrContainer = document.getElementById('qrCodeModal');
             if (qrContainer && window.QRCode) {
+                qrContainer.innerHTML = '';
                 new QRCode(qrContainer, {
                     text: qrCode,
                     width: 250,
@@ -488,8 +518,89 @@ class OrdersManager {
                     colorDark: '#000000',
                     colorLight: '#ffffff'
                 });
+                setTimeout(() => {
+                    updateQRDataURL();
+                }, 50);
             }
         }, 100);
+
+        const ensureQRDataURL = () => {
+            if (!qrDataURL) {
+                updateQRDataURL();
+            }
+            return qrDataURL;
+        };
+
+        const printButton = qrModal.querySelector('.qr-action-print');
+        printButton?.addEventListener('click', () => {
+            if (!ensureQRDataURL()) {
+                if (window.app?.showError) {
+                    window.app.showError('QR-код еще генерируется, попробуйте снова через пару секунд');
+                }
+                return;
+            }
+
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                if (window.app?.showError) {
+                    window.app.showError('Не удалось открыть окно для печати');
+                }
+                return;
+            }
+
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Печать QR-кода</title>
+                        <style>
+                            body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                            img { max-width: 100%; max-height: 100%; }
+                        </style>
+                    </head>
+                    <body>
+                        <img id="qrPrintImage" src="${qrDataURL}" alt="QR Code" />
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+
+            const triggerPrint = () => {
+                printWindow.focus();
+                printWindow.print();
+            };
+
+            const printImage = printWindow.document.getElementById('qrPrintImage');
+            if (printImage) {
+                if (printImage.complete) {
+                    triggerPrint();
+                } else {
+                    printImage.addEventListener('load', triggerPrint, { once: true });
+                }
+            } else {
+                triggerPrint();
+            }
+
+            printWindow.addEventListener('afterprint', () => {
+                printWindow.close();
+            }, { once: true });
+        });
+
+        const downloadButton = qrModal.querySelector('.qr-action-download');
+        downloadButton?.addEventListener('click', () => {
+            if (!ensureQRDataURL()) {
+                if (window.app?.showError) {
+                    window.app.showError('QR-код еще генерируется, попробуйте снова через пару секунд');
+                }
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = qrDataURL;
+            link.download = `order-${orderId}-qr.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
 
         // Закрытие по клику на оверлей
         qrModal.addEventListener('click', (e) => {

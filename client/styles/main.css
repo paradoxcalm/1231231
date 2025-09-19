@@ -2007,6 +2007,22 @@ body {
     color: var(--text-secondary);
 }
 
+.qr-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.qr-actions .action-btn {
+    flex: 1 1 150px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .nav-container {
