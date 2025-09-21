@@ -566,7 +566,7 @@ body {
 .schedule-day__list {
     display: grid;
     grid-template-columns: 1fr;
-    grid-auto-rows: var(--schedule-card-height, 184px);
+    grid-auto-rows: minmax(var(--schedule-card-height, 184px), auto);
     row-gap: 0;
     flex: 1;
     background: var(--bg-primary);
@@ -595,7 +595,6 @@ body {
     flex: 1;
     padding: 18px 24px;
     width: 100%;
-    height: 100%;
     background: transparent;
     text-align: center;
 }
@@ -620,7 +619,6 @@ body {
     gap: 12px;
     padding: 18px 24px;
     width: 100%;
-    height: 100%;
     border: none;
     background: var(--bg-primary);
     cursor: pointer;
