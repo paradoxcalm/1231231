@@ -817,13 +817,6 @@ class ScheduleController {
 
         button.appendChild(header);
 
-        if (entry.city) {
-            const route = document.createElement('div');
-            route.className = 'schedule-shipment__route';
-            route.textContent = `${entry.city} → ${entry.warehouse || '—'}`;
-            button.appendChild(route);
-        }
-
         const meta = document.createElement('div');
         meta.className = 'schedule-shipment__meta';
 
@@ -852,16 +845,6 @@ class ScheduleController {
         if (meta.childNodes.length > 0) {
             button.appendChild(meta);
         }
-
-        const footer = document.createElement('div');
-        footer.className = 'schedule-shipment__footer';
-
-        const info = document.createElement('span');
-        info.className = 'schedule-shipment__info';
-        info.textContent = 'Оформить заявку';
-        footer.appendChild(info);
-
-        button.appendChild(footer);
 
         button.addEventListener('click', () => {
             this.openRequestForm(entry);
