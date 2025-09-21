@@ -13,7 +13,7 @@ class ScheduleController {
         };
 
         this.state = {
-            marketplace: '',
+            marketplace: 'Wildberries',
             city: '',
             weekStart: this.getMonday(new Date())
         };
@@ -100,7 +100,9 @@ class ScheduleController {
         try {
             const marketplaces = await fetchMarketplaces({ baseUrl: '../filter_options.php' });
             this.marketplaces = Array.isArray(marketplaces)
-                ? marketplaces.filter((value) => typeof value === 'string' && value.trim().length > 0)
+                ? marketplaces
+                    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+                    .filter((value) => value.length > 0)
                 : [];
         } catch (error) {
             console.error('Ошибка загрузки маркетплейсов:', error);
@@ -111,31 +113,82 @@ class ScheduleController {
         }
     }
 
+    getSortedMarketplaces() {
+        return this.marketplaces
+            .slice()
+            .sort((first, second) => first.localeCompare(second, 'ru', { sensitivity: 'base' }));
+    }
+
+    resolveMarketplaceSelection({ currentValue = '', preferWildberries = false, marketplaces = [] } = {}) {
+        if (!Array.isArray(marketplaces) || marketplaces.length === 0) {
+            return '';
+        }
+
+        const normalizedCurrent = (currentValue || '').toLowerCase();
+        if (normalizedCurrent) {
+            const currentMatch = marketplaces.find(
+                (marketplace) => marketplace.toLowerCase() === normalizedCurrent
+            );
+            if (currentMatch) {
+                return currentMatch;
+            }
+        }
+
+        if (preferWildberries) {
+            const wildberriesMatch = marketplaces.find(
+                (marketplace) => marketplace.toLowerCase() === 'wildberries'
+            );
+            if (wildberriesMatch) {
+                return wildberriesMatch;
+            }
+        }
+
+        return marketplaces[0];
+    }
+
     renderMarketplaceOptions() {
         const select = this.elements.marketplace;
         if (!select) {
             return;
         }
 
-        const currentValue = this.state.marketplace || '';
+        const previousValue = this.state.marketplace || '';
+        const marketplaces = this.getSortedMarketplaces();
+
         select.innerHTML = '';
 
-        const defaultOption = document.createElement('option');
-        defaultOption.value = '';
-        defaultOption.textContent = 'Все маркетплейсы';
-        select.appendChild(defaultOption);
+        marketplaces.forEach((marketplace) => {
+            const option = document.createElement('option');
+            option.value = marketplace;
+            option.textContent = marketplace;
+            select.appendChild(option);
+        });
 
-        this.marketplaces
-            .slice()
-            .sort((first, second) => first.localeCompare(second, 'ru', { sensitivity: 'base' }))
-            .forEach((marketplace) => {
-                const option = document.createElement('option');
-                option.value = marketplace;
-                option.textContent = marketplace;
-                select.appendChild(option);
-            });
+        const preferWildberries =
+            !previousValue || previousValue.toLowerCase() === 'wildberries';
+        const nextValue = this.resolveMarketplaceSelection({
+            currentValue: previousValue,
+            preferWildberries,
+            marketplaces
+        });
 
-        select.value = currentValue;
+        if (nextValue) {
+            select.value = nextValue;
+        } else {
+            select.value = '';
+        }
+
+        const normalizedPrevious = previousValue ? previousValue.toLowerCase() : '';
+        const normalizedNext = nextValue ? nextValue.toLowerCase() : '';
+
+        this.state.marketplace = nextValue || '';
+
+        if (normalizedNext !== normalizedPrevious) {
+            this.state.city = '';
+            this.renderWeekRange();
+            this.loadCities();
+            this.loadSchedules();
+        }
     }
 
     async loadCities() {
@@ -895,12 +948,26 @@ class ScheduleController {
     }
 
     resetFilters() {
-        this.state.marketplace = '';
+        this.state.marketplace = 'Wildberries';
         this.state.city = '';
         this.state.weekStart = this.getMonday(new Date());
 
+        const marketplaces = this.getSortedMarketplaces();
+        const resolvedMarketplace = this.resolveMarketplaceSelection({
+            currentValue: this.state.marketplace,
+            preferWildberries: true,
+            marketplaces
+        });
+        const nextMarketplace = resolvedMarketplace || this.state.marketplace;
+
+        this.state.marketplace = nextMarketplace;
+
         if (this.elements.marketplace) {
-            this.elements.marketplace.value = '';
+            if (nextMarketplace && marketplaces.includes(nextMarketplace)) {
+                this.elements.marketplace.value = nextMarketplace;
+            } else {
+                this.elements.marketplace.value = '';
+            }
         }
 
         this.renderWeekRange();

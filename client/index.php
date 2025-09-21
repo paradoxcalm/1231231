@@ -81,7 +81,6 @@ if (empty($_SESSION['user_id'])) {
                 <div class="schedule-wrap">
                     <div class="schedule-filters">
                         <select id="marketplace" class="schedule-select" aria-label="Выбор маркетплейса">
-                            <option value="">Все маркетплейсы</option>
                         </select>
                         <div class="schedule-origin-tabs" id="originTabs" role="tablist" aria-label="Города отправления">
                             <!-- Табы городов генерируются динамически -->
