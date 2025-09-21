@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Клиент — Расписание</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="styles/schedule.css">
+</head>
+<body>
+  <div class="wrap">
+    <h1>Расписание</h1>
+
+    <div class="filters">
+      <select id="marketplace">
+        <option value="">Все маркетплейсы</option>
+        <option value="wildberries">Wildberries</option>
+        <option value="ozon">Ozon</option>
+        <option value="yandexmarket">Yandex Market</option>
+      </select>
+      <div class="city-tabs" id="originTabs">
+        <button type="button" class="city-tab active" data-origin="">Все города отправления</button>
+        <button type="button" class="city-tab" data-origin="mahachkala">Махачкала</button>
+        <button type="button" class="city-tab" data-origin="kizilyurt">Кизилюрт</button>
+        <button type="button" class="city-tab" data-origin="kizlyar">Кизляр</button>
+        <button type="button" class="city-tab" data-origin="khasavyurt">Хасавюрт</button>
+      </div>
+    </div>
+
+    <div class="week-nav">
+      <button class="btn btn-nav" id="prev">←</button>
+      <div class="range" id="range"></div>
+      <button class="btn btn-nav" id="next">→</button>
+    </div>
+
+    <div class="timeline" id="grid"><!-- дни вставляются скриптом --></div>
+  </div>
+
+  <!-- Модальное окно "Создать заявку" -->
+  <div class="overlay" id="ovl">
+    <div class="modal">
+      <h3 id="m-title"></h3>
+      <p><strong>Маркетплейс:</strong> <span id="m-mp"></span></p>
+      <p><strong>Откуда:</strong> <span id="m-from"></span></p>
+      <p><strong>Куда:</strong> <span id="m-to"></span></p>
+      <p><strong>Дата отправления:</strong> <span id="m-date"></span></p>
+      <p><strong>Дата сдачи:</strong> <span id="m-delivery"></span></p>
+      <div class="modal-foot">
+        <button class="btn" id="m-close">Закрыть</button>
+        <button class="btn btn-primary">Создать заявку</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/schedule.js"></script>
+</body>
+</html>
