@@ -579,7 +579,7 @@ body {
     display: grid;
     grid-template-columns: 1fr;
     grid-auto-rows: var(--schedule-card-height, 200px);
-    gap: 12px;
+    row-gap: 0;
     flex: 1;
     background: var(--bg-primary);
 }
