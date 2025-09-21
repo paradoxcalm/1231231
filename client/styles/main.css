@@ -638,7 +638,7 @@ body {
 .schedule-shipment__header {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
     gap: 12px;
 }
 
@@ -662,6 +662,7 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    align-self: flex-start;
     min-width: 48px;
     padding: 4px 10px;
     border-radius: 999px;
