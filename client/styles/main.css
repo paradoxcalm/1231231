@@ -23,6 +23,19 @@
     --radius: 8px;
     --radius-lg: 12px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --schedule-card-height: 200px;
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --schedule-card-height: 220px;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --schedule-card-height: 240px;
+    }
 }
 
 /* Reset and Base */
@@ -563,9 +576,10 @@ body {
 }
 
 .schedule-day__list {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-auto-rows: var(--schedule-card-height, 200px);
+    gap: 12px;
     flex: 1;
     background: var(--bg-primary);
 }
@@ -586,11 +600,13 @@ body {
     gap: 12px;
     padding: 18px 24px;
     width: 100%;
+    height: 100%;
     border: none;
     border-bottom: 1px solid var(--border-light);
     background: var(--bg-primary);
     cursor: pointer;
     text-align: left;
+    justify-content: space-between;
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -651,6 +667,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: auto;
 }
 
 .schedule-shipment__chip,
