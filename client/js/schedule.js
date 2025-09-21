@@ -752,17 +752,28 @@ class ScheduleController {
         }
 
         const days = this.getWeekDays();
+        let maxRows = 0;
+
+        days.forEach((day) => {
+            const dateKey = this.formatDateKey(day);
+            const schedulesCount = this.getSchedulesForDay(dateKey).length;
+            if (schedulesCount > maxRows) {
+                maxRows = schedulesCount;
+            }
+        });
+
+        const normalizedMaxRows = Math.max(maxRows, 1);
         const fragment = document.createDocumentFragment();
 
         days.forEach((day) => {
-            fragment.appendChild(this.createDayColumn(day));
+            fragment.appendChild(this.createDayColumn(day, normalizedMaxRows));
         });
 
         grid.innerHTML = '';
         grid.appendChild(fragment);
     }
 
-    createDayColumn(date) {
+    createDayColumn(date, maxRows) {
         const wrapper = document.createElement('article');
         wrapper.className = 'schedule-day';
 
@@ -790,20 +801,51 @@ class ScheduleController {
 
         const dateKey = this.formatDateKey(date);
         const schedules = this.getSchedulesForDay(dateKey);
+        const normalizedMaxRows = typeof maxRows === 'number' && maxRows > 0 ? maxRows : 1;
 
-        if (!schedules.length) {
-            const empty = document.createElement('div');
-            empty.className = 'schedule-day__empty';
-            empty.textContent = 'Нет отправлений';
-            list.appendChild(empty);
-        } else {
+        if (schedules.length) {
             schedules.forEach((entry) => {
-                list.appendChild(this.createShipmentElement(entry));
+                list.appendChild(
+                    this.createSpacerElement({
+                        child: this.createShipmentElement(entry)
+                    })
+                );
             });
+        } else {
+            list.appendChild(
+                this.createSpacerElement({
+                    message: 'Нет отправлений'
+                })
+            );
+        }
+
+        const filledRows = Math.max(schedules.length, 1);
+        const rowsToAdd = Math.max(normalizedMaxRows - filledRows, 0);
+
+        for (let index = 0; index < rowsToAdd; index += 1) {
+            list.appendChild(this.createSpacerElement());
         }
 
         wrapper.appendChild(list);
         return wrapper;
+    }
+
+    createSpacerElement({ child = null, message = '' } = {}) {
+        const spacer = document.createElement('div');
+        spacer.className = 'schedule-day__spacer';
+
+        if (child) {
+            spacer.appendChild(child);
+        } else if (message) {
+            const label = document.createElement('div');
+            label.className = 'schedule-day__empty';
+            label.textContent = message;
+            spacer.appendChild(label);
+        } else {
+            spacer.setAttribute('aria-hidden', 'true');
+        }
+
+        return spacer;
     }
 
     createShipmentElement(entry) {
