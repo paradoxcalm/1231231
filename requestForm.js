@@ -327,6 +327,17 @@ function fillLegacyFormFields(container, scheduleData) {
         }
     }
 
+    const cityDisplay = container.querySelector('#legacyCity');
+    if (cityDisplay) {
+        const cityText = city || '—';
+        cityDisplay.textContent = cityText;
+        if (city && typeof cityDisplay.setAttribute === 'function') {
+            cityDisplay.setAttribute('title', city);
+        } else if (typeof cityDisplay.removeAttribute === 'function') {
+            cityDisplay.removeAttribute('title');
+        }
+    }
+
     const setValue = (selector, value = '') => {
         const el = container.querySelector(selector);
         if (el) el.value = value;
@@ -338,7 +349,7 @@ function fillLegacyFormFields(container, scheduleData) {
     setValue('#deliveryDateAlias', deliveryDate || '');
     setValue('#acceptTimeField', acceptTime || '');
     setValue('#directionField', warehouse || '');
-    setValue('#city', city || '');
+    setValue('#cityField', city || '');
     setValue('#warehouses', warehouse || '');
     setValue('#driver_name', driverName || '');
     setValue('#driver_phone', driverPhone || '');
@@ -349,8 +360,8 @@ function fillLegacyFormFields(container, scheduleData) {
     const formElement = container.querySelector('#dataForm');
     if (formElement) {
         formElement.dataset.marketplace = marketplace || '';
-        formElement.dataset.initialCity = city || '';
-        formElement.dataset.initialWarehouse = warehouse || '';
+        formElement.dataset.scheduleCity = city || '';
+        formElement.dataset.scheduleWarehouse = warehouse || '';
         if (Array.isArray(scheduleData.availableSchedules) && scheduleData.availableSchedules.length > 0) {
             try {
                 formElement.dataset.availableSchedules = JSON.stringify(scheduleData.availableSchedules);
