@@ -572,16 +572,31 @@ body {
     background: var(--bg-primary);
 }
 
+.schedule-day__spacer {
+    display: flex;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    height: var(--schedule-card-height);
+    min-height: var(--schedule-card-height);
+    border-bottom: 1px solid var(--border-light);
+    background: transparent;
+}
+
+.schedule-day__spacer:last-child {
+    border-bottom: none;
+}
+
 .schedule-day__placeholder,
 .schedule-day__empty {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex: 1;
     padding: 18px 24px;
+    width: 100%;
     height: 100%;
-    min-height: var(--schedule-card-height);
-    border-bottom: 1px solid var(--border-light);
-    background: var(--bg-primary);
+    background: transparent;
     text-align: center;
 }
 
@@ -598,11 +613,6 @@ body {
     gap: 6px;
 }
 
-.schedule-day__placeholder:last-child,
-.schedule-day__empty:last-child {
-    border-bottom: none;
-}
-
 .schedule-shipment {
     position: relative;
     display: flex;
@@ -612,16 +622,11 @@ body {
     width: 100%;
     height: 100%;
     border: none;
-    border-bottom: 1px solid var(--border-light);
     background: var(--bg-primary);
     cursor: pointer;
     text-align: left;
     justify-content: space-between;
     transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.schedule-shipment:last-child {
-    border-bottom: none;
 }
 
 .schedule-shipment:hover,
