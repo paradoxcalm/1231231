@@ -82,95 +82,27 @@ if (empty($_SESSION['user_id'])) {
             </div>
 
             <div class="schedule-panel" id="schedulePanel">
-                <div class="schedule-filters" id="scheduleFilters">
-                    <div class="schedule-steps" id="scheduleSteps">
-                        <div class="schedule-step is-active" data-step="marketplace">
-                            <div class="step-header">
-                                <div class="step-title">
-                                    <span class="step-index">1</span>
-                                    <div class="step-text">
-                                        <h3>Выберите маркетплейс</h3>
-                                        <p>Укажите площадку, для которой хотите оформить отправление</p>
-                                    </div>
-                                </div>
-                                <button type="button" class="step-change-btn" id="changeMarketplaceBtn">Изменить</button>
-                            </div>
-                            <div class="step-body">
-                                <div class="schedule-filter">
-                                    <label id="marketplaceFilterLabel">Маркетплейс</label>
-                                    <div
-                                        id="marketplaceFilter"
-                                        class="marketplace-grid"
-                                        role="group"
-                                        aria-labelledby="marketplaceFilterLabel"
-                                    >
-                                        <div class="marketplace-placeholder marketplace-placeholder--loading">
-                                            <span>Загрузка маркетплейсов...</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="step-actions">
-                                    <button type="button" class="step-next-btn" id="confirmMarketplace" disabled>Далее</button>
-                                </div>
-                            </div>
-                            <div class="step-summary" id="marketplaceSummary"></div>
-                        </div>
-
-                        <div class="schedule-step" data-step="warehouse">
-                            <div class="step-header">
-                                <div class="step-title">
-                                    <span class="step-index">2</span>
-                                    <div class="step-text">
-                                        <h3>Выберите склад</h3>
-                                        <p>Доступные склады покажутся после подтверждения маркетплейса</p>
-                                    </div>
-                                </div>
-                                <button type="button" class="step-change-btn" id="changeWarehouseBtn">Изменить</button>
-                            </div>
-                            <div class="step-body">
-                                <div class="schedule-filter">
-                                    <label for="warehouseFilter">Склад</label>
-                                    <select id="warehouseFilter" class="filter-select" disabled>
-                                        <option value="">Сначала выберите маркетплейс</option>
-                                    </select>
-                                </div>
-                                <div
-                                    id="warehouseStats"
-                                    class="warehouse-stats"
-                                    aria-live="polite"
-                                    aria-atomic="true"
-                                    aria-hidden="true"
-                                ></div>
-                                <div class="step-actions">
-                                    <button type="button" class="step-prev-btn" id="backToMarketplaceBtn">Назад</button>
-                                    <button type="button" class="step-next-btn" id="confirmWarehouse" disabled>Показать расписание</button>
-                                </div>
-                            </div>
-                            <div class="step-summary" id="warehouseSummary"></div>
+                <div class="schedule-wrap">
+                    <div class="schedule-filters">
+                        <select id="marketplace" class="schedule-select" aria-label="Выбор маркетплейса">
+                            <option value="">Все маркетплейсы</option>
+                        </select>
+                        <div class="schedule-origin-tabs" id="originTabs" role="tablist" aria-label="Города отправления">
+                            <!-- Табы городов генерируются динамически -->
                         </div>
                     </div>
 
-                    <button class="reset-filters-btn" id="resetScheduleFilters">
-                        <i class="fas fa-rotate-right"></i>
-                        Сбросить фильтры
-                    </button>
-                </div>
-
-                <div class="schedule-results">
-                    <div class="schedule-results-header">
-                        <p class="schedule-info" id="scheduleSubtitle">Чтобы увидеть расписание, выберите маркетплейс и склад</p>
-                        <button
-                            type="button"
-                            class="filter-toggle-btn"
-                            id="filterToggleBtn"
-                            aria-expanded="true"
-                            aria-controls="scheduleFilters"
-                        >
-                            <i class="fas fa-sliders-h filter-toggle-icon" aria-hidden="true"></i>
-                            <span class="filter-toggle-label">Скрыть фильтр</span>
+                    <div class="schedule-week-nav">
+                        <button type="button" class="schedule-btn schedule-btn--nav" id="prev" aria-label="Предыдущая неделя">
+                            <span aria-hidden="true">←</span>
+                        </button>
+                        <div class="schedule-range" id="range"></div>
+                        <button type="button" class="schedule-btn schedule-btn--nav" id="next" aria-label="Следующая неделя">
+                            <span aria-hidden="true">→</span>
                         </button>
                     </div>
-                    <div class="schedule-grid" id="scheduleGrid"></div>
+
+                    <div class="schedule-timeline" id="grid" aria-live="polite"></div>
                 </div>
             </div>
         </section>
