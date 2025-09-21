@@ -18,3 +18,5 @@
 [15-Sep-2025 23:55:45 Europe/Moscow] get_orders.php exception: Unknown column 'o.author_id' in 'on clause'
 [15-Sep-2025 23:55:58 Europe/Moscow] get_orders.php exception: Unknown column 'o.author_id' in 'on clause'
 [15-Sep-2025 23:58:22 Europe/Moscow] get_orders.php exception: Unknown column 'o.author_id' in 'on clause'
+[18-Sep-2025 23:00:10 Europe/Moscow] get_orders.php exception: Unknown column 'o.author_id' in 'on clause'
+[18-Sep-2025 23:00:32 Europe/Moscow] get_orders.php exception: Unknown column 'o.author_id' in 'on clause'
