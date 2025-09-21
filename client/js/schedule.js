@@ -1,5 +1,7 @@
 import { fetchMarketplaces, fetchCities } from './filterOptions.js';
 
+const DEFAULT_CITY = 'Махачкала';
+
 class ScheduleController {
     constructor() {
         this.elements = {
@@ -14,7 +16,7 @@ class ScheduleController {
 
         this.state = {
             marketplace: 'Wildberries',
-            city: '',
+            city: DEFAULT_CITY,
             weekStart: this.getMonday(new Date())
         };
 
@@ -49,7 +51,7 @@ class ScheduleController {
         if (marketplace) {
             marketplace.addEventListener('change', (event) => {
                 this.state.marketplace = (event.target.value || '').trim();
-                this.state.city = '';
+                this.state.city = DEFAULT_CITY;
                 this.renderWeekRange();
                 this.loadCities();
                 this.loadSchedules();
@@ -184,7 +186,7 @@ class ScheduleController {
         this.state.marketplace = nextValue || '';
 
         if (normalizedNext !== normalizedPrevious) {
-            this.state.city = '';
+            this.state.city = DEFAULT_CITY;
             this.renderWeekRange();
             this.loadCities();
             this.loadSchedules();
@@ -221,11 +223,24 @@ class ScheduleController {
             this.cities = [];
         }
 
-        if (this.state.city && !this.cities.includes(this.state.city)) {
+        const previousCity = this.state.city;
+        const defaultCityIndex = this.cities.findIndex(
+            (city) => city.toLowerCase() === DEFAULT_CITY.toLowerCase()
+        );
+
+        if (defaultCityIndex >= 0) {
+            this.state.city = this.cities[defaultCityIndex];
+        } else if (this.cities.length > 0) {
+            this.state.city = this.cities[0];
+        } else {
             this.state.city = '';
         }
 
         this.renderOriginTabs();
+
+        if (previousCity !== this.state.city) {
+            this.loadSchedules();
+        }
     }
 
     renderOriginTabs() {
@@ -246,7 +261,6 @@ class ScheduleController {
         container.removeAttribute('aria-hidden');
 
         const fragment = document.createDocumentFragment();
-        fragment.appendChild(this.createOriginTab('', 'Все города отправления'));
 
         this.cities
             .slice()
