@@ -766,7 +766,7 @@ function renderFormHTML(scheduleData = {}) {
   </header>
   <section class="modal-body request-modal__body">
     <div class="section-container modal-section request-modal__content">
-      <form id="dataForm" enctype="multipart/form-data" data-marketplace="${attrMarketplace}" data-initial-city="${attrCity}" data-initial-warehouse="${attrWarehouses}">
+      <form id="dataForm" enctype="multipart/form-data" data-marketplace="${attrMarketplace}" data-schedule-city="${attrCity}" data-schedule-warehouse="${attrWarehouses}">
         <h3 class="section-subtitle">ПРИЁМКА</h3>
 
         <input type="hidden" name="schedule_id" id="formScheduleId" value="${id}">
@@ -822,24 +822,18 @@ function renderFormHTML(scheduleData = {}) {
         </div>
 
         <div class="form-group request-form__group request-form__city-group">
-          <label for="city">Город:</label>
+          <label>Город отправления:</label>
           <div class="request-form__city-control">
-            <select id="city" name="city" class="request-form__city-select" autocomplete="off" required>
-              <option value="" disabled ${city ? '' : 'selected'}>Выберите город</option>
-              ${city ? `<option value="${attrCity}" selected>${cityOptionText}</option>` : ''}
-            </select>
+            <span class="request-form__city-value" id="legacyCity">${city ? cityOptionText : '—'}</span>
           </div>
         </div>
+        <input type="hidden" id="cityField" name="city" value="${attrCity}">
         <input type="hidden" id="warehouses" name="warehouses" value="${warehouses}">
         <input type="hidden" id="driver_name" name="driver_name" value="${driver_name}">
         <input type="hidden" id="driver_phone" name="driver_phone" value="${driver_phone}">
         <input type="hidden" id="car_number" name="car_number" value="${car_number}">
         <input type="hidden" id="car_brand" name="car_brand" value="${car_brand}">
         <input type="hidden" id="sender" name="sender" value="${sender}">
-
-        <p id="citySelectionNotice" class="request-form__city-notice" role="status" aria-live="polite">
-          Пожалуйста, выберите город отправления…
-        </p>
 
         <div id="cityDependentFields" class="request-form__city-dependent">
           <div class="form-group request-form__group">
@@ -1705,18 +1699,6 @@ async function initializeForm() {
     setupPalletFieldsTrigger();
     setupBoxFieldsTrigger();
 
-    const cityEl = document.getElementById('city');
-    const whEl   = document.getElementById('warehouses');
-    const cityDependentContainer = document.getElementById('cityDependentFields');
-    const cityNoticeElement = document.getElementById('citySelectionNotice');
-
-    const marketplace = (form.dataset?.marketplace || '').trim();
-    const initialCity = (form.dataset?.initialCity || (cityEl ? cityEl.value : '') || '').trim();
-    const warehouseFallback = () => {
-        const raw = whEl && typeof whEl.value === 'string' ? whEl.value : form.dataset?.initialWarehouse || '';
-        return normalizeWarehouseValue(raw);
-    };
-
     const toTrimmedString = (value) => {
         if (value === null || value === undefined) {
             return '';
@@ -1724,193 +1706,63 @@ async function initializeForm() {
         return `${value}`.trim();
     };
 
-    const scheduleFieldElements = {
-        scheduleId: document.getElementById('formScheduleId'),
-        acceptDate: document.getElementById('acceptDateField'),
-        deliveryDate: document.getElementById('deliveryDateField'),
-        deliveryAlias: document.getElementById('deliveryDateAlias'),
-        acceptTime: document.getElementById('acceptTimeField'),
-        direction: document.getElementById('directionField'),
-        warehouse: whEl,
-        driverName: document.getElementById('driver_name'),
-        driverPhone: document.getElementById('driver_phone'),
-        carNumber: document.getElementById('car_number'),
-        carBrand: document.getElementById('car_brand'),
-        sender: document.getElementById('sender')
+    const cityField = document.getElementById('cityField');
+    const warehouseField = document.getElementById('warehouses');
+    const directionField = document.getElementById('directionField');
+    const cityDependentContainer = document.getElementById('cityDependentFields');
+
+    const resolveWarehouseValue = () => {
+        if (warehouseField && typeof warehouseField.value === 'string' && warehouseField.value.trim()) {
+            return warehouseField.value;
+        }
+        if (directionField && typeof directionField.value === 'string' && directionField.value.trim()) {
+            return directionField.value;
+        }
+        if (form.dataset?.scheduleWarehouse) {
+            return form.dataset.scheduleWarehouse;
+        }
+        if (form.dataset?.initialWarehouse) {
+            return form.dataset.initialWarehouse;
+        }
+        return '';
     };
 
-    const defaultScheduleState = {};
-    Object.entries(scheduleFieldElements).forEach(([key, element]) => {
-        if (element && Object.prototype.hasOwnProperty.call(element, 'value')) {
-            defaultScheduleState[key] = toTrimmedString(element.value);
-        } else {
-            defaultScheduleState[key] = '';
-        }
-    });
+    const resolvedCity = toTrimmedString(
+        (cityField && typeof cityField.value === 'string' && cityField.value)
+            ? cityField.value
+            : form.dataset?.scheduleCity || form.dataset?.initialCity || ''
+    );
 
-    const scheduleByCityKey = new Map();
-    const overrideCityList = [];
-    const seenOverrideCities = new Set();
+    const resolvedWarehouse = normalizeWarehouseValue(
+        toTrimmedString(resolveWarehouseValue())
+    );
 
-    if (form.dataset?.availableSchedules) {
-        try {
-            const parsed = JSON.parse(form.dataset.availableSchedules);
-            if (Array.isArray(parsed)) {
-                parsed.forEach((item) => {
-                    if (!item || typeof item !== 'object') {
-                        return;
-                    }
+    if (cityField) {
+        cityField.value = resolvedCity;
+    }
+    if (warehouseField) {
+        warehouseField.value = resolvedWarehouse;
+    }
+    if (directionField) {
+        directionField.value = resolvedWarehouse;
+    }
 
-                    const normalizedEntry = {
-                        id: toTrimmedString(item.id ?? item.schedule_id ?? ''),
-                        city: toTrimmedString(item.city ?? ''),
-                        warehouse: toTrimmedString(item.warehouse ?? item.warehouses ?? defaultScheduleState.warehouse),
-                        acceptDate: toTrimmedString(item.acceptDate ?? item.accept_date ?? ''),
-                        deliveryDate: toTrimmedString(item.deliveryDate ?? item.delivery_date ?? ''),
-                        acceptTime: toTrimmedString(item.acceptTime ?? item.accept_time ?? ''),
-                        driverName: toTrimmedString(item.driverName ?? item.driver_name ?? ''),
-                        driverPhone: toTrimmedString(item.driverPhone ?? item.driver_phone ?? ''),
-                        carNumber: toTrimmedString(item.carNumber ?? item.car_number ?? ''),
-                        carBrand: toTrimmedString(item.carBrand ?? item.car_brand ?? ''),
-                        sender: toTrimmedString(item.sender ?? ''),
-                        marketplace: toTrimmedString(item.marketplace ?? '')
-                    };
+    updateDirectionSummary(resolvedCity, resolvedWarehouse);
 
-                    if (normalizedEntry.city) {
-                        const cityKey = normalizedEntry.city.toLowerCase();
-                        if (!scheduleByCityKey.has(cityKey)) {
-                            scheduleByCityKey.set(cityKey, normalizedEntry);
-                        }
-                        if (!seenOverrideCities.has(cityKey)) {
-                            seenOverrideCities.add(cityKey);
-                            overrideCityList.push(normalizedEntry.city);
-                        }
-                    }
-                });
-            }
-        } catch (err) {
-            console.warn('Не удалось разобрать список доступных отправлений формы заявки:', err);
+    const cityDisplay = document.getElementById('legacyCity');
+    if (cityDisplay) {
+        const cityText = resolvedCity || '—';
+        cityDisplay.textContent = cityText;
+        if (resolvedCity && typeof cityDisplay.setAttribute === 'function') {
+            cityDisplay.setAttribute('title', resolvedCity);
+        } else if (typeof cityDisplay.removeAttribute === 'function') {
+            cityDisplay.removeAttribute('title');
         }
     }
 
-    const overrideCityOptions = overrideCityList.length > 0 ? overrideCityList : null;
-
-    const applyScheduleSelection = (cityValue) => {
-        const cityText = toTrimmedString(cityValue);
-        const schedule = cityText ? (scheduleByCityKey.get(cityText.toLowerCase()) || null) : null;
-        const usingOverrideList = Array.isArray(overrideCityOptions) && overrideCityOptions.length > 0;
-
-        const values = { ...defaultScheduleState };
-
-        if (schedule) {
-            const scheduleId = toTrimmedString(schedule.id);
-            if (scheduleId) {
-                values.scheduleId = scheduleId;
-            }
-
-            const acceptDate = toTrimmedString(schedule.acceptDate);
-            if (acceptDate) {
-                values.acceptDate = acceptDate;
-            }
-
-            const deliveryDate = toTrimmedString(schedule.deliveryDate);
-            if (deliveryDate) {
-                values.deliveryDate = deliveryDate;
-                values.deliveryAlias = deliveryDate;
-            }
-
-            const acceptTime = toTrimmedString(schedule.acceptTime);
-            if (acceptTime) {
-                values.acceptTime = acceptTime;
-            }
-
-            const warehouseName = toTrimmedString(schedule.warehouse);
-            if (warehouseName) {
-                values.direction = warehouseName;
-                values.warehouse = warehouseName;
-            }
-
-            const driverName = toTrimmedString(schedule.driverName);
-            if (driverName) {
-                values.driverName = driverName;
-            }
-
-            const driverPhone = toTrimmedString(schedule.driverPhone);
-            if (driverPhone) {
-                values.driverPhone = driverPhone;
-            }
-
-            const carNumber = toTrimmedString(schedule.carNumber);
-            if (carNumber) {
-                values.carNumber = carNumber;
-            }
-
-            const carBrand = toTrimmedString(schedule.carBrand);
-            if (carBrand) {
-                values.carBrand = carBrand;
-            }
-
-            const senderName = toTrimmedString(schedule.sender);
-            if (senderName) {
-                values.sender = senderName;
-            }
-        } else if (usingOverrideList) {
-            values.scheduleId = '';
-            values.acceptTime = '';
-            values.driverName = '';
-            values.driverPhone = '';
-            values.carNumber = '';
-            values.carBrand = '';
-        }
-
-        Object.entries(scheduleFieldElements).forEach(([key, element]) => {
-            if (!element || !Object.prototype.hasOwnProperty.call(element, 'value')) {
-                return;
-            }
-            const nextValue = values[key] !== undefined ? values[key] : '';
-            element.value = toTrimmedString(nextValue);
-        });
-
-        const selectedScheduleId = toTrimmedString(values.scheduleId);
-        if (selectedScheduleId) {
-            form.dataset.selectedScheduleId = selectedScheduleId;
-        } else {
-            delete form.dataset.selectedScheduleId;
-        }
-
-        const resolvedWarehouse = toTrimmedString(values.warehouse) || warehouseFallback();
-        updateDirectionSummary(cityText, resolvedWarehouse);
-
-        return schedule;
-    };
-
-    const applyCityInteractivity = (cityValue) => {
-        const normalizedCity = `${cityValue ?? ''}`.trim();
-        const hasCity = normalizedCity.length > 0;
-
-        if (form) {
-            form.dataset.selectedCity = normalizedCity;
-            form.dataset.cityReady = hasCity ? 'true' : 'false';
-        }
-
-        if (cityNoticeElement) {
-            if (hasCity) {
-                cityNoticeElement.classList.add(REQUEST_FORM_HIDDEN_CLASS);
-            } else {
-                cityNoticeElement.classList.remove(REQUEST_FORM_HIDDEN_CLASS);
-            }
-        }
-
-        if (!cityDependentContainer) {
-            return;
-        }
-
-        cityDependentContainer.classList.toggle(REQUEST_FORM_HIDDEN_CLASS, !hasCity);
-        if (!hasCity) {
-            cityDependentContainer.setAttribute('aria-hidden', 'true');
-        } else {
-            cityDependentContainer.removeAttribute('aria-hidden');
-        }
+    if (cityDependentContainer) {
+        showRequestFormElement(cityDependentContainer);
+        cityDependentContainer.removeAttribute('aria-hidden');
 
         const interactiveElements = cityDependentContainer.querySelectorAll('input, select, textarea, button');
         interactiveElements.forEach((element) => {
@@ -1920,92 +1772,20 @@ async function initializeForm() {
             if (element.type === 'hidden' || element.dataset?.cityLockIgnore === 'true') {
                 return;
             }
-            if (!hasCity) {
-                if (!element.dataset.cityLockWasDisabled) {
-                    element.dataset.cityLockWasDisabled = element.disabled ? 'true' : 'false';
-                }
-                element.disabled = true;
-            } else {
-                if (element.dataset.cityLockWasDisabled !== 'true') {
-                    element.disabled = false;
-                }
-                delete element.dataset.cityLockWasDisabled;
+
+            const shouldRemainDisabled = element.dataset?.cityLockWasDisabled === 'true';
+            element.disabled = shouldRemainDisabled;
+            if (!shouldRemainDisabled) {
+                element.removeAttribute('disabled');
             }
+            delete element.dataset.cityLockWasDisabled;
         });
-    };
-
-    const resetCityDependentOutputs = () => {
-        const tariffRate = document.getElementById('tariff_rate');
-        if (tariffRate) {
-            tariffRate.textContent = '—';
-        }
-        const paymentInput = document.getElementById('payment');
-        if (paymentInput) {
-            paymentInput.value = '';
-        }
-        const volumeDisplay = document.getElementById('box_volume');
-        if (volumeDisplay) {
-            volumeDisplay.textContent = '—';
-        }
-    };
-
-    const handleCitySelectionChange = async (cityValue) => {
-        const normalizedCity = `${cityValue ?? ''}`.trim();
-        applyCityInteractivity(normalizedCity);
-
-        if (!normalizedCity) {
-            resetCityDependentOutputs();
-            return;
-        }
-
-        await updateTariffFor(normalizedCity, warehouseFallback());
-    };
-
-    const triggerCitySelectionChange = (value) => {
-        try {
-            const maybePromise = handleCitySelectionChange(value);
-            if (maybePromise && typeof maybePromise.then === 'function') {
-                maybePromise.catch((err) => {
-                    console.warn('Ошибка обновления состояния формы при выборе города:', err);
-                });
-            }
-        } catch (err) {
-            console.warn('Ошибка обновления состояния формы при выборе города:', err);
-        }
-    };
-
-    let resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
-
-    applyScheduleSelection(resolvedCity);
-    applyCityInteractivity(resolvedCity);
-
-    try {
-        const selectedCity = await setupCitySelector({
-            form,
-            selectElement: cityEl,
-            marketplace,
-            initialCity,
-            getWarehouseValue: warehouseFallback,
-            overrideCities: overrideCityOptions,
-            onCityChange: (value) => {
-                applyScheduleSelection(value);
-                triggerCitySelectionChange(value);
-            }
-        });
-        if (typeof selectedCity === 'string') {
-            resolvedCity = selectedCity;
-        }
-    } catch (err) {
-        console.warn('Не удалось инициализировать список городов формы заявки:', err);
-        resolvedCity = (cityEl ? cityEl.value : '').trim() || initialCity;
     }
 
-    applyScheduleSelection(resolvedCity);
-
     try {
-        await handleCitySelectionChange(resolvedCity);
+        await updateTariffFor(resolvedCity, resolvedWarehouse);
     } catch (err) {
-        console.warn('Не удалось применить состояние формы после инициализации города:', err);
+        console.warn('Не удалось применить тариф после инициализации формы:', err);
     }
 
     // 4) Обработка отправки формы
@@ -2041,21 +1821,6 @@ async function initializeForm() {
                         status.textContent = 'Пожалуйста, выберите точку на карте';
                         status.style.color = 'red';
                     }
-                    return;
-                }
-            }
-
-            const cityValue = (cityEl && typeof cityEl.value === 'string') ? cityEl.value.trim() : '';
-            if (cityValue) {
-                let confirmed = true;
-                try {
-                    confirmed = await openCityConfirmationModal({ cityName: cityValue, cityElement: cityEl });
-                } catch (err) {
-                    console.warn('Не удалось показать подтверждение города перед отправкой формы:', err);
-                    confirmed = true;
-                }
-
-                if (!confirmed) {
                     return;
                 }
             }

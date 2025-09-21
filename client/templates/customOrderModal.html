@@ -43,23 +43,18 @@
         </div>
 
         <div class="form-group request-form__group request-form__city-group">
-          <label for="city">Город:</label>
+          <label>Город отправления:</label>
           <div class="request-form__city-control">
-            <select id="city" name="city" class="request-form__city-select" autocomplete="off" required>
-              <option value="" disabled selected>Выберите город</option>
-            </select>
+            <span class="request-form__city-value" id="legacyCity">—</span>
           </div>
         </div>
+        <input type="hidden" id="cityField" name="city" value="">
         <input type="hidden" id="warehouses" name="warehouses" value="">
         <input type="hidden" id="driver_name" name="driver_name" value="">
         <input type="hidden" id="driver_phone" name="driver_phone" value="">
         <input type="hidden" id="car_number" name="car_number" value="">
         <input type="hidden" id="car_brand" name="car_brand" value="">
         <input type="hidden" id="sender" name="sender" value="">
-
-        <p id="citySelectionNotice" class="request-form__city-notice" role="status" aria-live="polite">
-          Пожалуйста, выберите город отправления…
-        </p>
 
         <div id="cityDependentFields" class="request-form__city-dependent">
           <div class="form-group request-form__group">
