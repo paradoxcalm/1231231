@@ -343,7 +343,7 @@ class TariffsManager {
                 <tr>
                     <td>
                         <div class="warehouse-name">${warehouse}</div>
-                        <div class="warehouse-location text-muted">Московская область</div>
+                        <div class="warehouse-location text-muted"></div>
                     </td>
                     <td>
                         <span class="price-value">${boxPrice}</span>
