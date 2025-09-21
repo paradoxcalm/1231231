@@ -643,6 +643,16 @@ body {
     color: var(--text-primary);
 }
 
+.schedule-shipment__destination--long {
+    font-size: 0.68rem;
+    line-height: 1.3;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
 .schedule-shipment__badge {
     display: inline-flex;
     align-items: center;

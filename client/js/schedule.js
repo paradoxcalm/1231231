@@ -817,7 +817,43 @@ class ScheduleController {
 
         const destination = document.createElement('span');
         destination.className = 'schedule-shipment__destination';
-        destination.textContent = entry.warehouse || 'Склад не указан';
+
+        const warehouseName =
+            typeof entry.warehouse === 'string' && entry.warehouse.trim().length > 0
+                ? entry.warehouse.trim()
+                : 'Склад не указан';
+
+        const shouldShorten = warehouseName.length > 25 || warehouseName.includes(' - ');
+
+        if (shouldShorten) {
+            const parts = warehouseName.split(' - ');
+
+            if (parts.length > 1) {
+                const [firstPart, secondPart = '', ...restParts] = parts;
+                const words = secondPart.trim().split(/\s+/).filter(Boolean);
+
+                if (words.length > 0) {
+                    const [firstWord, ...otherWords] = words;
+                    const abbreviatedSecondPart = [
+                        `${firstWord.charAt(0)}.`,
+                        ...otherWords
+                    ]
+                        .join(' ')
+                        .trim();
+
+                    const restTail = restParts.length ? ` - ${restParts.join(' - ')}` : '';
+                    destination.textContent = `${firstPart} - ${abbreviatedSecondPart}${restTail}`.trim();
+                } else {
+                    destination.textContent = warehouseName;
+                }
+            } else {
+                destination.textContent = warehouseName;
+            }
+
+            destination.classList.add('schedule-shipment__destination--long');
+        } else {
+            destination.textContent = warehouseName;
+        }
         header.appendChild(destination);
 
         const badgeText = this.getMarketplaceBadge(entry.marketplace);
