@@ -577,7 +577,6 @@ body {
     align-items: stretch;
     justify-content: stretch;
     padding: 0;
-    height: var(--schedule-card-height);
     min-height: var(--schedule-card-height);
     border-bottom: 1px solid var(--border-light);
     background: transparent;
