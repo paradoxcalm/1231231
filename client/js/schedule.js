@@ -1,6 +1,6 @@
 import { fetchMarketplaces, fetchCities } from './filterOptions.js';
 
-class ScheduleTimeline {
+class ScheduleController {
     constructor() {
         this.elements = {
             panel: document.getElementById('schedulePanel'),
@@ -18,18 +18,15 @@ class ScheduleTimeline {
             weekStart: this.getMonday(new Date())
         };
 
-        this.marketplaceOptions = [];
-        this.cityOptions = [];
-        this.scheduleCache = new Map();
-        this.originalSchedules = [];
-        this.enrichedSchedules = [];
-        this.scheduleLookup = new Map();
-        this.activeRequestController = null;
+        this.marketplaces = [];
+        this.cities = [];
+        this.scheduleItems = [];
+        this.schedulesByDate = new Map();
+        this.abortController = null;
         this.isLoading = false;
         this.errorMessage = '';
 
         this.handleOriginTabClick = this.handleOriginTabClick.bind(this);
-        this.handleTimelineClick = this.handleTimelineClick.bind(this);
 
         this.init();
     }
@@ -47,13 +44,12 @@ class ScheduleTimeline {
     }
 
     bindEvents() {
-        const { marketplace, originTabs, prev, next, grid } = this.elements;
+        const { marketplace, originTabs, prev, next } = this.elements;
 
         if (marketplace) {
             marketplace.addEventListener('change', (event) => {
                 this.state.marketplace = (event.target.value || '').trim();
                 this.state.city = '';
-                this.scheduleCache.clear();
                 this.renderWeekRange();
                 this.loadCities();
                 this.loadSchedules();
@@ -74,10 +70,6 @@ class ScheduleTimeline {
             next.addEventListener('click', () => {
                 this.changeWeek(1);
             });
-        }
-
-        if (grid) {
-            grid.addEventListener('click', this.handleTimelineClick);
         }
     }
 
@@ -107,10 +99,12 @@ class ScheduleTimeline {
 
         try {
             const marketplaces = await fetchMarketplaces({ baseUrl: '../filter_options.php' });
-            this.marketplaceOptions = Array.isArray(marketplaces) ? marketplaces : [];
+            this.marketplaces = Array.isArray(marketplaces)
+                ? marketplaces.filter((value) => typeof value === 'string' && value.trim().length > 0)
+                : [];
         } catch (error) {
             console.error('Ошибка загрузки маркетплейсов:', error);
-            this.marketplaceOptions = [];
+            this.marketplaces = [];
         } finally {
             this.renderMarketplaceOptions();
             select.disabled = false;
@@ -131,16 +125,15 @@ class ScheduleTimeline {
         defaultOption.textContent = 'Все маркетплейсы';
         select.appendChild(defaultOption);
 
-        this.marketplaceOptions.forEach((marketplace) => {
-            if (!marketplace) {
-                return;
-            }
-
-            const option = document.createElement('option');
-            option.value = marketplace;
-            option.textContent = marketplace;
-            select.appendChild(option);
-        });
+        this.marketplaces
+            .slice()
+            .sort((first, second) => first.localeCompare(second, 'ru', { sensitivity: 'base' }))
+            .forEach((marketplace) => {
+                const option = document.createElement('option');
+                option.value = marketplace;
+                option.textContent = marketplace;
+                select.appendChild(option);
+            });
 
         select.value = currentValue;
     }
@@ -160,16 +153,22 @@ class ScheduleTimeline {
         container.appendChild(placeholder);
 
         try {
-            const cities = await fetchCities({ marketplace: this.state.marketplace, baseUrl: '../filter_options.php' });
-            this.cityOptions = Array.isArray(cities)
-                ? cities.filter((city) => typeof city === 'string' && city.trim().length > 0)
+            const cities = await fetchCities({
+                marketplace: this.state.marketplace,
+                baseUrl: '../filter_options.php'
+            });
+
+            this.cities = Array.isArray(cities)
+                ? cities
+                    .map((city) => (typeof city === 'string' ? city.trim() : ''))
+                    .filter((city) => city.length > 0)
                 : [];
         } catch (error) {
             console.error('Ошибка загрузки городов:', error);
-            this.cityOptions = [];
+            this.cities = [];
         }
 
-        if (this.state.city && !this.cityOptions.includes(this.state.city)) {
+        if (this.state.city && !this.cities.includes(this.state.city)) {
             this.state.city = '';
         }
 
@@ -184,7 +183,7 @@ class ScheduleTimeline {
 
         container.innerHTML = '';
 
-        if (!this.cityOptions || this.cityOptions.length === 0) {
+        if (!this.cities.length) {
             container.classList.add('is-hidden');
             container.setAttribute('aria-hidden', 'true');
             return;
@@ -196,9 +195,12 @@ class ScheduleTimeline {
         const fragment = document.createDocumentFragment();
         fragment.appendChild(this.createOriginTab('', 'Все города отправления'));
 
-        this.cityOptions.forEach((city) => {
-            fragment.appendChild(this.createOriginTab(city, city));
-        });
+        this.cities
+            .slice()
+            .sort((first, second) => first.localeCompare(second, 'ru', { sensitivity: 'base' }))
+            .forEach((city) => {
+                fragment.appendChild(this.createOriginTab(city, city));
+            });
 
         container.appendChild(fragment);
         this.updateActiveOriginTab();
@@ -253,77 +255,39 @@ class ScheduleTimeline {
         this.loadSchedules();
     }
 
-    handleTimelineClick(event) {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-            return;
-        }
-
-        const button = target.closest('.schedule-shipment');
-        if (!button) {
-            return;
-        }
-
-        const scheduleId = button.dataset.scheduleId || '';
-        const entry = this.scheduleLookup.get(scheduleId);
-        if (!entry) {
-            return;
-        }
-
-        event.preventDefault();
-        this.openScheduleDetails(entry);
-    }
-
     async loadSchedules() {
         if (!this.elements.grid) {
             return;
         }
 
-        const cacheKey = JSON.stringify({
-            marketplace: this.state.marketplace || '',
-            city: this.state.city || ''
-        });
-
-        const cached = this.scheduleCache.get(cacheKey);
-        if (cached) {
-            this.updateSchedules(cached);
-            this.errorMessage = '';
-            this.isLoading = false;
-            this.renderWeek();
-            return;
-        }
-
-        if (this.activeRequestController) {
-            this.activeRequestController.abort();
+        if (this.abortController) {
+            this.abortController.abort();
         }
 
         const controller = new AbortController();
-        this.activeRequestController = controller;
+        this.abortController = controller;
         this.errorMessage = '';
         this.isLoading = true;
         this.renderWeek();
 
         try {
-            const data = await this.fetchSchedules(controller.signal);
-            this.scheduleCache.set(cacheKey, data);
-            this.updateSchedules(data);
+            const payload = await this.fetchSchedules(controller.signal);
+            this.processSchedules(Array.isArray(payload) ? payload : []);
         } catch (error) {
             if (error.name === 'AbortError') {
                 return;
             }
 
             console.error('Ошибка загрузки расписания:', error);
+            this.processSchedules([]);
             this.errorMessage = 'Не удалось загрузить расписание. Попробуйте позже.';
-            this.originalSchedules = [];
-            this.enrichedSchedules = [];
-            this.scheduleLookup.clear();
 
             if (window.app && typeof window.app.showError === 'function') {
                 window.app.showError('Не удалось загрузить расписание');
             }
         } finally {
-            if (this.activeRequestController === controller) {
-                this.activeRequestController = null;
+            if (this.abortController === controller) {
+                this.abortController = null;
             }
 
             this.isLoading = false;
@@ -333,9 +297,11 @@ class ScheduleTimeline {
 
     async fetchSchedules(signal) {
         const params = new URLSearchParams();
+
         if (this.state.marketplace) {
             params.set('marketplace', this.state.marketplace);
         }
+
         if (this.state.city) {
             params.set('city', this.state.city);
         }
@@ -352,76 +318,61 @@ class ScheduleTimeline {
 
         const contentType = (response.headers.get('content-type') || '').toLowerCase();
         if (contentType.includes('application/json')) {
-            const payload = await response.json();
-            return Array.isArray(payload) ? payload : [];
+            return response.json();
         }
 
         const textPayload = await response.text();
         try {
-            const parsed = JSON.parse(textPayload);
-            return Array.isArray(parsed) ? parsed : [];
+            return JSON.parse(textPayload);
         } catch (parseError) {
             throw new Error('Некорректный формат ответа сервера');
         }
     }
 
-    updateSchedules(schedules) {
-        this.originalSchedules = Array.isArray(schedules) ? schedules : [];
-        this.enrichedSchedules = this.prepareSchedules(this.originalSchedules);
-        this.scheduleLookup = new Map(
-            this.enrichedSchedules.map((entry) => [entry.id, entry])
-        );
+    processSchedules(schedules) {
+        this.scheduleItems = [];
+        this.schedulesByDate = new Map();
+
+        schedules.forEach((schedule, index) => {
+            const entry = this.normalizeSchedule(schedule, index);
+            if (!entry) {
+                return;
+            }
+
+            this.scheduleItems.push(entry);
+            if (!this.schedulesByDate.has(entry.dateKey)) {
+                this.schedulesByDate.set(entry.dateKey, []);
+            }
+            this.schedulesByDate.get(entry.dateKey).push(entry);
+        });
+
+        this.schedulesByDate.forEach((entries) => {
+            entries.sort((a, b) => {
+                if (a.timeValue !== b.timeValue) {
+                    return a.timeValue - b.timeValue;
+                }
+
+                return (a.warehouse || '').localeCompare(b.warehouse || '', 'ru', { sensitivity: 'base' });
+            });
+        });
     }
 
-    prepareSchedules(schedules) {
-        if (!Array.isArray(schedules)) {
-            return [];
+    normalizeSchedule(schedule, index) {
+        if (!schedule || typeof schedule !== 'object') {
+            return null;
         }
 
-        return schedules
-            .map((schedule, index) => {
-                const details = this.normalizeSchedule(schedule);
-                const acceptDate = this.parseDate(details.acceptDate);
-                const id = this.computeScheduleId(schedule, index);
-                const dateKey = acceptDate ? this.formatDateKey(acceptDate) : '';
-                return {
-                    id,
-                    raw: schedule,
-                    details,
-                    acceptDate,
-                    dateKey,
-                    timeValue: this.parseTime(details.acceptTime)
-                };
-            })
-            .filter((entry) => Boolean(entry.dateKey));
-    }
-
-    computeScheduleId(schedule, index) {
-        const candidates = ['id', 'schedule_id', 'scheduleId'];
-        for (const key of candidates) {
-            const value = schedule && schedule[key];
-            if (value === undefined || value === null) {
-                continue;
-            }
-            const str = String(value).trim();
-            if (str) {
-                return str;
-            }
-        }
-
-        return `schedule_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
-    }
-
-    normalizeSchedule(schedule) {
         const getValue = (keys) => {
             for (const key of keys) {
-                if (!key || !schedule || !(key in schedule)) {
+                if (!key || !(key in schedule)) {
                     continue;
                 }
+
                 const raw = schedule[key];
                 if (raw === undefined || raw === null) {
                     continue;
                 }
+
                 if (typeof raw === 'string') {
                     const trimmed = raw.trim();
                     if (trimmed) {
@@ -431,24 +382,87 @@ class ScheduleTimeline {
                     return String(raw);
                 }
             }
+
             return '';
         };
 
-        return {
-            id: getValue(['id', 'schedule_id', 'scheduleId']),
-            marketplace: getValue(['marketplace']),
-            city: getValue(['city', 'city_name', 'route_city']),
-            warehouse: getValue(['warehouses', 'warehouse', 'route_warehouse']),
-            acceptDate: getValue(['accept_date', 'acceptDate', 'departure_date', 'departureDate']),
-            deliveryDate: getValue(['delivery_date', 'deliveryDate']),
-            acceptTime: getValue(['accept_time', 'acceptTime']),
-            status: getValue(['status']),
-            driverName: getValue(['driver_name', 'driverName']),
-            driverPhone: getValue(['driver_phone', 'driverPhone']),
-            carNumber: getValue(['car_number', 'carNumber']),
-            carBrand: getValue(['car_brand', 'carBrand']),
-            sender: getValue(['sender', 'company_name'])
+        const id = getValue(['id', 'schedule_id', 'scheduleId'])
+            || `schedule_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
+        const marketplace = getValue(['marketplace']);
+        const city = getValue(['city', 'city_name', 'route_city']);
+        const warehouse = getValue(['warehouses', 'warehouse', 'route_warehouse', 'warehouse_name']);
+        const acceptDateRaw = getValue(['accept_date', 'acceptDate', 'departure_date', 'departureDate']);
+        const acceptTimeRaw = getValue(['accept_time', 'acceptTime', 'accept_time_from']);
+        const deliveryDateRaw = getValue(['delivery_date', 'deliveryDate']);
+        const status = getValue(['status']);
+        const driverName = getValue(['driver_name', 'driverName']);
+        const driverPhone = getValue(['driver_phone', 'driverPhone', 'driver_contact']);
+        const carBrand = getValue(['car_brand', 'carBrand']);
+        const carNumber = getValue(['car_number', 'carNumber']);
+        const sender = getValue(['sender', 'sender_name']);
+        const comment = getValue(['comment', 'comments', 'note']);
+
+        const acceptDate = this.parseDate(acceptDateRaw);
+        if (!acceptDate) {
+            return null;
+        }
+
+        const { display: acceptTimeLabel, value: timeValue } = this.parseTime(acceptTimeRaw);
+
+        const entry = {
+            id,
+            raw: { ...schedule },
+            marketplace,
+            city,
+            warehouse,
+            warehouses: warehouse,
+            acceptDate,
+            acceptDateRaw,
+            acceptTimeRaw,
+            acceptTimeLabel,
+            timeValue,
+            deliveryDateRaw,
+            status,
+            driverName,
+            driverPhone,
+            carBrand,
+            carNumber,
+            sender,
+            comment
         };
+
+        entry.dateKey = this.formatDateKey(acceptDate);
+        entry.requestPayload = this.buildRequestPayload(entry);
+        return entry;
+    }
+
+    buildRequestPayload(entry) {
+        const payload = { ...entry.raw };
+        payload.id = entry.id;
+        payload.marketplace = entry.marketplace;
+        payload.city = entry.city;
+        payload.route_city = entry.city;
+        payload.warehouse = entry.warehouse;
+        payload.warehouses = entry.warehouse;
+        payload.route_warehouse = entry.warehouse;
+        payload.accept_date = entry.acceptDateRaw;
+        payload.acceptDate = entry.acceptDateRaw;
+        payload.accept_time = entry.acceptTimeRaw;
+        payload.acceptTime = entry.acceptTimeRaw;
+        payload.delivery_date = entry.deliveryDateRaw;
+        payload.deliveryDate = entry.deliveryDateRaw;
+        payload.status = entry.status;
+        payload.driver_name = entry.driverName;
+        payload.driverName = entry.driverName;
+        payload.driver_phone = entry.driverPhone;
+        payload.driverPhone = entry.driverPhone;
+        payload.car_brand = entry.carBrand;
+        payload.carBrand = entry.carBrand;
+        payload.car_number = entry.carNumber;
+        payload.carNumber = entry.carNumber;
+        payload.sender = entry.sender;
+        payload.comment = entry.comment;
+        return payload;
     }
 
     parseDate(value) {
@@ -456,13 +470,18 @@ class ScheduleTimeline {
             return null;
         }
 
-        if (value instanceof Date) {
-            return new Date(value.getTime());
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
+            const clone = new Date(value);
+            clone.setHours(0, 0, 0, 0);
+            return clone;
         }
 
-        if (typeof value === 'number') {
-            const dateFromNumber = new Date(value);
-            return Number.isNaN(dateFromNumber.getTime()) ? null : dateFromNumber;
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+                date.setHours(0, 0, 0, 0);
+                return date;
+            }
         }
 
         const stringValue = String(value).trim();
@@ -470,49 +489,81 @@ class ScheduleTimeline {
             return null;
         }
 
-        const dotMatch = stringValue.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
-        if (dotMatch) {
-            const [, day, month, year] = dotMatch;
-            const parsed = new Date(Number(year), Number(month) - 1, Number(day));
-            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        const isoMatch = stringValue.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+        if (isoMatch) {
+            const year = Number(isoMatch[1]);
+            const month = Number(isoMatch[2]) - 1;
+            const day = Number(isoMatch[3]);
+            const date = new Date(year, month, day);
+            if (!Number.isNaN(date.getTime())) {
+                date.setHours(0, 0, 0, 0);
+                return date;
+            }
         }
 
-        const normalized = stringValue.includes('T') ? stringValue : stringValue.replace(' ', 'T');
-        const isoCandidate = normalized.length <= 10 ? `${normalized}T00:00:00` : normalized;
-        const date = new Date(isoCandidate);
-        return Number.isNaN(date.getTime()) ? null : date;
+        const ruMatch = stringValue.match(/^(\d{1,2})[.](\d{1,2})[.](\d{2,4})$/);
+        if (ruMatch) {
+            const day = Number(ruMatch[1]);
+            const month = Number(ruMatch[2]) - 1;
+            let year = Number(ruMatch[3]);
+            if (year < 100) {
+                year += 2000;
+            }
+            const date = new Date(year, month, day);
+            if (!Number.isNaN(date.getTime())) {
+                date.setHours(0, 0, 0, 0);
+                return date;
+            }
+        }
+
+        const parsed = new Date(stringValue);
+        if (!Number.isNaN(parsed.getTime())) {
+            parsed.setHours(0, 0, 0, 0);
+            return parsed;
+        }
+
+        return null;
     }
 
     parseTime(value) {
         if (!value) {
-            return Number.POSITIVE_INFINITY;
+            return { display: '', value: Number.MAX_SAFE_INTEGER };
         }
 
-        const match = String(value).match(/(\d{1,2}):(\d{2})/);
-        if (!match) {
-            return Number.POSITIVE_INFINITY;
+        const stringValue = String(value).trim();
+        if (!stringValue) {
+            return { display: '', value: Number.MAX_SAFE_INTEGER };
         }
 
-        const hours = Number(match[1]);
-        const minutes = Number(match[2]);
-        if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-            return Number.POSITIVE_INFINITY;
+        const match = stringValue.match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+            const hours = Number(match[1]);
+            const minutes = Number(match[2]);
+            const normalized = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            return { display: normalized, value: hours * 60 + minutes };
         }
 
-        return hours * 60 + minutes;
+        return { display: stringValue, value: Number.MAX_SAFE_INTEGER };
     }
 
     formatDateKey(date) {
         const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
+        const month = `${date.getMonth() + 1}`.padStart(2, '0');
+        const day = `${date.getDate()}`.padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
 
-    formatDate(value) {
-        const date = this.parseDate(value);
+    formatDate(date) {
         if (!date) {
-            return '—';
+            return '';
+        }
+
+        if (typeof date === 'string') {
+            const parsed = this.parseDate(date);
+            if (parsed) {
+                return this.formatDate(parsed);
+            }
+            return date;
         }
 
         return date.toLocaleDateString('ru-RU', {
@@ -545,17 +596,7 @@ class ScheduleTimeline {
     }
 
     getSchedulesForDay(dateKey) {
-        return this.enrichedSchedules
-            .filter((entry) => entry.dateKey === dateKey)
-            .sort((a, b) => {
-                if (a.timeValue !== b.timeValue) {
-                    return a.timeValue - b.timeValue;
-                }
-
-                const first = a.details.warehouse || '';
-                const second = b.details.warehouse || '';
-                return first.localeCompare(second, 'ru', { sensitivity: 'base' });
-            });
+        return this.schedulesByDate.get(dateKey) || [];
     }
 
     renderWeekRange() {
@@ -573,7 +614,8 @@ class ScheduleTimeline {
     renderWeek() {
         this.renderWeekRange();
 
-        if (!this.elements.grid) {
+        const grid = this.elements.grid;
+        if (!grid) {
             return;
         }
 
@@ -682,7 +724,7 @@ class ScheduleTimeline {
         const dateKey = this.formatDateKey(date);
         const schedules = this.getSchedulesForDay(dateKey);
 
-        if (schedules.length === 0) {
+        if (!schedules.length) {
             const empty = document.createElement('div');
             empty.className = 'schedule-day__empty';
             empty.textContent = 'Нет отправлений';
@@ -703,20 +745,18 @@ class ScheduleTimeline {
         button.className = 'schedule-shipment';
         button.dataset.scheduleId = entry.id;
 
-        const { details } = entry;
-
         const header = document.createElement('div');
         header.className = 'schedule-shipment__header';
 
         const destination = document.createElement('span');
         destination.className = 'schedule-shipment__destination';
-        destination.textContent = details.warehouse || 'Склад не указан';
+        destination.textContent = entry.warehouse || 'Склад не указан';
         header.appendChild(destination);
 
-        const badgeText = this.getMarketplaceBadge(details.marketplace);
+        const badgeText = this.getMarketplaceBadge(entry.marketplace);
         if (badgeText) {
             const badge = document.createElement('span');
-            const badgeClass = this.getMarketplaceBadgeClass(details.marketplace);
+            const badgeClass = this.getMarketplaceBadgeClass(entry.marketplace);
             badge.className = `schedule-shipment__badge${badgeClass ? ` ${badgeClass}` : ''}`;
             badge.textContent = badgeText;
             header.appendChild(badge);
@@ -724,35 +764,35 @@ class ScheduleTimeline {
 
         button.appendChild(header);
 
-        if (details.city) {
+        if (entry.city) {
             const route = document.createElement('div');
             route.className = 'schedule-shipment__route';
-            route.textContent = `${details.city} → ${details.warehouse || '—'}`;
+            route.textContent = `${entry.city} → ${entry.warehouse || '—'}`;
             button.appendChild(route);
         }
 
         const meta = document.createElement('div');
         meta.className = 'schedule-shipment__meta';
 
-        if (details.status) {
+        if (entry.status) {
             const status = document.createElement('span');
-            const statusClass = this.getStatusClass(details.status);
+            const statusClass = this.getStatusClass(entry.status);
             status.className = `schedule-shipment__status${statusClass ? ` ${statusClass}` : ''}`;
-            status.textContent = details.status;
+            status.textContent = entry.status;
             meta.appendChild(status);
         }
 
-        if (details.acceptTime) {
+        if (entry.acceptTimeLabel) {
             const accept = document.createElement('span');
             accept.className = 'schedule-shipment__chip';
-            accept.textContent = `Приём: ${details.acceptTime}`;
+            accept.textContent = `Приём: ${entry.acceptTimeLabel}`;
             meta.appendChild(accept);
         }
 
-        if (details.deliveryDate) {
+        if (entry.deliveryDateRaw) {
             const delivery = document.createElement('span');
             delivery.className = 'schedule-shipment__chip';
-            delivery.textContent = `Сдача: ${this.formatDate(details.deliveryDate)}`;
+            delivery.textContent = `Сдача: ${this.formatDate(entry.deliveryDateRaw)}`;
             meta.appendChild(delivery);
         }
 
@@ -763,12 +803,17 @@ class ScheduleTimeline {
         const footer = document.createElement('div');
         footer.className = 'schedule-shipment__footer';
 
-        const action = document.createElement('span');
-        action.className = 'schedule-shipment__action';
-        action.textContent = 'Оформить заявку';
-        footer.appendChild(action);
+        const info = document.createElement('span');
+        info.className = 'schedule-shipment__info';
+        info.textContent = 'Оформить заявку';
+        footer.appendChild(info);
 
         button.appendChild(footer);
+
+        button.addEventListener('click', () => {
+            this.openRequestForm(entry);
+        });
+
         return button;
     }
 
@@ -824,98 +869,22 @@ class ScheduleTimeline {
         return map.get(normalized) || 'status-unknown';
     }
 
-    openScheduleDetails(entry) {
-        const modal = document.getElementById('scheduleDetailsModal');
-        const content = document.getElementById('scheduleDetailsContent');
-
-        if (!modal || !content) {
-            this.createOrder(entry.raw);
-            return;
-        }
-
-        content.innerHTML = '';
-
-        const container = document.createElement('div');
-        container.className = 'schedule-modal';
-
-        const grid = document.createElement('div');
-        grid.className = 'schedule-modal__grid';
-
-        const pushItem = (label, value) => {
-            if (!value || String(value).trim().length === 0) {
-                return;
-            }
-            const item = document.createElement('div');
-            item.className = 'schedule-modal__item';
-
-            const title = document.createElement('span');
-            title.className = 'schedule-modal__label';
-            title.textContent = label;
-            item.appendChild(title);
-
-            const val = document.createElement('span');
-            val.className = 'schedule-modal__value';
-            val.textContent = value;
-            item.appendChild(val);
-
-            grid.appendChild(item);
-        };
-
-        const { details } = entry;
-
-        pushItem('Маркетплейс', details.marketplace);
-        pushItem('Город отправления', details.city);
-        pushItem('Склад/направление', details.warehouse);
-        pushItem('Дата отправления', this.formatDate(details.acceptDate));
-        pushItem('Время приёма', details.acceptTime);
-        pushItem('Сдача на склад', this.formatDate(details.deliveryDate));
-        pushItem('Статус', details.status);
-        pushItem('Водитель', details.driverName);
-        pushItem('Телефон водителя', details.driverPhone);
-        pushItem('Транспорт', [details.carBrand, details.carNumber].filter(Boolean).join(' ').trim());
-        pushItem('Отправитель', details.sender);
-
-        container.appendChild(grid);
-
-        const actions = document.createElement('div');
-        actions.className = 'schedule-modal__actions';
-
-        const createOrderBtn = document.createElement('button');
-        createOrderBtn.type = 'button';
-        createOrderBtn.className = 'create-order-btn';
-        createOrderBtn.textContent = 'Создать заявку';
-        createOrderBtn.addEventListener('click', () => {
-            this.createOrder(entry.raw);
-        });
-
-        actions.appendChild(createOrderBtn);
-        container.appendChild(actions);
-
-        content.appendChild(container);
-
-        if (window.app && typeof window.app.openModal === 'function') {
-            window.app.openModal(modal);
-        } else {
-            modal.classList.add('active');
-        }
-    }
-
-    createOrder(schedule) {
-        const detailsModal = document.getElementById('scheduleDetailsModal');
-        if (detailsModal && window.app && typeof window.app.closeModal === 'function') {
-            window.app.closeModal(detailsModal);
-        }
-
-        if (typeof window.openClientRequestFormModal === 'function') {
-            window.openClientRequestFormModal(schedule);
+    openRequestForm(entry) {
+        const payload = entry && entry.requestPayload;
+        if (!payload) {
             return;
         }
 
         if (typeof window.openRequestFormModal === 'function') {
-            window.openRequestFormModal(schedule, '', '', '', {
+            window.openRequestFormModal(payload, '', '', '', {
                 modalId: 'clientRequestModal',
                 contentId: 'clientRequestModalContent'
             });
+            return;
+        }
+
+        if (typeof window.openClientRequestFormModal === 'function') {
+            window.openClientRequestFormModal(payload);
             return;
         }
 
@@ -934,15 +903,14 @@ class ScheduleTimeline {
             this.elements.marketplace.value = '';
         }
 
-        this.scheduleCache.clear();
         this.renderWeekRange();
         this.loadCities();
         this.loadSchedules();
     }
 }
 
-window.ScheduleTimeline = ScheduleTimeline;
+window.ScheduleController = ScheduleController;
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.ScheduleManager = new ScheduleTimeline();
+    window.scheduleController = new ScheduleController();
 });

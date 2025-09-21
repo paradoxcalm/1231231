@@ -106,8 +106,8 @@ class App {
     loadSectionData(sectionName) {
         switch (sectionName) {
             case 'schedule':
-                if (window.ScheduleManager) {
-                    window.ScheduleManager.loadSchedules();
+                if (window.scheduleController) {
+                    window.scheduleController.loadSchedules();
                 }
                 break;
             case 'tariffs':
@@ -196,8 +196,8 @@ class App {
         const resetBtn = document.getElementById('resetScheduleFilters');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                if (window.ScheduleManager) {
-                    window.ScheduleManager.resetFilters();
+                if (window.scheduleController) {
+                    window.scheduleController.resetFilters();
                 }
             });
         }
