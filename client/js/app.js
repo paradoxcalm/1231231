@@ -3,11 +3,16 @@ class App {
     constructor() {
         this.currentSection = 'schedule';
         this.currentUser = null;
+        this.themeStorageKey = 'clientTheme';
+        this.themeToggles = [];
 
         this.init();
     }
 
     init() {
+        this.themeToggles = Array.from(document.querySelectorAll('[data-theme-toggle]'));
+        this.applyTheme(this.getSavedTheme(), false);
+        this.setupThemeToggle();
         this.setupNavigation();
         this.setupModals();
         this.setupNotifications();
@@ -37,6 +42,11 @@ class App {
 
                 if (item.dataset.action === 'logout') {
                     this.openModal(document.getElementById('logoutConfirmModal'));
+                    return;
+                }
+
+                if (item.dataset.action === 'toggle-theme' || item.hasAttribute('data-theme-toggle')) {
+                    this.toggleTheme();
                     return;
                 }
 
@@ -81,6 +91,91 @@ class App {
                 }
             });
         }
+    }
+
+    setupThemeToggle() {
+        if (!this.themeToggles.length) {
+            return;
+        }
+
+        this.themeToggles.forEach(toggle => {
+            if (toggle.classList.contains('mobile-nav-item')) {
+                return;
+            }
+
+            toggle.addEventListener('click', (event) => {
+                event.preventDefault();
+                this.toggleTheme();
+            });
+        });
+    }
+
+    toggleTheme() {
+        const nextTheme = this.getCurrentTheme() === 'dark' ? 'light' : 'dark';
+        this.applyTheme(nextTheme);
+    }
+
+    applyTheme(theme, persist = true) {
+        const body = document.body;
+        const isDark = theme === 'dark';
+
+        body.classList.toggle('theme-dark', isDark);
+        body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+
+        this.updateThemeToggleUI(theme);
+
+        if (persist) {
+            try {
+                localStorage.setItem(this.themeStorageKey, theme);
+            } catch (error) {
+                console.warn('Не удалось сохранить выбранную тему', error);
+            }
+        }
+    }
+
+    updateThemeToggleUI(theme) {
+        if (!this.themeToggles.length) {
+            return;
+        }
+
+        const isDark = theme === 'dark';
+        const nextTheme = isDark ? 'light' : 'dark';
+        const labelText = nextTheme === 'dark' ? 'Тёмная тема' : 'Светлая тема';
+        const compactLabelText = nextTheme === 'dark' ? 'Тёмная' : 'Светлая';
+        const ariaLabel = nextTheme === 'dark' ? 'Переключить на тёмную тему' : 'Переключить на светлую тему';
+
+        this.themeToggles.forEach(toggle => {
+            toggle.setAttribute('aria-pressed', String(isDark));
+            toggle.setAttribute('aria-label', ariaLabel);
+
+            const icon = toggle.querySelector('.theme-toggle-icon');
+            if (icon) {
+                icon.classList.toggle('fa-moon', nextTheme === 'dark');
+                icon.classList.toggle('fa-sun', nextTheme === 'light');
+            }
+
+            const label = toggle.querySelector('[data-theme-toggle-label]');
+            if (label) {
+                label.textContent = toggle.classList.contains('mobile-nav-item') ? compactLabelText : labelText;
+            }
+        });
+    }
+
+    getSavedTheme() {
+        try {
+            const savedTheme = localStorage.getItem(this.themeStorageKey);
+            if (savedTheme === 'dark' || savedTheme === 'light') {
+                return savedTheme;
+            }
+        } catch (error) {
+            console.warn('Не удалось получить сохранённую тему', error);
+        }
+
+        return 'light';
+    }
+
+    getCurrentTheme() {
+        return document.body.classList.contains('theme-dark') ? 'dark' : 'light';
     }
 
     logout() {
