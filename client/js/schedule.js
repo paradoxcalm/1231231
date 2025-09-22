@@ -927,7 +927,8 @@ class ScheduleController {
 
         const normalizedMarketplace =
             typeof entry.marketplace === 'string' ? entry.marketplace.trim() : '';
-        const marketplaceLabel = normalizedMarketplace || this.getMarketplaceBadge(entry.marketplace);
+        const marketplaceLabel =
+            this.getMarketplaceBadge(entry.marketplace) || normalizedMarketplace;
 
         if (marketplaceLabel) {
             const marketplace = document.createElement('span');
