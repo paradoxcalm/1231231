@@ -326,18 +326,6 @@ function fillLegacyFormFields(container, scheduleData) {
             warehouseDisplay.removeAttribute('title');
         }
     }
-
-    const cityDisplay = container.querySelector('#legacyCity');
-    if (cityDisplay) {
-        const cityText = city || '—';
-        cityDisplay.textContent = cityText;
-        if (city && typeof cityDisplay.setAttribute === 'function') {
-            cityDisplay.setAttribute('title', city);
-        } else if (typeof cityDisplay.removeAttribute === 'function') {
-            cityDisplay.removeAttribute('title');
-        }
-    }
-
     const setValue = (selector, value = '') => {
         const el = container.querySelector(selector);
         if (el) el.value = value;

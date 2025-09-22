@@ -820,13 +820,6 @@ function renderFormHTML(scheduleData = {}) {
             Изменить
           </button>
         </div>
-
-        <div class="form-group request-form__group request-form__city-group">
-          <label>Город отправления:</label>
-          <div class="request-form__city-control">
-            <span class="request-form__city-value" id="legacyCity">${city ? cityOptionText : '—'}</span>
-          </div>
-        </div>
         <input type="hidden" id="cityField" name="city" value="${attrCity}">
         <input type="hidden" id="warehouses" name="warehouses" value="${warehouses}">
         <input type="hidden" id="driver_name" name="driver_name" value="${driver_name}">
@@ -1748,17 +1741,6 @@ async function initializeForm() {
     }
 
     updateDirectionSummary(resolvedCity, resolvedWarehouse);
-
-    const cityDisplay = document.getElementById('legacyCity');
-    if (cityDisplay) {
-        const cityText = resolvedCity || '—';
-        cityDisplay.textContent = cityText;
-        if (resolvedCity && typeof cityDisplay.setAttribute === 'function') {
-            cityDisplay.setAttribute('title', resolvedCity);
-        } else if (typeof cityDisplay.removeAttribute === 'function') {
-            cityDisplay.removeAttribute('title');
-        }
-    }
 
     if (cityDependentContainer) {
         showRequestFormElement(cityDependentContainer);
