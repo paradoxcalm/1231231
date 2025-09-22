@@ -1,6 +1,9 @@
 import { fetchMarketplaces, fetchCities } from './filterOptions.js';
 
 const DEFAULT_CITY = 'Махачкала';
+const MOBILE_BREAKPOINT = 900;
+const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT}px)`;
+const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 class ScheduleController {
     constructor() {
@@ -11,14 +14,19 @@ class ScheduleController {
             grid: document.getElementById('grid'),
             prev: document.getElementById('prev'),
             next: document.getElementById('next'),
-            range: document.getElementById('range')
+            range: document.getElementById('range'),
+            daySwitcher: null
         };
 
         this.state = {
             marketplace: 'Wildberries',
             city: DEFAULT_CITY,
-            weekStart: this.getMonday(new Date())
+            weekStart: this.getMonday(new Date()),
+            selectedDayKey: '',
+            isMobile: false
         };
+
+        this.mediaQuery = null;
 
         this.marketplaces = [];
         this.cities = [];
@@ -29,6 +37,11 @@ class ScheduleController {
         this.errorMessage = '';
 
         this.handleOriginTabClick = this.handleOriginTabClick.bind(this);
+        this.handleDaySwitcherClick = this.handleDaySwitcherClick.bind(this);
+        this.handleMediaQueryChange = this.handleMediaQueryChange.bind(this);
+        this.handleResize = this.handleResize.bind(this);
+
+        this.state.selectedDayKey = this.resolveSelectedDayKey();
 
         this.init();
     }
@@ -37,6 +50,9 @@ class ScheduleController {
         if (!this.elements.panel || !this.elements.grid) {
             return;
         }
+
+        this.setupDaySwitcher();
+        this.setupResponsiveBehavior();
 
         this.bindEvents();
         this.renderWeekRange();
@@ -75,6 +91,174 @@ class ScheduleController {
         }
     }
 
+    setupDaySwitcher() {
+        const panel = this.elements.panel;
+        if (!panel) {
+            return;
+        }
+
+        const wrap = panel.querySelector('.schedule-wrap');
+        if (!wrap) {
+            return;
+        }
+
+        let container = wrap.querySelector('.schedule-day-switcher');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'schedule-day-switcher';
+            container.setAttribute('role', 'tablist');
+            container.setAttribute('aria-label', 'Выбор дня недели');
+
+            const weekNav = wrap.querySelector('.schedule-week-nav');
+            if (weekNav && weekNav.parentNode) {
+                weekNav.insertAdjacentElement('afterend', container);
+            } else {
+                wrap.insertBefore(container, wrap.firstChild || null);
+            }
+        }
+
+        container.addEventListener('click', this.handleDaySwitcherClick);
+        this.elements.daySwitcher = container;
+        this.updateDaySwitcherVisibility();
+    }
+
+    setupResponsiveBehavior() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (typeof window.matchMedia === 'function') {
+            this.mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
+            this.state.isMobile = this.mediaQuery.matches;
+
+            if (typeof this.mediaQuery.addEventListener === 'function') {
+                this.mediaQuery.addEventListener('change', this.handleMediaQueryChange);
+            } else if (typeof this.mediaQuery.addListener === 'function') {
+                this.mediaQuery.addListener(this.handleMediaQueryChange);
+            }
+        } else {
+            this.state.isMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+            window.addEventListener('resize', this.handleResize);
+        }
+
+        this.updateDaySwitcherVisibility();
+    }
+
+    handleMediaQueryChange(event) {
+        this.state.isMobile = Boolean(event && event.matches);
+        this.updateDaySwitcherVisibility();
+        this.renderWeek();
+    }
+
+    handleResize() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const nextIsMobile = window.innerWidth <= MOBILE_BREAKPOINT;
+        if (nextIsMobile === this.state.isMobile) {
+            return;
+        }
+
+        this.state.isMobile = nextIsMobile;
+        this.updateDaySwitcherVisibility();
+        this.renderWeek();
+    }
+
+    updateDaySwitcherVisibility() {
+        const container = this.elements.daySwitcher;
+        if (!container) {
+            return;
+        }
+
+        const shouldShow = Boolean(this.state.isMobile);
+        container.classList.toggle('is-visible', shouldShow);
+        container.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    }
+
+    renderDaySwitcher(days) {
+        const container = this.elements.daySwitcher;
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = '';
+
+        const weekDays = Array.isArray(days) ? days : [];
+        if (!weekDays.length) {
+            container.setAttribute('aria-hidden', 'true');
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        let activeButton = null;
+
+        weekDays.forEach((day, index) => {
+            const dayKey = this.formatDateKey(day);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'schedule-day-switcher__button';
+            button.dataset.dayKey = dayKey;
+            button.textContent = WEEKDAY_SHORT_LABELS[index] || this.formatWeekday(day).slice(0, 2);
+            button.title = this.formatWeekday(day);
+
+            const isActive = dayKey === this.state.selectedDayKey;
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            button.setAttribute('role', 'tab');
+            button.tabIndex = isActive ? 0 : -1;
+
+            if (isActive) {
+                activeButton = button;
+            }
+
+            fragment.appendChild(button);
+        });
+
+        container.appendChild(fragment);
+        this.updateDaySwitcherVisibility();
+
+        if (
+            this.state.isMobile &&
+            activeButton &&
+            typeof activeButton.scrollIntoView === 'function'
+        ) {
+            const scrollToActive = () => {
+                try {
+                    activeButton.scrollIntoView({ block: 'nearest', inline: 'center' });
+                } catch (error) {
+                    activeButton.scrollIntoView();
+                }
+            };
+
+            if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(scrollToActive);
+            } else {
+                scrollToActive();
+            }
+        }
+    }
+
+    handleDaySwitcherClick(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+
+        const button = target.closest('.schedule-day-switcher__button');
+        if (!button) {
+            return;
+        }
+
+        const dayKey = button.dataset.dayKey || '';
+        if (!dayKey || dayKey === this.state.selectedDayKey) {
+            return;
+        }
+
+        this.state.selectedDayKey = dayKey;
+        this.renderWeek();
+    }
+
     getMonday(date) {
         const workingDate = new Date(date);
         const day = workingDate.getDay();
@@ -88,6 +272,7 @@ class ScheduleController {
         const nextWeek = new Date(this.state.weekStart);
         nextWeek.setDate(nextWeek.getDate() + offset * 7);
         this.state.weekStart = this.getMonday(nextWeek);
+        this.state.selectedDayKey = this.resolveSelectedDayKey(this.state.selectedDayKey);
         this.renderWeek();
     }
 
@@ -652,9 +837,46 @@ class ScheduleController {
         return raw.charAt(0).toUpperCase() + raw.slice(1);
     }
 
+    resolveSelectedDayKey(preferredKey = '', days = null) {
+        const weekDays = Array.isArray(days) && days.length ? days : this.getWeekDays();
+        if (!weekDays.length) {
+            return '';
+        }
+
+        const availableKeys = weekDays.map((day) => this.formatDateKey(day));
+
+        if (preferredKey) {
+            if (availableKeys.includes(preferredKey)) {
+                return preferredKey;
+            }
+
+            const preferredIndex = this.getWeekdayIndexFromKey(preferredKey);
+            if (preferredIndex >= 0 && preferredIndex < availableKeys.length) {
+                return availableKeys[preferredIndex];
+            }
+        }
+
+        const todayKey = this.formatDateKey(new Date());
+        if (availableKeys.includes(todayKey)) {
+            return todayKey;
+        }
+
+        return availableKeys[0];
+    }
+
+    getWeekdayIndexFromKey(key) {
+        const date = this.parseDate(key);
+        if (!date) {
+            return -1;
+        }
+
+        const day = date.getDay();
+        return day === 0 ? 6 : day - 1;
+    }
+
     getWeekDays() {
         const days = [];
-        for (let index = 0; index < 6; index += 1) {
+        for (let index = 0; index < 7; index += 1) {
             const day = new Date(this.state.weekStart);
             day.setDate(day.getDate() + index);
             days.push(day);
@@ -674,12 +896,19 @@ class ScheduleController {
 
         const start = this.state.weekStart;
         const end = new Date(this.state.weekStart);
-        end.setDate(end.getDate() + 5);
+        end.setDate(end.getDate() + 6);
         range.textContent = `${this.formatShortDate(start)} – ${this.formatShortDate(end)}`;
     }
 
     renderWeek() {
         this.renderWeekRange();
+
+        const days = this.getWeekDays();
+        const resolvedKey = this.resolveSelectedDayKey(this.state.selectedDayKey, days);
+        if (resolvedKey !== this.state.selectedDayKey) {
+            this.state.selectedDayKey = resolvedKey;
+        }
+        this.renderDaySwitcher(days);
 
         const grid = this.elements.grid;
         if (!grid) {
@@ -696,7 +925,7 @@ class ScheduleController {
             return;
         }
 
-        this.renderTimeline();
+        this.renderTimeline(days);
     }
 
     renderLoadingState() {
@@ -745,16 +974,37 @@ class ScheduleController {
         grid.appendChild(container);
     }
 
-    renderTimeline() {
+    renderTimeline(days = null) {
         const grid = this.elements.grid;
         if (!grid) {
             return;
         }
 
-        const days = this.getWeekDays();
+        const targetDays = Array.isArray(days) && days.length ? days : this.getWeekDays();
+        if (!targetDays.length) {
+            grid.innerHTML = '';
+            return;
+        }
+
+        const activeKey = this.resolveSelectedDayKey(this.state.selectedDayKey, targetDays);
+        if (activeKey !== this.state.selectedDayKey) {
+            this.state.selectedDayKey = activeKey;
+            this.renderDaySwitcher(targetDays);
+        }
+
+        const isMobile = Boolean(this.state.isMobile);
+        let daysToRender = targetDays;
+
+        if (isMobile) {
+            const activeDay = targetDays.find(
+                (day) => this.formatDateKey(day) === this.state.selectedDayKey
+            );
+            daysToRender = activeDay ? [activeDay] : targetDays.slice(0, 1);
+        }
+
         let maxRows = 0;
 
-        days.forEach((day) => {
+        daysToRender.forEach((day) => {
             const dateKey = this.formatDateKey(day);
             const schedulesCount = this.getSchedulesForDay(dateKey).length;
             if (schedulesCount > maxRows) {
@@ -765,17 +1015,23 @@ class ScheduleController {
         const normalizedMaxRows = Math.max(maxRows, 1);
         const fragment = document.createDocumentFragment();
 
-        days.forEach((day) => {
-            fragment.appendChild(this.createDayColumn(day, normalizedMaxRows));
+        daysToRender.forEach((day) => {
+            const dateKey = this.formatDateKey(day);
+            const isActive = dateKey === this.state.selectedDayKey;
+            fragment.appendChild(this.createDayColumn(day, normalizedMaxRows, isActive));
         });
 
         grid.innerHTML = '';
+        grid.classList.toggle('schedule-timeline--mobile', isMobile);
         grid.appendChild(fragment);
     }
 
-    createDayColumn(date, maxRows) {
+    createDayColumn(date, maxRows, isActive = false) {
         const wrapper = document.createElement('article');
         wrapper.className = 'schedule-day';
+        if (isActive) {
+            wrapper.classList.add('is-active');
+        }
 
         const header = document.createElement('header');
         header.className = 'schedule-day__header';
@@ -1047,6 +1303,7 @@ class ScheduleController {
         this.state.marketplace = 'Wildberries';
         this.state.city = '';
         this.state.weekStart = this.getMonday(new Date());
+        this.state.selectedDayKey = this.resolveSelectedDayKey();
 
         const marketplaces = this.getSortedMarketplaces();
         const resolvedMarketplace = this.resolveMarketplaceSelection({
