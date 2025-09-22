@@ -5,6 +5,47 @@ const MOBILE_BREAKPOINT = 900;
 const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT}px)`;
 const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
+function supportsAbortSignal() {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    try {
+        if (typeof window.fetch !== 'function' || typeof window.AbortController !== 'function') {
+            return false;
+        }
+
+        const controller = new window.AbortController();
+        const signal = controller.signal;
+        const AbortSignalCtor =
+            typeof window.AbortSignal === 'function'
+                ? window.AbortSignal
+                : signal && signal.constructor;
+
+        if (typeof AbortSignalCtor !== 'function') {
+            return false;
+        }
+
+        if (typeof AbortSignalCtor.timeout === 'function') {
+            return true;
+        }
+
+        if (typeof window.Request !== 'function') {
+            return false;
+        }
+
+        const request = new window.Request(window.location.href, { method: 'HEAD' });
+        if (!('signal' in request)) {
+            return false;
+        }
+
+        const requestSignal = request.signal;
+        return Boolean(requestSignal && typeof requestSignal === 'object');
+    } catch (error) {
+        return false;
+    }
+}
+
 class ScheduleController {
     constructor() {
         this.elements = {
@@ -512,24 +553,24 @@ class ScheduleController {
             return;
         }
 
-        const canUseAbortController =
-            typeof window !== 'undefined' && typeof window.AbortController === 'function';
+        const canUseAbortSignal = supportsAbortSignal();
 
-        if (canUseAbortController && this.abortController) {
+        if (this.abortController) {
             this.abortController.abort();
         }
 
-        const controller = canUseAbortController ? new window.AbortController() : null;
+        const controller = canUseAbortSignal ? new window.AbortController() : null;
         this.abortController = controller;
         this.errorMessage = '';
         this.isLoading = true;
         this.renderWeek();
 
         try {
-            const payload = await this.fetchSchedules(controller ? controller.signal : undefined);
+            const signal = controller ? controller.signal : undefined;
+            const payload = await this.fetchSchedules(signal);
             this.processSchedules(Array.isArray(payload) ? payload : []);
         } catch (error) {
-            if (error.name === 'AbortError') {
+            if (error && error.name === 'AbortError') {
                 return;
             }
 
@@ -566,7 +607,7 @@ class ScheduleController {
             credentials: 'include'
         };
 
-        if (signal) {
+        if (signal && supportsAbortSignal()) {
             fetchOptions.signal = signal;
         }
 
