@@ -172,8 +172,10 @@ class App {
 
         if (notificationBtn && notificationsPanel) {
             notificationBtn.addEventListener('click', () => {
-                notificationsPanel.classList.toggle('active');
-                this.loadNotifications();
+                const isActive = notificationsPanel.classList.toggle('active');
+                if (isActive) {
+                    this.loadNotifications();
+                }
             });
         }
 
@@ -218,44 +220,63 @@ class App {
     }
 
 
-    loadNotifications() {
+    async loadNotifications() {
         const content = document.getElementById('notificationsContent');
         if (!content) return;
 
-        const notifications = [
-            {
-                id: 1,
-                text: 'Ваш заказ #1234 готов к отправке',
-                time: '10 минут назад',
-                unread: true
-            },
-            {
-                id: 2,
-                text: 'Новое расписание: Махачкала → Коледино',
-                time: '1 час назад',
-                unread: true
-            },
-            {
-                id: 3,
-                text: 'Заказ #1233 успешно доставлен',
-                time: '2 часа назад',
-                unread: false
+        content.innerHTML = '<div class="notifications-empty">Загрузка...</div>';
+
+        try {
+            const response = await fetch('../fetch_notifications.php?mark_as_read=1', {
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-        ];
 
-        content.innerHTML = notifications.map(notification => `
-            <div class="notification-item ${notification.unread ? 'unread' : ''}">
-                <div class="notification-text">${notification.text}</div>
-                <div class="notification-time">${notification.time}</div>
-            </div>
-        `).join('');
+            const data = await response.json();
+            const notifications = Array.isArray(data) ? data : [];
 
-        // Обновляем счетчик
-        const unreadCount = notifications.filter(n => n.unread).length;
-        const badge = document.getElementById('notificationBadge');
-        if (badge) {
-            badge.textContent = unreadCount;
-            badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            content.innerHTML = '';
+
+            if (notifications.length === 0) {
+                content.innerHTML = '<div class="notifications-empty">Уведомлений нет</div>';
+            } else {
+                notifications.forEach((notification) => {
+                    const item = document.createElement('div');
+                    item.className = 'notification-item';
+                    if (!notification.read) {
+                        item.classList.add('unread');
+                    }
+
+                    const text = document.createElement('div');
+                    text.className = 'notification-text';
+                    text.textContent = notification.message || '';
+
+                    const time = document.createElement('div');
+                    time.className = 'notification-time';
+                    const createdAt = notification.created_at ? new Date(notification.created_at) : null;
+                    time.textContent = createdAt && !isNaN(createdAt) ? createdAt.toLocaleString('ru-RU') : '';
+
+                    item.appendChild(text);
+                    item.appendChild(time);
+                    content.appendChild(item);
+                });
+            }
+
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationBadge');
+            if (badge) {
+                badge.textContent = unreadCount > 0 ? unreadCount : '';
+                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки уведомлений', error);
+            if (typeof this.showError === 'function') {
+                this.showError('Не удалось загрузить уведомления. Попробуйте позже.');
+            }
+            content.innerHTML = '<div class="notifications-error">Ошибка загрузки уведомлений</div>';
         }
     }
 
