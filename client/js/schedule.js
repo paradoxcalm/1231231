@@ -5,7 +5,7 @@ const MOBILE_BREAKPOINT = 900;
 const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT}px)`;
 const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-function supportsAbortSignal() {
+function supportsFetchSignal() {
     if (typeof window === 'undefined') {
         return false;
     }
@@ -538,21 +538,24 @@ class ScheduleController {
             return;
         }
 
-        const canUseAbortSignal = supportsAbortSignal();
+        const canUseFetchSignal = supportsFetchSignal();
 
         if (this.abortController) {
             this.abortController.abort();
+            this.abortController = null;
         }
 
-        const controller = canUseAbortSignal ? new window.AbortController() : null;
-        this.abortController = controller;
+        const controller = canUseFetchSignal ? new window.AbortController() : null;
+        if (controller) {
+            this.abortController = controller;
+        }
         this.errorMessage = '';
         this.isLoading = true;
         this.renderWeek();
 
         try {
-            const signal = canUseAbortSignal && controller ? controller.signal : undefined;
-            const payload = await this.fetchSchedules(signal, canUseAbortSignal);
+            const signal = controller ? controller.signal : undefined;
+            const payload = await this.fetchSchedules(signal);
             this.processSchedules(Array.isArray(payload) ? payload : []);
         } catch (error) {
             if (error && error.name === 'AbortError') {
@@ -576,7 +579,7 @@ class ScheduleController {
         }
     }
 
-    async fetchSchedules(signal, canUseAbortSignal) {
+    async fetchSchedules(signal) {
         const params = new URLSearchParams();
 
         if (this.state.marketplace) {
@@ -592,7 +595,7 @@ class ScheduleController {
             credentials: 'include'
         };
 
-        if (canUseAbortSignal && signal) {
+        if (signal && supportsFetchSignal()) {
             fetchOptions.signal = signal;
         }
 
