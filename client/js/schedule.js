@@ -1567,8 +1567,8 @@ class ScheduleController {
                 meta.insertBefore(statusElement, meta.firstChild || null);
             }
 
-            statusElement.className = 'schedule-shipment__status status-unknown';
-            statusElement.textContent = 'Завершено';
+            statusElement.className = 'schedule-shipment__status status-closed';
+            statusElement.textContent = 'Приём закрыт';
         }
 
         if (meta.childElementCount > 0) {
@@ -1629,7 +1629,9 @@ class ScheduleController {
             ['прием заявок', 'status-open'],
             ['ожидает отправки', 'status-waiting'],
             ['в пути', 'status-transit'],
-            ['завершено', 'status-completed']
+            ['завершено', 'status-closed'],
+            ['приём закрыт', 'status-closed'],
+            ['прием закрыт', 'status-closed']
         ]);
 
         const normalized = status.toLowerCase().trim();
@@ -1657,7 +1659,7 @@ class ScheduleController {
                 const isStillAccepting = Date.now() < deadlineTime;
                 entry.isAcceptingRequests = isStillAccepting;
                 if (!isStillAccepting) {
-                    const message = 'Завершено';
+                    const message = 'Приём закрыт';
                     if (window.app && typeof window.app.showError === 'function') {
                         window.app.showError(message);
                     } else {

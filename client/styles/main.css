@@ -828,6 +828,11 @@ body {
     color: var(--secondary);
 }
 
+.schedule-shipment__status.status-closed {
+    background: rgba(239, 68, 68, 0.18);
+    color: var(--error);
+}
+
 .schedule-shipment__status.status-completed {
     background: rgba(16, 185, 129, 0.16);
     color: var(--success);
