@@ -929,10 +929,17 @@ class ScheduleController {
             typeof entry.marketplace === 'string' ? entry.marketplace.trim() : '';
         const marketplaceLabel =
             this.getMarketplaceBadge(entry.marketplace) || normalizedMarketplace;
+        const marketplaceModifier = this.getMarketplaceModifier(marketplaceLabel);
 
         if (marketplaceLabel) {
             const marketplace = document.createElement('span');
             marketplace.className = 'schedule-shipment__marketplace';
+            if (marketplaceModifier) {
+                marketplace.classList.add(`schedule-shipment__marketplace--${marketplaceModifier}`);
+            }
+            if (normalizedMarketplace) {
+                marketplace.dataset.marketplace = normalizedMarketplace;
+            }
             marketplace.textContent = marketplaceLabel;
 
             if (acceptElement && acceptElement.parentNode === meta) {
@@ -976,6 +983,23 @@ class ScheduleController {
             return 'YM';
         }
         return marketplace.length > 3 ? marketplace.slice(0, 3).toUpperCase() : marketplace;
+    }
+
+    getMarketplaceModifier(label) {
+        if (!label) {
+            return '';
+        }
+
+        const normalized = label.toLowerCase();
+        if (normalized === 'wb') {
+            return 'wb';
+        }
+
+        if (normalized === 'oz') {
+            return 'oz';
+        }
+
+        return '';
     }
 
     getStatusClass(status) {
