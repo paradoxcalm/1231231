@@ -1290,7 +1290,8 @@ class ScheduleController {
                 || (typeof entry.acceptTimeRaw === 'string' ? entry.acceptTimeRaw.trim() : '')
                 || entry.acceptTimeLabel;
             const shouldShowAcceptDeadline =
-                normalizedWithoutYo.includes('прием заявок')
+                (normalizedWithoutYo.includes('прием заявок')
+                    || normalizedWithoutYo.includes('приемка'))
                 && entry.isDepartureToday
                 && entry.isAcceptingRequests === true
                 && acceptDeadlineLabelForStatus;
