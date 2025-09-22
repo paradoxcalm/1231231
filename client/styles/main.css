@@ -635,9 +635,20 @@ body {
 
 .schedule-shipment__header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
+}
+
+.schedule-shipment__title {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+}
+
+.schedule-shipment__badge-wrapper {
+    display: inline-flex;
+    align-self: flex-start;
 }
 
 .schedule-shipment__destination {
