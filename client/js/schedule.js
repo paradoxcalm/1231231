@@ -683,6 +683,10 @@ class ScheduleController {
             comment
         };
 
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        entry.isDepartureToday = entry.acceptDate.getTime() === today.getTime();
+
         const acceptDeadline = new Date(entry.acceptDate);
         let deadlineHours = 23;
         let deadlineMinutes = 59;
@@ -1198,7 +1202,21 @@ class ScheduleController {
             statusElement = document.createElement('span');
             const statusClass = this.getStatusClass(entry.status);
             statusElement.className = `schedule-shipment__status${statusClass ? ` ${statusClass}` : ''}`;
-            statusElement.textContent = entry.status;
+
+            let statusText = entry.status;
+            const normalizedStatusText = statusText.toLowerCase();
+            const normalizedWithoutYo = normalizedStatusText.replace(/ё/g, 'е');
+            const shouldShowAcceptDeadline =
+                normalizedWithoutYo.includes('прием заявок')
+                && entry.isDepartureToday
+                && entry.isAcceptingRequests === true
+                && entry.acceptTimeLabel;
+
+            if (shouldShowAcceptDeadline) {
+                statusText = `Приём заявок до ${entry.acceptTimeLabel}`;
+            }
+
+            statusElement.textContent = statusText;
             meta.appendChild(statusElement);
         }
 
@@ -1310,13 +1328,27 @@ class ScheduleController {
 
         const map = new Map([
             ['приём заявок', 'status-open'],
+            ['прием заявок', 'status-open'],
             ['ожидает отправки', 'status-waiting'],
             ['в пути', 'status-transit'],
             ['завершено', 'status-completed']
         ]);
 
-        const normalized = status.toLowerCase();
-        return map.get(normalized) || 'status-unknown';
+        const normalized = status.toLowerCase().trim();
+
+        if (map.has(normalized)) {
+            return map.get(normalized);
+        }
+
+        if (normalized.startsWith('приём заявок до ')) {
+            return map.get('приём заявок');
+        }
+
+        if (normalized.startsWith('прием заявок до ')) {
+            return map.get('прием заявок');
+        }
+
+        return 'status-unknown';
     }
 
     openRequestForm(entry) {
