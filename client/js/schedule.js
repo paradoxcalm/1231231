@@ -857,6 +857,9 @@ class ScheduleController {
         const header = document.createElement('div');
         header.className = 'schedule-shipment__header';
 
+        const title = document.createElement('div');
+        title.className = 'schedule-shipment__title';
+
         const destination = document.createElement('span');
         destination.className = 'schedule-shipment__destination';
 
@@ -896,15 +899,20 @@ class ScheduleController {
         } else {
             destination.textContent = warehouseName;
         }
-        header.appendChild(destination);
+        title.appendChild(destination);
+        header.appendChild(title);
 
         const badgeText = this.getMarketplaceBadge(entry.marketplace);
         if (badgeText) {
+            const badgeWrapper = document.createElement('div');
+            badgeWrapper.className = 'schedule-shipment__badge-wrapper';
+
             const badge = document.createElement('span');
             const badgeClass = this.getMarketplaceBadgeClass(entry.marketplace);
             badge.className = `schedule-shipment__badge${badgeClass ? ` ${badgeClass}` : ''}`;
             badge.textContent = badgeText;
-            header.appendChild(badge);
+            badgeWrapper.appendChild(badge);
+            header.appendChild(badgeWrapper);
         }
 
         button.appendChild(header);
