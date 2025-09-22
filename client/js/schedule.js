@@ -1,4 +1,31 @@
-import { fetchMarketplaces, fetchCities } from './filterOptions.js';
+let fetchMarketplaces;
+let fetchCities;
+
+function resolveAssetVersionSuffix() {
+    if (typeof window !== 'undefined' && window.assetVersion) {
+        return `?v=${window.assetVersion}`;
+    }
+
+    return '';
+}
+
+(async () => {
+    try {
+        const module = await import(`./filterOptions.js${resolveAssetVersionSuffix()}`);
+        const { fetchMarketplaces: marketplacesLoader, fetchCities: citiesLoader } = module || {};
+
+        if (typeof marketplacesLoader !== 'function' || typeof citiesLoader !== 'function') {
+            throw new Error('Модуль фильтров расписания загружен некорректно');
+        }
+
+        fetchMarketplaces = marketplacesLoader;
+        fetchCities = citiesLoader;
+
+        initializeSchedule();
+    } catch (error) {
+        console.error('Не удалось загрузить настройки фильтров расписания', error);
+    }
+})();
 
 const DEFAULT_CITY = 'Махачкала';
 const MOBILE_BREAKPOINT = 900;
@@ -1928,8 +1955,16 @@ class ScheduleController {
     }
 }
 
-window.ScheduleController = ScheduleController;
+function initializeSchedule() {
+    window.ScheduleController = ScheduleController;
 
-document.addEventListener('DOMContentLoaded', () => {
-    window.scheduleController = new ScheduleController();
-});
+    const mountController = () => {
+        window.scheduleController = new ScheduleController();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', mountController);
+    } else {
+        mountController();
+    }
+}

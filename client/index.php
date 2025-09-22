@@ -329,6 +329,9 @@ $assetVersion = filemtime(__FILE__) ?: time();
         </div>
     </div>
 
+    <script>
+        window.assetVersion = <?php echo json_encode($assetVersion); ?>;
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="../requestForm.js?v=<?php echo $assetVersion; ?>"></script>
     <script src="js/app.js?v=<?php echo $assetVersion; ?>"></script>
