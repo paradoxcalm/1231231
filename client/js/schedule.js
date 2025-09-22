@@ -902,23 +902,12 @@ class ScheduleController {
         title.appendChild(destination);
         header.appendChild(title);
 
-        const badgeText = this.getMarketplaceBadge(entry.marketplace);
-        if (badgeText) {
-            const badgeWrapper = document.createElement('div');
-            badgeWrapper.className = 'schedule-shipment__badge-wrapper';
-
-            const badge = document.createElement('span');
-            const badgeClass = this.getMarketplaceBadgeClass(entry.marketplace);
-            badge.className = `schedule-shipment__badge${badgeClass ? ` ${badgeClass}` : ''}`;
-            badge.textContent = badgeText;
-            badgeWrapper.appendChild(badge);
-            header.appendChild(badgeWrapper);
-        }
-
         button.appendChild(header);
 
         const meta = document.createElement('div');
         meta.className = 'schedule-shipment__meta';
+
+        let acceptElement = null;
 
         if (entry.status) {
             const status = document.createElement('span');
@@ -933,6 +922,23 @@ class ScheduleController {
             accept.className = 'schedule-shipment__chip';
             accept.textContent = `Приём: ${entry.acceptTimeLabel}`;
             meta.appendChild(accept);
+            acceptElement = accept;
+        }
+
+        const normalizedMarketplace =
+            typeof entry.marketplace === 'string' ? entry.marketplace.trim() : '';
+        const marketplaceLabel = normalizedMarketplace || this.getMarketplaceBadge(entry.marketplace);
+
+        if (marketplaceLabel) {
+            const marketplace = document.createElement('span');
+            marketplace.className = 'schedule-shipment__marketplace';
+            marketplace.textContent = marketplaceLabel;
+
+            if (acceptElement && acceptElement.parentNode === meta) {
+                meta.insertBefore(marketplace, acceptElement.nextSibling);
+            } else {
+                meta.appendChild(marketplace);
+            }
         }
 
         if (entry.deliveryDateRaw) {
@@ -942,7 +948,7 @@ class ScheduleController {
             meta.appendChild(delivery);
         }
 
-        if (meta.childNodes.length > 0) {
+        if (meta.childElementCount > 0) {
             button.appendChild(meta);
         }
 
@@ -969,24 +975,6 @@ class ScheduleController {
             return 'YM';
         }
         return marketplace.length > 3 ? marketplace.slice(0, 3).toUpperCase() : marketplace;
-    }
-
-    getMarketplaceBadgeClass(marketplace) {
-        if (!marketplace) {
-            return '';
-        }
-
-        const normalized = marketplace.toLowerCase();
-        if (normalized.includes('wildberries')) {
-            return 'badge-wb';
-        }
-        if (normalized.includes('ozon')) {
-            return 'badge-ozon';
-        }
-        if (normalized.includes('yandex') || normalized.includes('market')) {
-            return 'badge-ym';
-        }
-        return '';
     }
 
     getStatusClass(status) {

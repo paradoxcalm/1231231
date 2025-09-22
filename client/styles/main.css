@@ -646,11 +646,6 @@ body {
     min-width: 0;
 }
 
-.schedule-shipment__badge-wrapper {
-    display: inline-flex;
-    align-self: flex-start;
-}
-
 .schedule-shipment__destination {
     font-weight: 600;
     font-size: 1rem;
@@ -667,42 +662,22 @@ body {
     overflow: hidden;
 }
 
-.schedule-shipment__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    align-self: flex-start;
-    min-width: 48px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.schedule-shipment__badge.badge-wb {
-    background: rgba(111, 66, 193, 0.16);
-    color: #6f42c1;
-}
-
-.schedule-shipment__badge.badge-ozon {
-    background: rgba(37, 99, 235, 0.18);
-    color: #2563eb;
-}
-
-.schedule-shipment__badge.badge-ym {
-    background: rgba(234, 179, 8, 0.18);
-    color: #b45309;
-}
-
 .schedule-shipment__meta {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
     margin-top: auto;
+}
+
+.schedule-shipment__marketplace {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    line-height: 1.2;
+    background: none;
+    border-radius: 0;
 }
 
 .schedule-shipment__chip,
