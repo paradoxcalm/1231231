@@ -187,12 +187,20 @@ class App {
 
         // Закрытие при клике вне панели
         document.addEventListener('click', (e) => {
-            if (notificationsPanel && 
-                !notificationsPanel.contains(e.target) && 
+            if (notificationsPanel &&
+                !notificationsPanel.contains(e.target) &&
                 !notificationBtn.contains(e.target)) {
                 notificationsPanel.classList.remove('active');
             }
         });
+
+        this.fetchNotifications(false)
+            .then((notifications) => {
+                this.updateNotificationBadge(notifications);
+            })
+            .catch((error) => {
+                console.error('Ошибка загрузки уведомлений', error);
+            });
 
         // Кнопка сброса фильтров расписания
         const resetBtn = document.getElementById('resetScheduleFilters');
@@ -219,6 +227,29 @@ class App {
         }
     }
 
+    async fetchNotifications(markAsRead = false) {
+        const response = await fetch(`../fetch_notifications.php?mark_as_read=${markAsRead ? '1' : '0'}`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+    }
+
+    updateNotificationBadge(notifications) {
+        const badge = document.getElementById('notificationBadge');
+        if (!badge) {
+            return;
+        }
+
+        const unreadCount = notifications.filter(n => !n.read).length;
+        badge.textContent = unreadCount > 0 ? unreadCount : '';
+        badge.style.display = unreadCount > 0 ? 'block' : 'none';
+    }
 
     async loadNotifications() {
         const content = document.getElementById('notificationsContent');
@@ -227,16 +258,7 @@ class App {
         content.innerHTML = '<div class="notifications-empty">Загрузка...</div>';
 
         try {
-            const response = await fetch('../fetch_notifications.php?mark_as_read=1', {
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            const notifications = Array.isArray(data) ? data : [];
+            const notifications = await this.fetchNotifications(true);
 
             content.innerHTML = '';
 
@@ -265,12 +287,7 @@ class App {
                 });
             }
 
-            const unreadCount = notifications.filter(n => !n.read).length;
-            const badge = document.getElementById('notificationBadge');
-            if (badge) {
-                badge.textContent = unreadCount > 0 ? unreadCount : '';
-                badge.style.display = unreadCount > 0 ? 'block' : 'none';
-            }
+            this.updateNotificationBadge(notifications);
         } catch (error) {
             console.error('Ошибка загрузки уведомлений', error);
             if (typeof this.showError === 'function') {
