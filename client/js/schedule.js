@@ -683,6 +683,33 @@ class ScheduleController {
             comment
         };
 
+        const acceptDeadline = new Date(entry.acceptDate);
+        let deadlineHours = 23;
+        let deadlineMinutes = 59;
+
+        if (acceptTimeRaw) {
+            const match = String(acceptTimeRaw)
+                .trim()
+                .match(/(\d{1,2}):(\d{2})/);
+            if (match) {
+                const parsedHours = Number(match[1]);
+                const parsedMinutes = Number(match[2]);
+
+                if (Number.isFinite(parsedHours) && parsedHours >= 0 && parsedHours <= 23) {
+                    deadlineHours = parsedHours;
+                }
+
+                if (Number.isFinite(parsedMinutes) && parsedMinutes >= 0 && parsedMinutes <= 59) {
+                    deadlineMinutes = parsedMinutes;
+                }
+            }
+        }
+
+        acceptDeadline.setHours(deadlineHours, deadlineMinutes, 0, 0);
+
+        entry.acceptDeadline = acceptDeadline;
+        entry.isAcceptingRequests = Date.now() < acceptDeadline.getTime();
+
         entry.dateKey = this.formatDateKey(acceptDate);
         entry.requestPayload = this.buildRequestPayload(entry);
         return entry;
@@ -1165,12 +1192,14 @@ class ScheduleController {
 
         let acceptElement = null;
 
+        let statusElement = null;
+
         if (entry.status) {
-            const status = document.createElement('span');
+            statusElement = document.createElement('span');
             const statusClass = this.getStatusClass(entry.status);
-            status.className = `schedule-shipment__status${statusClass ? ` ${statusClass}` : ''}`;
-            status.textContent = entry.status;
-            meta.appendChild(status);
+            statusElement.className = `schedule-shipment__status${statusClass ? ` ${statusClass}` : ''}`;
+            statusElement.textContent = entry.status;
+            meta.appendChild(statusElement);
         }
 
         if (entry.acceptTimeLabel) {
@@ -1212,13 +1241,29 @@ class ScheduleController {
             meta.appendChild(delivery);
         }
 
+        if (entry.isAcceptingRequests === false) {
+            button.classList.add('schedule-shipment--closed');
+            button.disabled = true;
+
+            if (!statusElement) {
+                statusElement = document.createElement('span');
+                statusElement.className = 'schedule-shipment__status';
+                meta.insertBefore(statusElement, meta.firstChild || null);
+            }
+
+            statusElement.className = 'schedule-shipment__status status-unknown';
+            statusElement.textContent = 'Приём заявок закрыт';
+        }
+
         if (meta.childElementCount > 0) {
             button.appendChild(meta);
         }
 
-        button.addEventListener('click', () => {
-            this.openRequestForm(entry);
-        });
+        if (entry.isAcceptingRequests !== false) {
+            button.addEventListener('click', () => {
+                this.openRequestForm(entry);
+            });
+        }
 
         return button;
     }
@@ -1275,6 +1320,23 @@ class ScheduleController {
     }
 
     openRequestForm(entry) {
+        if (entry && entry.acceptDeadline instanceof Date) {
+            const deadlineTime = entry.acceptDeadline.getTime();
+            if (!Number.isNaN(deadlineTime)) {
+                const isStillAccepting = Date.now() < deadlineTime;
+                entry.isAcceptingRequests = isStillAccepting;
+                if (!isStillAccepting) {
+                    const message = 'Приём заявок закрыт';
+                    if (window.app && typeof window.app.showError === 'function') {
+                        window.app.showError(message);
+                    } else {
+                        window.alert(message);
+                    }
+                    return;
+                }
+            }
+        }
+
         const payload = entry && entry.requestPayload;
         if (!payload) {
             return;
