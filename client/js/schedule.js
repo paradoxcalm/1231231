@@ -5,6 +5,115 @@ const MOBILE_BREAKPOINT = 900;
 const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT}px)`;
 const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
+const SCHEDULE_LOG_ENDPOINT = '../log_schedule_issue.php';
+
+function getBrowserMetadata() {
+    if (typeof navigator === 'undefined') {
+        return {};
+    }
+
+    const { userAgent, platform, language, languages, onLine, vendor } = navigator;
+
+    const browser = {
+        userAgent: userAgent || '',
+        platform: platform || '',
+        language: language || '',
+        vendor: vendor || ''
+    };
+
+    if (Array.isArray(languages) && languages.length > 0) {
+        browser.languages = languages;
+    }
+
+    if (typeof onLine === 'boolean') {
+        browser.onLine = onLine;
+    }
+
+    return browser;
+}
+
+function getViewportMetadata() {
+    if (typeof window === 'undefined') {
+        return {};
+    }
+
+    const viewport = {
+        innerWidth: typeof window.innerWidth === 'number' ? window.innerWidth : undefined,
+        innerHeight: typeof window.innerHeight === 'number' ? window.innerHeight : undefined
+    };
+
+    if (window.screen) {
+        const { width, height, availWidth, availHeight } = window.screen;
+        viewport.screen = {
+            width: typeof width === 'number' ? width : undefined,
+            height: typeof height === 'number' ? height : undefined,
+            availWidth: typeof availWidth === 'number' ? availWidth : undefined,
+            availHeight: typeof availHeight === 'number' ? availHeight : undefined
+        };
+    }
+
+    return viewport;
+}
+
+function logScheduleIssue(details = {}) {
+    try {
+        const payload = {
+            url:
+                typeof window !== 'undefined' && window.location
+                    ? window.location.href
+                    : '',
+            browser: getBrowserMetadata(),
+            viewport: getViewportMetadata(),
+            timestamp: new Date().toISOString()
+        };
+
+        if (details && typeof details === 'object') {
+            Object.assign(payload, details);
+        } else if (details) {
+            payload.message = String(details);
+        }
+
+        const body = JSON.stringify(payload);
+
+        if (
+            typeof navigator !== 'undefined'
+            && typeof navigator.sendBeacon === 'function'
+            && typeof Blob === 'function'
+        ) {
+            const beaconSent = navigator.sendBeacon(
+                SCHEDULE_LOG_ENDPOINT,
+                new Blob([body], { type: 'application/json' })
+            );
+
+            if (beaconSent) {
+                return;
+            }
+        }
+
+        if (typeof fetch === 'function') {
+            fetch(SCHEDULE_LOG_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body,
+                credentials: 'include',
+                keepalive: true
+            }).catch(() => {});
+            return;
+        }
+
+        if (typeof XMLHttpRequest === 'function') {
+            const request = new XMLHttpRequest();
+            request.open('POST', SCHEDULE_LOG_ENDPOINT, true);
+            request.setRequestHeader('Content-Type', 'application/json');
+            request.send(body);
+        }
+    } catch (loggingError) {
+        console.warn('Не удалось записать событие расписания', loggingError);
+    }
+}
+
 function supportsFetchSignal() {
     if (typeof window === 'undefined') {
         return false;
@@ -61,6 +170,7 @@ class ScheduleController {
         this.abortController = null;
         this.isLoading = false;
         this.errorMessage = '';
+        this.hasLoggedMobileEntry = false;
 
         this.handleOriginTabClick = this.handleOriginTabClick.bind(this);
         this.handleDaySwitcherClick = this.handleDaySwitcherClick.bind(this);
@@ -172,6 +282,9 @@ class ScheduleController {
 
     handleMediaQueryChange(event) {
         this.state.isMobile = Boolean(event && event.matches);
+        if (!this.state.isMobile) {
+            this.hasLoggedMobileEntry = false;
+        }
         this.updateDaySwitcherVisibility();
         this.renderWeek();
     }
@@ -187,6 +300,9 @@ class ScheduleController {
         }
 
         this.state.isMobile = nextIsMobile;
+        if (!this.state.isMobile) {
+            this.hasLoggedMobileEntry = false;
+        }
         this.updateDaySwitcherVisibility();
         this.renderWeek();
     }
@@ -538,6 +654,15 @@ class ScheduleController {
             return;
         }
 
+        if (this.state.isMobile && !this.hasLoggedMobileEntry) {
+            this.hasLoggedMobileEntry = true;
+            logScheduleIssue({
+                event: 'schedule_mobile_entry',
+                message: 'Пользователь открыл расписание в мобильной вёрстке',
+                scheduleParams: this.getScheduleStateSnapshot()
+            });
+        }
+
         const canUseFetchSignal = supportsFetchSignal();
 
         if (this.abortController) {
@@ -566,6 +691,16 @@ class ScheduleController {
             this.processSchedules([]);
             this.errorMessage = 'Не удалось загрузить расписание. Попробуйте позже.';
 
+            logScheduleIssue({
+                event: 'schedule_load_error',
+                message: error instanceof Error ? error.message : String(error),
+                error: {
+                    name: error && error.name ? error.name : undefined,
+                    stack: error && typeof error.stack === 'string' ? error.stack : undefined
+                },
+                scheduleParams: this.getScheduleStateSnapshot()
+            });
+
             if (window.app && typeof window.app.showError === 'function') {
                 window.app.showError('Не удалось загрузить расписание');
             }
@@ -577,6 +712,25 @@ class ScheduleController {
             this.isLoading = false;
             this.renderWeek();
         }
+    }
+
+    getScheduleStateSnapshot() {
+        const snapshot = {
+            marketplace: this.state.marketplace || '',
+            city: this.state.city || '',
+            selectedDayKey: this.state.selectedDayKey || '',
+            isMobile: Boolean(this.state.isMobile)
+        };
+
+        if (this.state.weekStart instanceof Date) {
+            snapshot.weekStart = this.state.weekStart.toISOString();
+        } else if (this.state.weekStart) {
+            snapshot.weekStart = this.state.weekStart;
+        } else {
+            snapshot.weekStart = '';
+        }
+
+        return snapshot;
     }
 
     async fetchSchedules(signal) {
