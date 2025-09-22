@@ -1505,6 +1505,8 @@ class ScheduleController {
 
             if (shouldShowAcceptDeadline) {
                 statusText = `Приём до ${acceptDeadlineLabelForStatus}`;
+                statusElement.classList.remove('status-open');
+                statusElement.classList.add('status-waiting');
             }
 
             statusElement.textContent = statusText;
@@ -1631,16 +1633,17 @@ class ScheduleController {
         ]);
 
         const normalized = status.toLowerCase().trim();
+        const normalizedWithoutYo = normalized.replace(/ё/g, 'е');
 
         if (map.has(normalized)) {
             return map.get(normalized);
         }
 
-        if (normalized.startsWith('Приём до ')) {
-            return map.get('приём заявок');
+        if (normalized.startsWith('приём до ') || normalizedWithoutYo.startsWith('прием до ')) {
+            return 'status-waiting';
         }
 
-        if (normalized.startsWith('прием заявок до ')) {
+        if (normalized.startsWith('приём заявок до ') || normalizedWithoutYo.startsWith('прием заявок до ')) {
             return map.get('прием заявок');
         }
 
