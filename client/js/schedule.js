@@ -638,6 +638,30 @@ class ScheduleController {
             return '';
         };
 
+        const getRawValue = (keys) => {
+            for (const key of keys) {
+                if (!key || !(key in schedule)) {
+                    continue;
+                }
+
+                const raw = schedule[key];
+                if (raw === undefined || raw === null) {
+                    continue;
+                }
+
+                if (typeof raw === 'string') {
+                    const trimmed = raw.trim();
+                    if (trimmed) {
+                        return trimmed;
+                    }
+                } else {
+                    return raw;
+                }
+            }
+
+            return '';
+        };
+
         const id = getValue(['id', 'schedule_id', 'scheduleId'])
             || `schedule_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 7)}`;
         const marketplace = getValue(['marketplace']);
@@ -646,6 +670,7 @@ class ScheduleController {
         const acceptDateRaw = getValue(['accept_date', 'acceptDate', 'departure_date', 'departureDate']);
         const acceptTimeRaw = getValue(['accept_time', 'acceptTime', 'accept_time_from']);
         const acceptTimeString = typeof acceptTimeRaw === 'string' ? acceptTimeRaw.trim() : '';
+        const acceptDeadlineRaw = getRawValue(['accept_deadline', 'acceptance_end']);
 
         let acceptTimeMatches = [];
         if (acceptTimeString) {
@@ -711,6 +736,12 @@ class ScheduleController {
         }
 
         const { display: acceptTimeLabel, value: timeValue } = this.parseTime(acceptTimeRaw);
+        const {
+            date: acceptDeadlineFromRaw,
+            label: acceptDeadlineLabelFromRaw,
+            source: acceptDeadlineSource,
+            hasTime: hasAcceptDeadlineTime
+        } = this.parseAcceptDeadline(acceptDeadlineRaw, acceptDate);
 
         const closingTimeMatch = acceptTimeEndMatch || acceptTimeStartMatch;
 
@@ -727,8 +758,15 @@ class ScheduleController {
             acceptTimeRangeLabel = acceptTimeLabel;
         }
 
+        const hasParsedAcceptDeadline =
+            hasAcceptDeadlineTime
+            && acceptDeadlineFromRaw instanceof Date
+            && !Number.isNaN(acceptDeadlineFromRaw.getTime());
+
         let acceptDeadlineLabel = '';
-        if (acceptTimeEnd) {
+        if (acceptDeadlineLabelFromRaw) {
+            acceptDeadlineLabel = acceptDeadlineLabelFromRaw;
+        } else if (acceptTimeEnd) {
             acceptDeadlineLabel = acceptTimeEnd;
         } else if (closingTimeMatch && closingTimeMatch.label) {
             acceptDeadlineLabel = closingTimeMatch.label;
@@ -737,6 +775,9 @@ class ScheduleController {
         } else {
             acceptDeadlineLabel = acceptTimeLabel;
         }
+
+        const acceptDeadlineRawString =
+            typeof acceptDeadlineSource === 'string' ? acceptDeadlineSource : '';
 
         const entry = {
             id,
@@ -751,6 +792,7 @@ class ScheduleController {
             acceptTimeLabel,
             acceptTimeRangeLabel,
             acceptDeadlineLabel,
+            acceptDeadlineRaw: acceptDeadlineRawString,
             timeValue,
             deliveryDateRaw,
             status,
@@ -766,32 +808,44 @@ class ScheduleController {
         today.setHours(0, 0, 0, 0);
         entry.isDepartureToday = entry.acceptDate.getTime() === today.getTime();
 
-        const acceptDeadline = new Date(entry.acceptDate);
-        let deadlineHours = 23;
-        let deadlineMinutes = 59;
+        let acceptDeadline = null;
 
-        if (closingTimeMatch) {
-            if (
-                Number.isFinite(closingTimeMatch.hours)
-                && closingTimeMatch.hours >= 0
-                && closingTimeMatch.hours <= 23
-            ) {
-                deadlineHours = closingTimeMatch.hours;
+        if (hasParsedAcceptDeadline) {
+            acceptDeadline = new Date(acceptDeadlineFromRaw);
+        } else {
+            const fallbackDeadline = new Date(entry.acceptDate);
+            let deadlineHours = 23;
+            let deadlineMinutes = 59;
+
+            if (closingTimeMatch) {
+                if (
+                    Number.isFinite(closingTimeMatch.hours)
+                    && closingTimeMatch.hours >= 0
+                    && closingTimeMatch.hours <= 23
+                ) {
+                    deadlineHours = closingTimeMatch.hours;
+                }
+
+                if (
+                    Number.isFinite(closingTimeMatch.minutes)
+                    && closingTimeMatch.minutes >= 0
+                    && closingTimeMatch.minutes <= 59
+                ) {
+                    deadlineMinutes = closingTimeMatch.minutes;
+                }
             }
 
-            if (
-                Number.isFinite(closingTimeMatch.minutes)
-                && closingTimeMatch.minutes >= 0
-                && closingTimeMatch.minutes <= 59
-            ) {
-                deadlineMinutes = closingTimeMatch.minutes;
-            }
+            fallbackDeadline.setHours(deadlineHours, deadlineMinutes, 0, 0);
+            acceptDeadline = fallbackDeadline;
         }
 
-        acceptDeadline.setHours(deadlineHours, deadlineMinutes, 0, 0);
-
-        entry.acceptDeadline = acceptDeadline;
-        entry.isAcceptingRequests = Date.now() < acceptDeadline.getTime();
+        if (acceptDeadline instanceof Date && !Number.isNaN(acceptDeadline.getTime())) {
+            entry.acceptDeadline = acceptDeadline;
+            entry.isAcceptingRequests = Date.now() < acceptDeadline.getTime();
+        } else {
+            entry.acceptDeadline = null;
+            entry.isAcceptingRequests = false;
+        }
 
         entry.dateKey = this.formatDateKey(acceptDate);
         entry.requestPayload = this.buildRequestPayload(entry);
@@ -824,6 +878,32 @@ class ScheduleController {
         payload.carNumber = entry.carNumber;
         payload.sender = entry.sender;
         payload.comment = entry.comment;
+
+        const acceptDeadlineRaw =
+            typeof entry.acceptDeadlineRaw === 'string' ? entry.acceptDeadlineRaw : '';
+
+        if (acceptDeadlineRaw) {
+            if (!payload.accept_deadline) {
+                payload.accept_deadline = acceptDeadlineRaw;
+            }
+
+            if (!payload.acceptance_end) {
+                payload.acceptance_end = acceptDeadlineRaw;
+            }
+        }
+
+        if (payload.accept_deadline && !payload.acceptDeadline) {
+            payload.acceptDeadline = payload.accept_deadline;
+        } else if (!payload.acceptDeadline && acceptDeadlineRaw) {
+            payload.acceptDeadline = acceptDeadlineRaw;
+        }
+
+        if (payload.acceptance_end && !payload.acceptanceEnd) {
+            payload.acceptanceEnd = payload.acceptance_end;
+        } else if (!payload.acceptanceEnd && acceptDeadlineRaw) {
+            payload.acceptanceEnd = acceptDeadlineRaw;
+        }
+
         return payload;
     }
 
@@ -906,6 +986,133 @@ class ScheduleController {
         }
 
         return { display: stringValue, value: Number.MAX_SAFE_INTEGER };
+    }
+
+    parseAcceptDeadline(value, fallbackDate = null) {
+        const emptyResult = { date: null, label: '', source: '', hasTime: false };
+
+        if (value === undefined || value === null) {
+            return emptyResult;
+        }
+
+        if (value instanceof Date && !Number.isNaN(value.getTime())) {
+            const clone = new Date(value);
+            const hours = clone.getHours();
+            const minutes = clone.getMinutes();
+            return {
+                date: clone,
+                label: `${hours.toString().padStart(2, '0')}:${minutes
+                    .toString()
+                    .padStart(2, '0')}`,
+                source: clone.toISOString(),
+                hasTime: true
+            };
+        }
+
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            const date = new Date(value);
+            if (!Number.isNaN(date.getTime())) {
+                const hours = date.getHours();
+                const minutes = date.getMinutes();
+                return {
+                    date,
+                    label: `${hours.toString().padStart(2, '0')}:${minutes
+                        .toString()
+                        .padStart(2, '0')}`,
+                    source: date.toISOString(),
+                    hasTime: true
+                };
+            }
+
+            return emptyResult;
+        }
+
+        if (typeof value !== 'string') {
+            return emptyResult;
+        }
+
+        const stringValue = value.trim();
+        if (!stringValue) {
+            return emptyResult;
+        }
+
+        const rangeMatch = stringValue.match(/(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})/);
+        let hours = null;
+        let minutes = null;
+
+        if (rangeMatch) {
+            const parsedHours = Number(rangeMatch[3]);
+            const parsedMinutes = Number(rangeMatch[4]);
+            if (
+                Number.isFinite(parsedHours)
+                && Number.isFinite(parsedMinutes)
+                && parsedHours >= 0
+                && parsedHours <= 23
+                && parsedMinutes >= 0
+                && parsedMinutes <= 59
+            ) {
+                hours = parsedHours;
+                minutes = parsedMinutes;
+            }
+        }
+
+        if (hours === null || minutes === null) {
+            const timeMatch = stringValue.match(/(\d{1,2}):(\d{2})/);
+            if (timeMatch) {
+                const parsedHours = Number(timeMatch[1]);
+                const parsedMinutes = Number(timeMatch[2]);
+                if (
+                    Number.isFinite(parsedHours)
+                    && Number.isFinite(parsedMinutes)
+                    && parsedHours >= 0
+                    && parsedHours <= 23
+                    && parsedMinutes >= 0
+                    && parsedMinutes <= 59
+                ) {
+                    hours = parsedHours;
+                    minutes = parsedMinutes;
+                }
+            }
+        }
+
+        const hasTime = hours !== null && minutes !== null;
+
+        let parsedDate = null;
+        if (hasTime) {
+            const normalized = stringValue.includes('T')
+                ? stringValue
+                : stringValue.replace(' ', 'T');
+            let candidate = new Date(normalized);
+            if (Number.isNaN(candidate.getTime())) {
+                candidate = new Date(stringValue);
+            }
+
+            if (!Number.isNaN(candidate.getTime())) {
+                parsedDate = candidate;
+            }
+
+            if (!parsedDate) {
+                const base =
+                    fallbackDate instanceof Date && !Number.isNaN(fallbackDate.getTime())
+                        ? new Date(fallbackDate)
+                        : new Date();
+                base.setHours(hours, minutes, 0, 0);
+                parsedDate = base;
+            }
+        }
+
+        const label = hasTime
+            ? `${hours.toString().padStart(2, '0')}:${minutes
+                  .toString()
+                  .padStart(2, '0')}`
+            : '';
+
+        return {
+            date: parsedDate,
+            label,
+            source: stringValue,
+            hasTime
+        };
     }
 
     formatDateKey(date) {
