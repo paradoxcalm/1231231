@@ -681,6 +681,7 @@ function saveFBSRecord() {
                 if (!document.getElementById('downloadPdfBtn')) {
                     const pdfBtn = document.createElement('button');
                     pdfBtn.id = 'downloadPdfBtn';
+                    pdfBtn.type = 'button';
                     pdfBtn.className = 'confirm-btn';
                     pdfBtn.textContent = 'Скачать PDF';
                     pdfBtn.onclick = generateFbsPdf;
