@@ -645,6 +645,57 @@ class ScheduleController {
         const warehouse = getValue(['warehouses', 'warehouse', 'route_warehouse', 'warehouse_name']);
         const acceptDateRaw = getValue(['accept_date', 'acceptDate', 'departure_date', 'departureDate']);
         const acceptTimeRaw = getValue(['accept_time', 'acceptTime', 'accept_time_from']);
+        const acceptTimeString = typeof acceptTimeRaw === 'string' ? acceptTimeRaw.trim() : '';
+
+        let acceptTimeMatches = [];
+        if (acceptTimeString) {
+            if (typeof acceptTimeString.matchAll === 'function') {
+                acceptTimeMatches = Array.from(acceptTimeString.matchAll(/(\d{1,2}):(\d{2})/g));
+            } else {
+                const fallbackMatches = acceptTimeString.match(/(\d{1,2}):(\d{2})/g);
+                if (Array.isArray(fallbackMatches)) {
+                    acceptTimeMatches = fallbackMatches
+                        .map((timeString) => /(\d{1,2}):(\d{2})/.exec(timeString))
+                        .filter(Boolean);
+                }
+            }
+        }
+
+        const parseTimeMatch = (match) => {
+            if (!match || match.length < 3) {
+                return null;
+            }
+
+            const hours = Number(match[1]);
+            const minutes = Number(match[2]);
+
+            if (
+                !Number.isFinite(hours)
+                || !Number.isFinite(minutes)
+                || hours < 0
+                || hours > 23
+                || minutes < 0
+                || minutes > 59
+            ) {
+                return null;
+            }
+
+            return {
+                hours,
+                minutes,
+                label: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+            };
+        };
+
+        const acceptTimeStartMatch =
+            acceptTimeMatches.length > 0 ? parseTimeMatch(acceptTimeMatches[0]) : null;
+        const acceptTimeEndMatch =
+            acceptTimeMatches.length > 0
+                ? parseTimeMatch(acceptTimeMatches[acceptTimeMatches.length - 1])
+                : null;
+
+        const acceptTimeStart = acceptTimeStartMatch ? acceptTimeStartMatch.label : '';
+        const acceptTimeEnd = acceptTimeEndMatch ? acceptTimeEndMatch.label : '';
         const deliveryDateRaw = getValue(['delivery_date', 'deliveryDate']);
         const status = getValue(['status']);
         const driverName = getValue(['driver_name', 'driverName']);
@@ -661,6 +712,32 @@ class ScheduleController {
 
         const { display: acceptTimeLabel, value: timeValue } = this.parseTime(acceptTimeRaw);
 
+        const closingTimeMatch = acceptTimeEndMatch || acceptTimeStartMatch;
+
+        let acceptTimeRangeLabel = '';
+        if (acceptTimeStart && acceptTimeEnd) {
+            if (acceptTimeStart !== acceptTimeEnd) {
+                acceptTimeRangeLabel = `${acceptTimeStart} – ${acceptTimeEnd}`;
+            } else {
+                acceptTimeRangeLabel = acceptTimeStart;
+            }
+        } else if (acceptTimeString) {
+            acceptTimeRangeLabel = acceptTimeString;
+        } else {
+            acceptTimeRangeLabel = acceptTimeLabel;
+        }
+
+        let acceptDeadlineLabel = '';
+        if (acceptTimeEnd) {
+            acceptDeadlineLabel = acceptTimeEnd;
+        } else if (closingTimeMatch && closingTimeMatch.label) {
+            acceptDeadlineLabel = closingTimeMatch.label;
+        } else if (acceptTimeString) {
+            acceptDeadlineLabel = acceptTimeString;
+        } else {
+            acceptDeadlineLabel = acceptTimeLabel;
+        }
+
         const entry = {
             id,
             raw: { ...schedule },
@@ -672,6 +749,8 @@ class ScheduleController {
             acceptDateRaw,
             acceptTimeRaw,
             acceptTimeLabel,
+            acceptTimeRangeLabel,
+            acceptDeadlineLabel,
             timeValue,
             deliveryDateRaw,
             status,
@@ -691,21 +770,21 @@ class ScheduleController {
         let deadlineHours = 23;
         let deadlineMinutes = 59;
 
-        if (acceptTimeRaw) {
-            const match = String(acceptTimeRaw)
-                .trim()
-                .match(/(\d{1,2}):(\d{2})/);
-            if (match) {
-                const parsedHours = Number(match[1]);
-                const parsedMinutes = Number(match[2]);
+        if (closingTimeMatch) {
+            if (
+                Number.isFinite(closingTimeMatch.hours)
+                && closingTimeMatch.hours >= 0
+                && closingTimeMatch.hours <= 23
+            ) {
+                deadlineHours = closingTimeMatch.hours;
+            }
 
-                if (Number.isFinite(parsedHours) && parsedHours >= 0 && parsedHours <= 23) {
-                    deadlineHours = parsedHours;
-                }
-
-                if (Number.isFinite(parsedMinutes) && parsedMinutes >= 0 && parsedMinutes <= 59) {
-                    deadlineMinutes = parsedMinutes;
-                }
+            if (
+                Number.isFinite(closingTimeMatch.minutes)
+                && closingTimeMatch.minutes >= 0
+                && closingTimeMatch.minutes <= 59
+            ) {
+                deadlineMinutes = closingTimeMatch.minutes;
             }
         }
 
@@ -1206,24 +1285,33 @@ class ScheduleController {
             let statusText = entry.status;
             const normalizedStatusText = statusText.toLowerCase();
             const normalizedWithoutYo = normalizedStatusText.replace(/ё/g, 'е');
+            const acceptDeadlineLabelForStatus =
+                entry.acceptDeadlineLabel
+                || (typeof entry.acceptTimeRaw === 'string' ? entry.acceptTimeRaw.trim() : '')
+                || entry.acceptTimeLabel;
             const shouldShowAcceptDeadline =
                 normalizedWithoutYo.includes('прием заявок')
                 && entry.isDepartureToday
                 && entry.isAcceptingRequests === true
-                && entry.acceptTimeLabel;
+                && acceptDeadlineLabelForStatus;
 
             if (shouldShowAcceptDeadline) {
-                statusText = `Приём заявок до ${entry.acceptTimeLabel}`;
+                statusText = `Приём заявок до ${acceptDeadlineLabelForStatus}`;
             }
 
             statusElement.textContent = statusText;
             meta.appendChild(statusElement);
         }
 
-        if (entry.acceptTimeLabel) {
+        const acceptBadgeLabel =
+            entry.acceptTimeRangeLabel
+            || (typeof entry.acceptTimeRaw === 'string' ? entry.acceptTimeRaw.trim() : '')
+            || entry.acceptTimeLabel;
+
+        if (acceptBadgeLabel) {
             const accept = document.createElement('span');
             accept.className = 'schedule-shipment__chip';
-            accept.textContent = `Приём: ${entry.acceptTimeLabel}`;
+            accept.textContent = `Приём: ${acceptBadgeLabel}`;
             meta.appendChild(accept);
             acceptElement = accept;
         }
