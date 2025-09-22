@@ -3,7 +3,7 @@ import { fetchMarketplaces, fetchCities } from './filterOptions.js';
 const DEFAULT_CITY = 'Махачкала';
 const MOBILE_BREAKPOINT = 900;
 const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT}px)`;
-const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEKDAY_SHORT_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
 class ScheduleController {
     constructor() {
@@ -876,7 +876,7 @@ class ScheduleController {
 
     getWeekDays() {
         const days = [];
-        for (let index = 0; index < 7; index += 1) {
+        for (let index = 0; index < 6; index += 1) {
             const day = new Date(this.state.weekStart);
             day.setDate(day.getDate() + index);
             days.push(day);
@@ -896,7 +896,7 @@ class ScheduleController {
 
         const start = this.state.weekStart;
         const end = new Date(this.state.weekStart);
-        end.setDate(end.getDate() + 6);
+        end.setDate(end.getDate() + 5);
         range.textContent = `${this.formatShortDate(start)} – ${this.formatShortDate(end)}`;
     }
 
