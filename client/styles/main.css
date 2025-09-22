@@ -594,11 +594,28 @@ body {
     .schedule-origin-tabs {
         width: 100%;
         justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 6px;
+        padding: 4px 2px;
+        min-height: auto;
+        scrollbar-width: thin;
     }
 
     .schedule-day-switcher__button {
         padding: 8px 12px;
         font-size: 0.9rem;
+    }
+
+    .schedule-filters {
+        padding: 12px 14px;
+        gap: 8px;
+    }
+
+    .schedule-origin-tab {
+        padding: 8px 12px;
+        white-space: nowrap;
     }
 }
 
