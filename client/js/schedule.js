@@ -1279,6 +1279,16 @@ class ScheduleController {
         this.renderTimeline(days);
     }
 
+    updateTimelineMobileClass() {
+        const grid = this.elements.grid;
+        if (!grid) {
+            return;
+        }
+
+        const isMobile = Boolean(this.state.isMobile);
+        grid.classList.toggle('schedule-timeline--mobile', isMobile);
+    }
+
     renderLoadingState() {
         const grid = this.elements.grid;
         if (!grid) {
@@ -1297,6 +1307,7 @@ class ScheduleController {
         container.appendChild(text);
 
         grid.innerHTML = '';
+        this.updateTimelineMobileClass();
         grid.appendChild(container);
     }
 
@@ -1322,6 +1333,7 @@ class ScheduleController {
         container.appendChild(description);
 
         grid.innerHTML = '';
+        this.updateTimelineMobileClass();
         grid.appendChild(container);
     }
 
@@ -1334,6 +1346,7 @@ class ScheduleController {
         const targetDays = Array.isArray(days) && days.length ? days : this.getWeekDays();
         if (!targetDays.length) {
             grid.innerHTML = '';
+            this.updateTimelineMobileClass();
             return;
         }
 
@@ -1373,7 +1386,7 @@ class ScheduleController {
         });
 
         grid.innerHTML = '';
-        grid.classList.toggle('schedule-timeline--mobile', isMobile);
+        this.updateTimelineMobileClass();
         grid.appendChild(fragment);
     }
 
