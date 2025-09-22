@@ -679,15 +679,17 @@
 
 .auth-page .field i.fa {
   position: absolute !important;
-
-  bottom: 0 !important;
+  top: 50% !important;
+  left: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 2.75rem !important;
+  height: 100% !important;
   color: var(--auth-text-muted) !important;
   font-size: 1rem !important;
   line-height: 1 !important;
+  transform: translateY(-50%) !important;
   transition: var(--auth-transition) !important;
   z-index: 1 !important;
   pointer-events: none !important;
@@ -700,15 +702,14 @@
 .auth-page .field i.fa.toggle-password {
   left: auto !important;
   right: 0 !important;
-
-  bottom: 0 !important;
-
+  top: 50% !important;
   align-items: center !important;
   justify-content: center !important;
   width: 2.75rem !important;
   cursor: pointer !important;
   padding: 0 !important;
   line-height: 1 !important;
+  transform: translateY(-50%) !important;
   border-radius: 50% !important;
   transition: var(--auth-transition) !important;
   pointer-events: auto !important;
