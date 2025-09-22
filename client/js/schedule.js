@@ -1504,7 +1504,7 @@ class ScheduleController {
                 && acceptDeadlineLabelForStatus;
 
             if (shouldShowAcceptDeadline) {
-                statusText = `Приёмка до ${acceptDeadlineLabelForStatus}`;
+                statusText = `Приём до ${acceptDeadlineLabelForStatus}`;
             }
 
             statusElement.textContent = statusText;
@@ -1636,7 +1636,7 @@ class ScheduleController {
             return map.get(normalized);
         }
 
-        if (normalized.startsWith('Приёмка до ')) {
+        if (normalized.startsWith('Приём до ')) {
             return map.get('приём заявок');
         }
 
