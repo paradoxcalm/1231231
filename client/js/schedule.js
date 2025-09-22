@@ -1504,7 +1504,7 @@ class ScheduleController {
                 && acceptDeadlineLabelForStatus;
 
             if (shouldShowAcceptDeadline) {
-                statusText = `Приём заявок до ${acceptDeadlineLabelForStatus}`;
+                statusText = `Приёмка до ${acceptDeadlineLabelForStatus}`;
             }
 
             statusElement.textContent = statusText;
@@ -1566,7 +1566,7 @@ class ScheduleController {
             }
 
             statusElement.className = 'schedule-shipment__status status-unknown';
-            statusElement.textContent = 'Приём заявок закрыт';
+            statusElement.textContent = 'Завершено';
         }
 
         if (meta.childElementCount > 0) {
@@ -1636,7 +1636,7 @@ class ScheduleController {
             return map.get(normalized);
         }
 
-        if (normalized.startsWith('приём заявок до ')) {
+        if (normalized.startsWith('Приёмка до ')) {
             return map.get('приём заявок');
         }
 
@@ -1654,7 +1654,7 @@ class ScheduleController {
                 const isStillAccepting = Date.now() < deadlineTime;
                 entry.isAcceptingRequests = isStillAccepting;
                 if (!isStillAccepting) {
-                    const message = 'Приём заявок закрыт';
+                    const message = 'Завершено';
                     if (window.app && typeof window.app.showError === 'function') {
                         window.app.showError(message);
                     } else {
