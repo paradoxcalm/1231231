@@ -7,6 +7,8 @@ if (empty($_SESSION['user_id'])) {
     header('Location: ../auth_form.php');
     exit;
 }
+
+$assetVersion = filemtime(__FILE__) ?: time();
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -16,9 +18,9 @@ if (empty($_SESSION['user_id'])) {
     <title>IDEAL TranSport - Клиентская панель</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../styles/components.css">
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/request-modal.css">
+    <link rel="stylesheet" href="../styles/components.css?v=<?php echo $assetVersion; ?>">
+    <link rel="stylesheet" href="styles/main.css?v=<?php echo $assetVersion; ?>">
+    <link rel="stylesheet" href="styles/request-modal.css?v=<?php echo $assetVersion; ?>">
 </head>
 <body>
     <!-- Верхняя навигация для десктопа -->
@@ -328,11 +330,11 @@ if (empty($_SESSION['user_id'])) {
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../requestForm.js"></script>
-    <script src="js/app.js"></script>
-    <script type="module" src="js/schedule/index.js"></script>
-    <script src="js/tariffs.js"></script>
-    <script src="js/orders.js"></script>
-    <script src="js/profile.js"></script>
+    <script src="../requestForm.js?v=<?php echo $assetVersion; ?>"></script>
+    <script src="js/app.js?v=<?php echo $assetVersion; ?>"></script>
+    <script type="module" src="js/schedule/index.js?v=<?php echo $assetVersion; ?>"></script>
+    <script src="js/tariffs.js?v=<?php echo $assetVersion; ?>"></script>
+    <script src="js/orders.js?v=<?php echo $assetVersion; ?>"></script>
+    <script src="js/profile.js?v=<?php echo $assetVersion; ?>"></script>
 </body>
 </html>
