@@ -512,18 +512,21 @@ class ScheduleController {
             return;
         }
 
-        if (this.abortController) {
+        const canUseAbortController =
+            typeof window !== 'undefined' && typeof window.AbortController === 'function';
+
+        if (canUseAbortController && this.abortController) {
             this.abortController.abort();
         }
 
-        const controller = new AbortController();
+        const controller = canUseAbortController ? new window.AbortController() : null;
         this.abortController = controller;
         this.errorMessage = '';
         this.isLoading = true;
         this.renderWeek();
 
         try {
-            const payload = await this.fetchSchedules(controller.signal);
+            const payload = await this.fetchSchedules(controller ? controller.signal : undefined);
             this.processSchedules(Array.isArray(payload) ? payload : []);
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -559,10 +562,15 @@ class ScheduleController {
         }
 
         const query = params.toString();
-        const response = await fetch(`../fetch_schedule.php${query ? `?${query}` : ''}`, {
-            credentials: 'include',
-            signal
-        });
+        const fetchOptions = {
+            credentials: 'include'
+        };
+
+        if (signal) {
+            fetchOptions.signal = signal;
+        }
+
+        const response = await fetch(`../fetch_schedule.php${query ? `?${query}` : ''}`, fetchOptions);
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
