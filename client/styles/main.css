@@ -23,7 +23,7 @@
     --radius: 8px;
     --radius-lg: 12px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --schedule-card-height: clamp(168px, 21vh, 184px);
+    --schedule-card-height: clamp(110px, 14vh, 140px);
 }
 
 /* Reset and Base */
@@ -541,12 +541,12 @@ body {
 }
 
 .schedule-day__header {
-    padding: 20px 24px 12px;
+    padding: 14px 18px 10px;
     background: var(--bg-secondary);
     border-bottom: 2px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 
 .schedule-day__weekday {
@@ -616,8 +616,8 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 18px 24px;
+    gap: 8px;
+    padding: 12px 16px;
     width: 100%;
     border: none;
     background: var(--bg-primary);
