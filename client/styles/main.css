@@ -578,6 +578,7 @@ body {
     justify-content: stretch;
     padding: 0;
     min-height: var(--schedule-card-height);
+    height: auto;
     border-bottom: 1px solid var(--border-light);
     background: transparent;
 }
