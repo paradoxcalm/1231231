@@ -680,6 +680,14 @@ body {
     border-radius: 0;
 }
 
+.schedule-shipment__marketplace--wb {
+    color: #9a10f0;
+}
+
+.schedule-shipment__marketplace--oz {
+    color: #005bff;
+}
+
 .schedule-shipment__chip,
 .schedule-shipment__status {
     display: inline-flex;
