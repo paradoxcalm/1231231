@@ -15,32 +15,17 @@ function supportsAbortSignal() {
             return false;
         }
 
-        const controller = new window.AbortController();
-        const signal = controller.signal;
-        const AbortSignalCtor =
-            typeof window.AbortSignal === 'function'
-                ? window.AbortSignal
-                : signal && signal.constructor;
-
-        if (typeof AbortSignalCtor !== 'function') {
-            return false;
-        }
-
-        if (typeof AbortSignalCtor.timeout === 'function') {
-            return true;
-        }
-
         if (typeof window.Request !== 'function') {
             return false;
         }
 
-        const request = new window.Request(window.location.href, { method: 'HEAD' });
+        const request = new window.Request(window.location.href);
         if (!('signal' in request)) {
             return false;
         }
 
-        const requestSignal = request.signal;
-        return Boolean(requestSignal && typeof requestSignal === 'object');
+        const controller = new window.AbortController();
+        return Boolean(controller && 'signal' in controller);
     } catch (error) {
         return false;
     }
@@ -566,8 +551,8 @@ class ScheduleController {
         this.renderWeek();
 
         try {
-            const signal = controller ? controller.signal : undefined;
-            const payload = await this.fetchSchedules(signal);
+            const signal = canUseAbortSignal && controller ? controller.signal : undefined;
+            const payload = await this.fetchSchedules(signal, canUseAbortSignal);
             this.processSchedules(Array.isArray(payload) ? payload : []);
         } catch (error) {
             if (error && error.name === 'AbortError') {
@@ -591,7 +576,7 @@ class ScheduleController {
         }
     }
 
-    async fetchSchedules(signal) {
+    async fetchSchedules(signal, canUseAbortSignal) {
         const params = new URLSearchParams();
 
         if (this.state.marketplace) {
@@ -607,7 +592,7 @@ class ScheduleController {
             credentials: 'include'
         };
 
-        if (signal && supportsAbortSignal()) {
+        if (canUseAbortSignal && signal) {
             fetchOptions.signal = signal;
         }
 
