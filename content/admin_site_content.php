@@ -1,10 +1,10 @@
 <?php
 session_start();
-require 'db_connection.php';
+require_once __DIR__ . '/../db_connection.php';
 
 // Проверяем права доступа
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header('Location: index.php');
+    header('Location: /admin/index.php');
     exit();
 }
 

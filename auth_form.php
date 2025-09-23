@@ -59,7 +59,7 @@ if (!isset($_SESSION['role']) && isset($_COOKIE['remember_token'], $_COOKIE['rem
 
 // Авторизованным пользователям – на главную
 if (isset($_SESSION['role'])) {
-    header('Location: index.php');
+    header('Location: /admin/index.php');
     exit();
 }
 ?>

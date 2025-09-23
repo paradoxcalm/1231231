@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Перенаправление на главную страницу после успешного входа
-        header('Location: index.php');
+        header('Location: /admin/index.php');
         exit();
     } else {
         // Неверные учетные данные
