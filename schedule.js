@@ -1193,7 +1193,7 @@ function showCreateForm() {
     );
 
     Promise.all([
-        fetch("warehouses.php").then(r => r.json()),
+        fetch("/admin/api/warehouses.php").then(r => r.json()),
         fetch("cities.php", { cache: "no-store" }).then(r => r.json())
     ])
     .then(([warehouses, cities]) => {
@@ -1390,7 +1390,7 @@ function showCreateForm() {
         window.addNewWarehouseAndRefresh = function () {
             const name = prompt("Введите название склада:");
             if (!name || !name.trim()) return;
-            fetch("warehouses.php", {
+            fetch("/admin/api/warehouses.php", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "add", name: name.trim() })
@@ -1469,7 +1469,7 @@ function saveWarehouseEdits() {
         return;
     }
 
-    fetch("warehouses.php", {
+    fetch("/admin/api/warehouses.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "batch_edit", edits })
@@ -1497,7 +1497,7 @@ function confirmWarehouseDelete() {
 
     if (!confirm(`Удалить ${selected.length} склад(ов)?`)) return;
 
-    fetch("warehouses.php", {
+    fetch("/admin/api/warehouses.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete", names: selected })
@@ -1540,7 +1540,7 @@ function editSchedule(id) {
             const timeSlots = Array.from({ length: 24 }, (_, i) =>
                 `${String(i).padStart(2, "0")}:00-${String((i + 1) % 24).padStart(2, "0")}:00`
             );
-            fetch("warehouses.php")
+            fetch("/admin/api/warehouses.php")
                 .then(r2 => {
                     if (!r2.ok) throw new Error("Ошибка складов: " + r2.status);
                     return r2.json();
@@ -2151,7 +2151,7 @@ function loadWarehousesForFilter() {
 function addNewWarehouse(formId) {
     const name = prompt("Введите название склада:");
     if (!name || !name.trim()) return;
-    fetch("warehouses.php", {
+    fetch("/admin/api/warehouses.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "add", name: name.trim() })
@@ -2160,7 +2160,7 @@ function addNewWarehouse(formId) {
         .then(d => {
             if (d.status === "success") {
                 loadWarehousesForFilter();
-                fetch("warehouses.php")
+                fetch("/admin/api/warehouses.php")
                     .then(r2 => r2.json())
                     .then(warehouses => {
                         const container = document.querySelector(`#${formId} .warehouse-checkboxes`);

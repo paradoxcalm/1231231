@@ -2,7 +2,7 @@
 // fbs/list_fbs.php – выдача списка FBS‑записей с пагинацией и фильтрами
 header('Content-Type: application/json; charset=utf-8');
 
-require_once '../db_connection.php'; // подключение mysqli $conn
+require_once __DIR__ . '/../../../db_connection.php'; // подключение mysqli $conn
 
 try {
     // Получение параметров

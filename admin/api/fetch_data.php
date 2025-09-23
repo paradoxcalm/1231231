@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-require_once 'db_connection.php';
+require_once __DIR__ . '/../../db_connection.php';
 
 $city = trim($_GET['city'] ?? '');
 $paymentType = trim($_GET['payment_type'] ?? '');

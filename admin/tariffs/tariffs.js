@@ -21,7 +21,7 @@ function loadTariffs() {
   const tableContainer = document.getElementById('tariffsTableContainer');
   const tabsContainer = document.getElementById('tariffsTabs');
 
-  fetch('tariffs/fetch_tariffs.php')
+  fetch('/admin/api/tariffs/fetch_tariffs.php')
     .then(r => r.json())
     .then(data => {
       if (!data.success) {

@@ -10,10 +10,10 @@ async function calculateCost(schedule) {
 
     try {
         const resp = await fetch(
-            `/get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
+            `/admin/api/get_tariff.php?city=${encodeURIComponent(schedule.city)}&warehouse=${encodeURIComponent(warehouseName)}`
         );
         if (!resp.ok) {
-            console.error('get_tariff.php вернул статус', resp.status);
+            console.error('/admin/api/get_tariff.php вернул статус', resp.status);
             return 0;
         }
         const data = await resp.json();

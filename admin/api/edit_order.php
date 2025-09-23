@@ -1,8 +1,8 @@
 <?php
-require_once 'auth_helper.php';
+require_once __DIR__ . '/../../auth_helper.php';
 requireRole(['admin','manager']);
 
-require_once 'db_connection.php';
+require_once __DIR__ . '/../../db_connection.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $data    = json_decode(file_get_contents('php://input'), true);

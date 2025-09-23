@@ -1,6 +1,6 @@
 function loadFBS() {
     // Загружаем список сортировочных центров
-    fetch('fbs/centers.php')
+    fetch('/admin/api/fbs/centers.php')
         .then(res => res.json())
         .then(centers => {
             // Добавляем вручную нужные СЦ, если их нет в ответе
@@ -136,7 +136,7 @@ function loadCityFBSData(
   if (filterEnd)   params.append('filterEnd',   filterEnd);
   if (filterStatus) params.append('filterStatus', filterStatus);
 
-  fetch(`fbs/list_fbs.php?${params.toString()}`, { credentials: 'same-origin' })
+  fetch(`/admin/api/fbs/list_fbs.php?${params.toString()}`, { credentials: 'same-origin' })
     .then(res => res.text())
     .then(text => {
       let result;
@@ -213,9 +213,9 @@ function loadCityFBSData(
             day:'2-digit', month:'2-digit', year:'numeric',
             hour:'2-digit', minute:'2-digit'
           });
-          // корректный путь к картинке (если в photo_path нет '/', добавляем uploads/fbs/)
+          // корректный путь к картинке (если в photo_path нет '/', добавляем /uploads/fbs/)
           const imageSrc = record.photo_path
-            ? (record.photo_path.includes('/') ? record.photo_path : `uploads/fbs/${record.photo_path}`)
+            ? (record.photo_path.includes('/') ? record.photo_path : `/uploads/fbs/${record.photo_path}`)
             : null;
 
           html += `
@@ -358,10 +358,10 @@ function openImageModal(filename) {
   const img   = document.getElementById('photoModalImg');
   if (!modal || !img) return;
 
-  // filename — просто имя файла; добавляем префикс uploads/fbs/
+  // filename — просто имя файла; добавляем префикс /uploads/fbs/
   img.src = filename.includes('/')
     ? filename              // если путь уже содержит /
-    : `uploads/fbs/${filename}`;
+    : `/uploads/fbs/${filename}`;
 
   modal.style.display = 'flex';
   setTimeout(() => modal.classList.add('show'), 10);
@@ -394,7 +394,7 @@ function openImageModal(filename) {
     const modal = document.getElementById('photoModal');
     const img   = document.getElementById('photoModalImg');
     if (!modal || !img) return;                // если нет элементов — выходим
-    img.src = `fbs/uploads/${filename}`;       // путь к файлу (проверьте, что совпадает)
+    img.src = `/uploads/fbs/${filename}`;       // путь к файлу (проверьте, что совпадает)
     modal.style.display = 'flex';              // показываем контейнер
     // даём CSS-анимации (opacity) сработать
     setTimeout(() => modal.classList.add('show'), 10);
@@ -652,7 +652,7 @@ function saveFBSRecord() {
     }
 
     // Отправляем на сервер
-    fetch('/fbs/save_fbs.php', {
+    fetch('/admin/api/fbs/save_fbs.php', {
         method: 'POST',
         credentials: 'same-origin',
         body: formData
@@ -757,7 +757,7 @@ function addCenter() {
     const name = prompt("Введите название нового сортировочного центра:");
     if (!name) return;
 
-    fetch('fbs/centers.php', {
+    fetch('/admin/api/fbs/centers.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add', name: name })
@@ -798,7 +798,7 @@ function exportToExcel(cityId) {
     if (filterStart) params.append('filterStart', filterStart);
     if (filterEnd) params.append('filterEnd', filterEnd);
     if (filterStatus) params.append('filterStatus', filterStatus);
-    const url = `fbs/export_fbs.php?${params.toString()}`;
+    const url = `/admin/api/fbs/export_fbs.php?${params.toString()}`;
     // Открываем в новом окне
     window.open(url, '_blank');
 }

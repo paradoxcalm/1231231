@@ -72,7 +72,7 @@ function escapeHtmlContent(value) {
 
 // 1️⃣ Автозаполнение данных пользователя
 function preloadUserDataIntoForm() {
-    fetch(resolveFormPath('fetch_user_data.php'))
+    fetch(resolveFormPath('/admin/api/fetch_user_data.php'))
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
@@ -678,11 +678,11 @@ async function updateTariffFor(city, warehouse) {
 
     try {
         const tariffUrl = resolveFormPath(
-            `get_tariff.php?city=${encodeURIComponent(normalizedCity)}&warehouse=${encodeURIComponent(normalizedWarehouse)}`
+            `/admin/api/get_tariff.php?city=${encodeURIComponent(normalizedCity)}&warehouse=${encodeURIComponent(normalizedWarehouse)}`
         );
         const response = await fetch(tariffUrl);
         if (!response.ok) {
-            throw new Error(`get_tariff.php вернул статус ${response.status}`);
+            throw new Error(`/admin/api/get_tariff.php вернул статус ${response.status}`);
         }
         const data = await response.json();
         if (requestToken !== lastTariffRequestToken) {

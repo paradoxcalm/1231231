@@ -309,7 +309,7 @@ function saveOrderEdits(orderId) {
         }
     }
 
-    fetch('edit_order.php', {
+    fetch('/admin/api/edit_order.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -413,7 +413,7 @@ async function loadOrders(type = "reception") {
 
     try {
         // Загружаем все заказы текущего пользователя (all=0) или все заказы (all=1) для admin/manager
-        const url = `get_orders.php?all=${(userRole === 'admin' || userRole === 'manager') ? '1' : '0'}`;
+        const url = `/admin/api/get_orders.php?all=${(userRole === 'admin' || userRole === 'manager') ? '1' : '0'}`;
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
 
@@ -499,14 +499,14 @@ async function loadAllOrders() {
 async function filterOrders() {
     const statusFilter = document.getElementById('statusFilter').value;
     const url = statusFilter === ""
-        ? 'get_orders.php?all=1'
-        : `get_orders.php?all=1&status=${encodeURIComponent(statusFilter)}`;
+        ? '/admin/api/get_orders.php?all=1'
+        : `/admin/api/get_orders.php?all=1&status=${encodeURIComponent(statusFilter)}`;
 
     try {
         const response = await fetch(url);
         if (!response.ok) throw new Error('HTTP error: ' + response.status);
         const result = await response.json();
-        console.log("Ответ get_orders.php (фильтр):", result);
+        console.log("Ответ /admin/api/get_orders.php (фильтр):", result);
 
         if (!result.success) {
             document.getElementById('ordersContainer').innerHTML =
@@ -538,7 +538,7 @@ function loadEditData() {
     const container = document.getElementById("dynamicContent");
     container.innerHTML = "<h2>Редактирование данных</h2><p>Загрузка...</p>";
 
-    fetch("fetch_user_data.php")
+    fetch("/admin/api/fetch_user_data.php")
         .then(r => r.json())
         .then(data => {
             if (!data.success) {
@@ -603,7 +603,7 @@ function saveEditedUserData() {
         payload[f] = document.getElementById(`${f}_input`).value.trim();
     });
 
-    fetch("update_user_data.php", {
+    fetch("/admin/api/update_user_data.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -660,7 +660,7 @@ function submitEditUserData(e) {
     const payload = {};
     formData.forEach((val, key) => payload[key] = val);
 
-    fetch("update_user_data.php", {
+    fetch("/admin/api/update_user_data.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -686,7 +686,7 @@ function submitEditUserData(e) {
  */
 function showOrderDetails(orderId) {
     document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
-    fetch(`get_orders.php?order_id=${orderId}&all=${userRole === 'client' ? '0' : '1'}`)
+    fetch(`/admin/api/get_orders.php?order_id=${orderId}&all=${userRole === 'client' ? '0' : '1'}`)
         .then(res => res.json())
         .then(data => {
             if (!data.success || !data.orders?.length) {
@@ -844,7 +844,7 @@ function toggleDetails(element) {
 async function updateOrderStatus(orderId, newStatus) {
     if (!newStatus) return;
     try {
-        const response = await fetch('update_order_status.php', {
+        const response = await fetch('/admin/api/update_order_status.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId, status: newStatus })
@@ -875,7 +875,7 @@ async function updateOrderStatus(orderId, newStatus) {
 async function deleteOrder(orderId) {
     if (!confirm('Точно удалить заказ #' + orderId + '?')) return;
     try {
-        const response = await fetch('delete_order.php', {
+        const response = await fetch('/admin/api/delete_order.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order_id: orderId })
@@ -911,7 +911,7 @@ async function nextOrderStatus(orderId) {
  * Получить текущий статус
  */
 async function getCurrentStatus(orderId) {
-    const response = await fetch(`get_orders.php?order_id=${orderId}&all=1`);
+    const response = await fetch(`/admin/api/get_orders.php?order_id=${orderId}&all=1`);
     const data = await response.json();
     if (data.success && data.orders.length > 0) {
         return data.orders[0].status;
@@ -964,7 +964,7 @@ function loadScheduleSettings() {
 function deleteOldSchedules() {
     if (confirm('Удалить записи старше указанного количества дней?')) {
         const days = document.getElementById('autoDeleteDays').value;
-        fetch('delete_old_schedules.php', {
+        fetch('/admin/api/delete_old_schedules.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ days })
@@ -994,7 +994,7 @@ function loadNotifications() {
     const container = document.getElementById('dynamicContent');
     container.innerHTML = '<p>Загрузка уведомлений…</p>';
 
-    fetch('fetch_notifications.php?mark_as_read=1', { credentials: 'include' })
+    fetch('/admin/api/fetch_notifications.php?mark_as_read=1', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
             container.innerHTML = '';
@@ -1093,7 +1093,7 @@ function loadNotifications() {
 
 function clearReadNotifications() {
     // пример обращения к серверу, надо заменить на реальный эндпоинт
-    fetch('fetch_notifications.php?clear_read=1')
+    fetch('/admin/api/fetch_notifications.php?clear_read=1')
         .then(res => res.json())
         .then(() => {
             loadNotifications();      // обновляем список
@@ -1118,7 +1118,7 @@ function removeNotification(id) {
 
 
 function markAllNotificationsAsRead() {
-    fetch('fetch_notifications.php?mark_as_read=1')
+    fetch('/admin/api/fetch_notifications.php?mark_as_read=1')
         .then(res => res.json())
         .then(() => {
             loadNotifications();
@@ -1152,7 +1152,7 @@ function updateNotificationBadge(count) {
 }
 
 function fetchLiveNotifications() {
-    fetch('fetch_notifications.php')
+    fetch('/admin/api/fetch_notifications.php')
         .then(r => r.json())
         .then(data => {
             if (!Array.isArray(data)) return;
@@ -1203,7 +1203,7 @@ function loadWarehouseSettings() {
 }
 
 function fetchWarehouses() {
-    fetch('warehouses.php')
+    fetch('/admin/api/warehouses.php')
         .then(r => r.json())
         .then(data => {
             const list = document.getElementById('warehouseList');
@@ -1223,7 +1223,7 @@ function addWarehouse() {
         alert('Введите название склада!');
         return;
     }
-    fetch('warehouses.php', {
+    fetch('/admin/api/warehouses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add', name })
@@ -1242,7 +1242,7 @@ function addWarehouse() {
 function editWarehouse(name) {
     const newName = prompt('Введите новое название склада:', name);
     if (newName && newName.trim() !== name) {
-        fetch('warehouses.php', {
+        fetch('/admin/api/warehouses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'edit', oldName: name, newName: newName.trim() })
@@ -1260,7 +1260,7 @@ function editWarehouse(name) {
 
 function deleteWarehouse(name) {
     if (confirm('Удалить склад ' + name + '?')) {
-        fetch('warehouses.php', {
+        fetch('/admin/api/warehouses.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'delete', name })
@@ -1283,7 +1283,7 @@ function loadDeliveryPricingSettings() {
     const container = document.getElementById('dynamicContent');
     container.innerHTML += `<h3>Настройки стоимости доставки</h3><div id="pricingLoader">Загрузка цен...</div>`;
 
-    fetch('fetch_price_settings.php')
+    fetch('/admin/api/fetch_price_settings.php')
         .then(res => res.json())
         .then(data => {
             if (!data.success) {
@@ -1419,7 +1419,7 @@ function saveCityPricing() {
     const statusText = document.getElementById("pricingStatus");
     if (statusText) statusText.textContent = "Сохранение…";
 
-    fetch("update_price_settings.php", {
+    fetch("/admin/api/update_price_settings.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -1478,7 +1478,7 @@ function loadSystemLogs() {
 
 
 function markLogRead(id) {
-    fetch('mark_system_log_read.php', {
+    fetch('/admin/api/mark_system_log_read.php', {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: "id=" + id
@@ -1491,7 +1491,7 @@ function markLogRead(id) {
     });
 }
 function fetchLogsInto(container) {
-    fetch('get_system_logs.php')
+    fetch('/admin/api/get_system_logs.php')
         .then(r => r.json())
         .then(data => {
             if (!data.success) {

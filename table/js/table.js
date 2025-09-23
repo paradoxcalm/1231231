@@ -67,7 +67,7 @@ class TableApp {
         this.showLoading(true);
         
         try {
-            const response = await fetch('../fetch_data.php');
+            const response = await fetch('/admin/api/fetch_data.php');
             const data = await response.json();
             
             if (Array.isArray(data)) {
@@ -406,7 +406,7 @@ function refreshData() {
 }
 
 function exportData() {
-    window.open('../export_to_excel.php', '_blank');
+    window.open('/admin/api/export_to_excel.php', '_blank');
     showToast('Экспорт начат', 'info');
 }
 

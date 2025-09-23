@@ -1,8 +1,8 @@
 <?php
-require_once 'session_init.php';
+require_once __DIR__ . '/../../session_init.php';
 session_start();
 header('Content-Type: application/json; charset=utf-8');
-require_once 'db_connection.php';
+require_once __DIR__ . '/../../db_connection.php';
 
 // Авторизация
 if (!isset($_SESSION['role'])) {

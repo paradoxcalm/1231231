@@ -1,7 +1,7 @@
 <?php
-require_once '../session_init.php';
+require_once __DIR__ . '/../../../session_init.php';
 session_start();
-require_once '../db_connection.php';
+require_once __DIR__ . '/../../../db_connection.php';
 
 // Доступ только для admin/manager
 if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'manager') {
@@ -53,7 +53,7 @@ if (!$stmt) {
     // Обработка фото (если есть)
     $photoPath = null;
     if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = '../uploads/fbs/'; // путь к каталогу загрузок
+        $uploadDir = __DIR__ . '/../../../uploads/fbs/'; // путь к каталогу загрузок
         if (!file_exists($uploadDir) && !mkdir($uploadDir, 0777, true)) {
             throw new Exception('Не удалось создать каталог для загрузки фото');
         }

@@ -228,7 +228,7 @@ class App {
     }
 
     async fetchNotifications(markAsRead = false) {
-        const response = await fetch(`../fetch_notifications.php?mark_as_read=${markAsRead ? '1' : '0'}`, {
+        const response = await fetch(`/admin/api/fetch_notifications.php?mark_as_read=${markAsRead ? '1' : '0'}`, {
             credentials: 'include'
         });
 
