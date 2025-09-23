@@ -25,7 +25,7 @@ async function loadClients() {
     container.innerHTML = "<h2>Клиенты</h2><p>Загрузка...</p>";
 
     try {
-        const response = await fetch('get_clients.php');
+        const response = await fetch('/admin/api/get_clients.php');
         const data = await response.json();
         if (!data.success) {
             container.innerHTML = "<p>Ошибка: " + (data.message || "Не удалось загрузить список") + "</p>";
@@ -216,7 +216,7 @@ function showClientDetails(userId) {
 
     // Определяем роль пользователя из глобальной переменной
     const role = window.userRole || 'client';
-    let url = `/get_client_info.php?user_id=${userId}`;
+    let url = `/admin/api/get_client_info.php?user_id=${userId}`;
     if (role === 'admin') {
         url += '&with_pwd=1';
     }
@@ -287,7 +287,7 @@ function showClientDetails(userId) {
                 const btn = modalOverlay.querySelector('#loadPwdHashBtn');
                 if (btn) {
                     btn.addEventListener('click', () => {
-                        fetch(`/get_client_info.php?user_id=${userId}&with_pwd=1`, { credentials: 'same-origin' })
+                        fetch(`/admin/api/get_client_info.php?user_id=${userId}&with_pwd=1`, { credentials: 'same-origin' })
                             .then(r => r.json())
                             .then(d => {
                                 if (!d.success) {
@@ -323,7 +323,7 @@ function viewClientOrders(id) {
 async function deleteClient(id) {
     if (!confirm('Удалить клиента?')) return;
     try {
-        const res = await fetch('delete_client.php', {
+        const res = await fetch('/admin/api/delete_client.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: id })

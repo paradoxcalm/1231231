@@ -1,7 +1,7 @@
 
 // 🔄 form.js — автозаполнение ИП и Магазина
 function preloadUserDataIntoForm() {
-    fetch('fetch_user_data.php')
+    fetch('/admin/api/fetch_user_data.php')
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
@@ -20,7 +20,7 @@ function preloadUserDataIntoForm() {
 
 // 🔄 processing.js — автозаполнение ИП и Магазина
 function preloadUserDataIntoProcessing() {
-    fetch('fetch_user_data.php')
+    fetch('/admin/api/fetch_user_data.php')
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;

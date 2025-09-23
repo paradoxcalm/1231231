@@ -7,7 +7,7 @@ export function registerWarehouseCallbacks({ showCreateForm } = {}) {
 export function addNewWarehouseAndRefresh() {
     const name = prompt('Введите название склада:');
     if (!name || !name.trim()) return;
-    fetch('warehouses.php', {
+    fetch('/admin/api/warehouses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add', name: name.trim() })
@@ -82,7 +82,7 @@ export function saveWarehouseEdits() {
         return;
     }
 
-    fetch('warehouses.php', {
+    fetch('/admin/api/warehouses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'batch_edit', edits })
@@ -112,7 +112,7 @@ export function confirmWarehouseDelete() {
 
     if (!confirm(`Удалить ${selected.length} склад(ов)?`)) return;
 
-    fetch('warehouses.php', {
+    fetch('/admin/api/warehouses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', names: selected })
@@ -162,7 +162,7 @@ export function loadWarehousesForFilter() {
 export function addNewWarehouse(formId) {
     const name = prompt('Введите название склада:');
     if (!name || !name.trim()) return;
-    fetch('warehouses.php', {
+    fetch('/admin/api/warehouses.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'add', name: name.trim() })
@@ -171,7 +171,7 @@ export function addNewWarehouse(formId) {
         .then(d => {
             if (d.status === 'success') {
                 loadWarehousesForFilter();
-                fetch('warehouses.php')
+                fetch('/admin/api/warehouses.php')
                     .then(r2 => r2.json())
                     .then(warehouses => {
                         const container = document.querySelector(`#${formId} .warehouse-checkboxes`);

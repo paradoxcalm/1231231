@@ -239,12 +239,12 @@ const currentClientId = '<?php echo $_SESSION['user_id'] ?? 0; ?>';
 <script src="/table.js?v=<?php echo $version; ?>"></script>
 <script src="/form.js?v=<?php echo $version; ?>"></script>
 <script src="/clients.js?v=<?php echo $version; ?>"></script>
-<script src="/tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
+<script src="/admin/tariffs/tariffs.js?v=<?php echo $version; ?>"></script>
 <script src="/autofill_user_fields.js?v=<?php echo $version; ?>"></script>
 <script src="/requestForm.js?v=<?php echo $version; ?>"></script>
 <script type="module" src="/schedule/index.js?v=<?php echo $version; ?>"></script>
-<script src="/fbs/fbs.js?v=<?php echo $version; ?>"></script>
-<script src="/fbs/fbs_pdf.js?v=<?php echo $version; ?>"></script>
+<script src="/admin/fbs/fbs.js?v=<?php echo $version; ?>"></script>
+<script src="/admin/fbs/fbs_pdf.js?v=<?php echo $version; ?>"></script>
 <script src="/photoPreview.js?v=<?php echo $version; ?>"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
@@ -303,7 +303,7 @@ function updateNotificationBadge(count) {
     }
 }
 function fetchLiveNotifications() {
-    fetch('/fetch_notifications.php')
+    fetch('/admin/api/fetch_notifications.php')
         .then(r => r.json())
         .then(data => {
             if (!Array.isArray(data)) return;

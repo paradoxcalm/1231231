@@ -62,7 +62,7 @@ class TariffsManager {
         }
 
         try {
-            const response = await fetch('../tariffs/fetch_tariffs.php');
+            const response = await fetch('/admin/api/tariffs/fetch_tariffs.php');
             const result = await response.json();
 
             if (!result.success) {
@@ -93,7 +93,7 @@ class TariffsManager {
     }
 
     async fetchSingleTariff(city, warehouse) {
-        const url = `../get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(warehouse)}`;
+        const url = `/admin/api/get_tariff.php?city=${encodeURIComponent(city)}&warehouse=${encodeURIComponent(warehouse)}`;
 
         try {
             const response = await fetch(url);

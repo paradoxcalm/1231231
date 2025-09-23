@@ -114,7 +114,7 @@ function injectTableStyles() {
 // управляет пагинацией. Логика загрузки и структура данных сохранены.
 function fetchDataAndDisplayTable(city = '', paymentType = '') {
   injectTableStyles();
-  let url = 'fetch_data.php';
+  let url = '/admin/api/fetch_data.php';
   const params = [];
   if (city) params.push(`city=${encodeURIComponent(city)}`);
   if (paymentType) params.push(`payment_type=${encodeURIComponent(paymentType)}`);

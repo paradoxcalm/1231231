@@ -348,7 +348,7 @@ document.querySelectorAll('.card').forEach(card => {
 });
 
 function openOrderModal(orderId, goodsList, requestedAt, acceptTime) {
-    fetch(`../get_orders.php?order_id=${orderId}&all=1`)
+    fetch(`/admin/api/get_orders.php?order_id=${orderId}&all=1`)
         .then(r => r.json())
         .then(data => {
             if (!data.success || !data.orders || !data.orders.length) return;

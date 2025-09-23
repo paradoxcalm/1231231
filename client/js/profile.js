@@ -17,7 +17,7 @@ class ProfileManager {
 
     async fetchUserData() {
         try {
-            const response = await fetch('../fetch_user_data.php', { credentials: 'include' });
+            const response = await fetch('/admin/api/fetch_user_data.php', { credentials: 'include' });
             if (!response.ok) {
                 console.error('fetch_user_data.php вернул ошибку:', response.status);
                 window.location.href = '../auth_form.php';
@@ -130,7 +130,7 @@ class ProfileManager {
 
     async loadStats() {
         try {
-            const response = await fetch('../get_orders.php', { credentials: 'include' });
+            const response = await fetch('/admin/api/get_orders.php', { credentials: 'include' });
             const data = await response.json();
             const orders = data.orders || [];
             const totalOrders = orders.length;
@@ -165,7 +165,7 @@ class ProfileManager {
 
         try {
             const formData = new FormData(form);
-            const response = await fetch('../update_user_data.php', {
+            const response = await fetch('/admin/api/update_user_data.php', {
                 method: 'POST',
                 body: formData,
                 credentials: 'include'

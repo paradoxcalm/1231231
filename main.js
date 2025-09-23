@@ -87,7 +87,7 @@ function loadTable() {
 }
 // Выгрузка всех данных таблицы в Excel
 function exportAllDataToExcel() {
-    fetch('export_to_excel.php')
+    fetch('/admin/api/export_to_excel.php')
         .then(response => {
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -282,7 +282,7 @@ function loadOldReception() {
 
   // --- Тарифы ---
   let tariffsData = {};
-  fetch('tariffs/fetch_tariffs.php')
+  fetch('/admin/api/tariffs/fetch_tariffs.php')
     .then(res => res.json())
     .then(data => { if (data.success) tariffsData = data.data || {}; })
     .catch(err => console.error('Ошибка загрузки тарифов:', err));

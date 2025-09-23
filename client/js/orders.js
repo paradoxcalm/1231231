@@ -60,7 +60,7 @@ class OrdersManager {
 
     async loadOrders() {
         try {
-            const response = await fetch('../get_orders.php', { credentials: 'include' });
+            const response = await fetch('/admin/api/get_orders.php', { credentials: 'include' });
             const data = await response.json();
             this.orders = data.orders || [];
             this.filterOrders();
@@ -815,7 +815,7 @@ class OrdersManager {
         if (!confirmed) return;
 
         try {
-            const response = await fetch('../delete_order.php', {
+            const response = await fetch('/admin/api/delete_order.php', {
                 method: 'POST',
                 body: JSON.stringify({ order_id: orderId }),
                 headers: { 'Content-Type': 'application/json' },

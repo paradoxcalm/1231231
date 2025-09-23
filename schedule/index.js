@@ -527,7 +527,7 @@ function showCreateForm() {
     );
 
     Promise.all([
-        fetch("warehouses.php").then(r => r.json()),
+        fetch("/admin/api/warehouses.php").then(r => r.json()),
         fetch("cities.php", { cache: "no-store" }).then(r => r.json())
     ])
     .then(([warehouses, cities]) => {
@@ -812,7 +812,7 @@ function editSchedule(id) {
             const timeSlots = Array.from({ length: 24 }, (_, i) =>
                 `${String(i).padStart(2, "0")}:00-${String((i + 1) % 24).padStart(2, "0")}:00`
             );
-            fetch("warehouses.php")
+            fetch("/admin/api/warehouses.php")
                 .then(r2 => {
                     if (!r2.ok) throw new Error("Ошибка складов: " + r2.status);
                     return r2.json();

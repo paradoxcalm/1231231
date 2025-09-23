@@ -1,9 +1,9 @@
 <?php
 // 👤 Пользователь (ADMIN-panel)
-require_once 'session_init.php';
+require_once __DIR__ . '/../../session_init.php';
 session_start();
 header('Content-Type: application/json; charset=utf-8');
-require_once 'db_connection.php';
+require_once __DIR__ . '/../../db_connection.php';
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     echo json_encode(['success' => false, 'message' => 'Доступ запрещён']);

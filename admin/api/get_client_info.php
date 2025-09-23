@@ -7,11 +7,11 @@
 ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-require_once 'session_init.php';
+require_once __DIR__ . '/../../session_init.php';
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/db_connection.php';
+require_once __DIR__ . '/../../db_connection.php';
 
 /* ---------- Логирование ---------- */
 $logDir = __DIR__ . '/logs';

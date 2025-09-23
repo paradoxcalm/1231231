@@ -1,7 +1,7 @@
 <?php
-require_once '../session_init.php';
+require_once __DIR__ . '/../../../session_init.php';
 session_start();
-require_once '../db_connection.php';
+require_once __DIR__ . '/../../../db_connection.php';
 
 // Только для admin/manager
 if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'manager') {
