@@ -35,6 +35,7 @@ $scheduleAssetsVersion = max(
     asset_version('js/schedule.js'),
     asset_version('js/filterOptions.js')
 );
+$requestFormScriptVersion = asset_version('../form.js');
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -357,6 +358,7 @@ $scheduleAssetsVersion = max(
 
     <script>
         window.assetVersion = <?php echo json_encode($scheduleAssetsVersion); ?>;
+        window.requestFormScriptVersion = <?php echo json_encode($requestFormScriptVersion); ?>;
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="../requestForm.js?v=<?php echo asset_version('../requestForm.js'); ?>"></script>
