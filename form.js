@@ -71,13 +71,30 @@ function escapeHtmlContent(value) {
 }
 
 // 1️⃣ Автозаполнение данных пользователя
-function preloadUserDataIntoForm() {
+function preloadUserDataIntoForm(targetForm = null) {
+    const resolveSenderInput = () => {
+        if (targetForm && typeof targetForm.querySelector === 'function') {
+            try {
+                const scoped = targetForm.querySelector('#sender');
+                if (scoped) {
+                    return scoped;
+                }
+            } catch (err) {
+                // ignore selector errors and fallback below
+            }
+        }
+        if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+            return document.getElementById('sender');
+        }
+        return null;
+    };
+
     fetch(resolveFormPath('/admin/api/fetch_user_data.php'))
         .then(r => r.json())
         .then(data => {
             if (!data.success) return;
             const u = data.data;
-            const senderInput = document.getElementById('sender');
+            const senderInput = resolveSenderInput();
             if (senderInput && u.company_name) {
                 senderInput.value = u.company_name;
             }
@@ -1672,22 +1689,234 @@ async function initPickupMap() {
 
 
 
-async function initializeForm() {
-    const form = document.getElementById('dataForm');
+const initializedFormInstances = new WeakSet();
+const initializedFormTokens = new Set();
+let domReadyInitializationScheduled = false;
+
+function ensureFormInstanceToken(form) {
     if (!form) {
-        // Если форма ещё не загружена — повторим после DOMContentLoaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeForm);
+        return '';
+    }
+    const dataset = form.dataset || {};
+    if (dataset.formInstanceToken) {
+        return dataset.formInstanceToken;
+    }
+    const token = `form-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    try {
+        if (dataset) {
+            dataset.formInstanceToken = token;
+        } else {
+            form.setAttribute('data-form-instance-token', token);
+        }
+    } catch (err) {
+        form.setAttribute('data-form-instance-token', token);
+    }
+    return token;
+}
+
+function isFormAlreadyInitialized(form) {
+    if (!form) {
+        return true;
+    }
+    if (initializedFormInstances.has(form)) {
+        return true;
+    }
+    const token = form.dataset?.formInstanceToken;
+    if (token && initializedFormTokens.has(token)) {
+        initializedFormInstances.add(form);
+        return true;
+    }
+    return false;
+}
+
+function markFormAsInitialized(form) {
+    if (!form) {
+        return;
+    }
+    initializedFormInstances.add(form);
+    const token = ensureFormInstanceToken(form);
+    if (token) {
+        initializedFormTokens.add(token);
+    }
+}
+
+function escapeForAttribute(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+        try {
+            return CSS.escape(value);
+        } catch (err) {
+            // fallback to manual escaping below
+        }
+    }
+    return value.replace(/"/g, '\\"').replace(/'/g, "\\'");
+}
+
+function queryFormByToken(token, doc) {
+    if (!token || !doc) {
+        return null;
+    }
+    const escapedToken = escapeForAttribute(token);
+    if (!escapedToken) {
+        return null;
+    }
+    try {
+        const selector = `[data-form-instance-token="${escapedToken}"]`;
+        const found = doc.querySelector(selector);
+        return found instanceof HTMLFormElement ? found : null;
+    } catch (err) {
+        // ignore selector errors and fallback to manual search
+    }
+    const allForms = Array.from(doc.querySelectorAll('form[data-form-instance-token]'));
+    return allForms.find((form) => form.dataset?.formInstanceToken === token) || null;
+}
+
+function collectFormsForInitialization(target) {
+    const doc = typeof document !== 'undefined' ? document : null;
+    if (!doc) {
+        return [];
+    }
+
+    if (!target) {
+        return Array.from(doc.querySelectorAll('form#dataForm'));
+    }
+
+    if (target instanceof HTMLFormElement) {
+        return [target];
+    }
+
+    if (typeof target === 'string') {
+        const byToken = queryFormByToken(target, doc);
+        if (byToken) {
+            return [byToken];
+        }
+        const byId = doc.getElementById(target);
+        if (byId instanceof HTMLFormElement) {
+            return [byId];
+        }
+        return [];
+    }
+
+    if (target && typeof target === 'object') {
+        if (target.form instanceof HTMLFormElement) {
+            return [target.form];
+        }
+        if (target.element instanceof HTMLFormElement) {
+            return [target.element];
+        }
+    }
+
+    return [];
+}
+
+async function initializeForm(targetFormOrToken = null) {
+    const doc = typeof document !== 'undefined' ? document : null;
+    if (!doc) {
+        return;
+    }
+
+    const forms = collectFormsForInitialization(targetFormOrToken);
+    if (!forms.length) {
+        if (!targetFormOrToken && doc.readyState === 'loading' && !domReadyInitializationScheduled) {
+            domReadyInitializationScheduled = true;
+            doc.addEventListener('DOMContentLoaded', () => {
+                domReadyInitializationScheduled = false;
+                initializeForm();
+            }, { once: true });
         }
         return;
     }
 
-    if (form.dataset?.initialized === 'true') {
+    for (const form of forms) {
+        if (!(form instanceof HTMLFormElement)) {
+            continue;
+        }
+        if (isFormAlreadyInitialized(form)) {
+            continue;
+        }
+
+        try {
+            await initializeSingleFormInstance(form);
+        } catch (err) {
+            console.error('Ошибка инициализации формы заявки:', err);
+        }
+    }
+}
+
+async function initializeSingleFormInstance(form) {
+    if (!(form instanceof HTMLFormElement)) {
         return;
     }
 
+    const doc = form.ownerDocument || (typeof document !== 'undefined' ? document : null);
+    const auxiliaryScope = form.closest('.request-modal__content')
+        || form.closest('.section-container')
+        || form.parentElement
+        || null;
+    const searchScopes = [form];
+    if (auxiliaryScope && auxiliaryScope !== form) {
+        searchScopes.push(auxiliaryScope);
+    }
+    if (doc && !searchScopes.includes(doc)) {
+        searchScopes.push(doc);
+    }
+
+    const queryIdWithinScope = (scope, id) => {
+        if (!scope || !id) {
+            return null;
+        }
+        if (scope === doc && doc && typeof doc.getElementById === 'function') {
+            const candidate = doc.getElementById(id);
+            if (!candidate) {
+                return null;
+            }
+            if (form.contains(candidate)) {
+                return candidate;
+            }
+            if (auxiliaryScope && typeof auxiliaryScope.contains === 'function' && auxiliaryScope.contains(candidate)) {
+                return candidate;
+            }
+            return candidate;
+        }
+
+        if (typeof scope.querySelector === 'function') {
+            if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+                try {
+                    const found = scope.querySelector(`#${CSS.escape(id)}`);
+                    if (found) {
+                        return found;
+                    }
+                } catch (err) {
+                    // ignore selector issues and fallback to attribute matching
+                }
+            }
+            try {
+                const fallback = scope.querySelector(`[id="${id.replace(/"/g, '\\"')}"]`);
+                if (fallback) {
+                    return fallback;
+                }
+            } catch (err) {
+                // ignore attribute selector issues
+            }
+        }
+
+        return null;
+    };
+
+    const findById = (id) => {
+        for (const scope of searchScopes) {
+            const found = queryIdWithinScope(scope, id);
+            if (found) {
+                return found;
+            }
+        }
+        return null;
+    };
+
     // 1) Предзаполнение и настройка переключателей
-    preloadUserDataIntoForm();
+    preloadUserDataIntoForm(form);
     setupPackagingToggle();
     setupPalletFieldsTrigger();
     setupBoxFieldsTrigger();
@@ -1699,10 +1928,10 @@ async function initializeForm() {
         return `${value}`.trim();
     };
 
-    const cityField = document.getElementById('cityField');
-    const warehouseField = document.getElementById('warehouses');
-    const directionField = document.getElementById('directionField');
-    const cityDependentContainer = document.getElementById('cityDependentFields');
+    const cityField = form.querySelector('#cityField');
+    const warehouseField = form.querySelector('#warehouses');
+    const directionField = form.querySelector('#directionField');
+    const cityDependentContainer = form.querySelector('#cityDependentFields');
 
     const resolveWarehouseValue = () => {
         if (warehouseField && typeof warehouseField.value === 'string' && warehouseField.value.trim()) {
@@ -1779,13 +2008,13 @@ async function initializeForm() {
         }
         isSubmitting = true;
 
-        const status = document.getElementById('status');
+        const status = findById('status');
         const btn = form.querySelector('button[type="submit"]');
 
         // Проверка координат, если выбран забор груза
-        const pickCb   = document.getElementById('pickupCheckbox');
-        const latInput = document.getElementById('pickupLat');
-        const lngInput = document.getElementById('pickupLng');
+        const pickCb   = findById('pickupCheckbox');
+        const latInput = findById('pickupLat');
+        const lngInput = findById('pickupLng');
 
         try {
             if (pickCb && pickCb.checked) {
@@ -1813,7 +2042,7 @@ async function initializeForm() {
                 const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
                 const result = await res.json();
                 if (result && result.status === 'success') {
-                    const pay = document.getElementById('payment');
+                    const pay = findById('payment');
                     showSuccessModal(result.qr_code, pay ? pay.value : '');
                 } else {
                     if (status) {
@@ -1834,11 +2063,11 @@ async function initializeForm() {
     });
 
     // 5) Логика «Забрать груз» (карта + номер телефона)
-    const pickupCheckbox = document.getElementById('pickupCheckbox');
-    const addressFields  = document.getElementById('pickupAddressFields');
-    const phoneInput     = document.getElementById('clientPhone');
-    const latInput       = document.getElementById('pickupLat');
-    const lngInput       = document.getElementById('pickupLng');
+    const pickupCheckbox = form.querySelector('#pickupCheckbox');
+    const addressFields  = form.querySelector('#pickupAddressFields');
+    const phoneInput     = form.querySelector('#clientPhone');
+    const latInput       = form.querySelector('#pickupLat');
+    const lngInput       = form.querySelector('#pickupLng');
     if (phoneInput) phoneInput.required = pickupCheckbox && pickupCheckbox.checked;
 
     // безопасный сброс полей карты
@@ -1846,7 +2075,7 @@ async function initializeForm() {
         if (latInput) latInput.value = '';
         if (lngInput) lngInput.value = '';
         // routeBlock просто скрываем — ссылки пересчитаются при следующем клике по карте
-        const rb = document.getElementById('routeBlock');
+        const rb = findById('routeBlock');
         if (rb) hideRequestFormElement(rb);
     };
 
@@ -1885,7 +2114,7 @@ async function initializeForm() {
         }
     }
 
-    form.dataset.initialized = 'true';
+    markFormAsInitialized(form);
 }
 
 
