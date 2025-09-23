@@ -1682,210 +1682,218 @@ async function initializeForm() {
         return;
     }
 
-    if (form.dataset?.initialized === 'true') {
+    const currentState = form.dataset?.initialized;
+    if (currentState === 'pending' || currentState === 'true') {
         return;
     }
 
-    // 1) Предзаполнение и настройка переключателей
-    preloadUserDataIntoForm();
-    setupPackagingToggle();
-    setupPalletFieldsTrigger();
-    setupBoxFieldsTrigger();
-
-    const toTrimmedString = (value) => {
-        if (value === null || value === undefined) {
-            return '';
-        }
-        return `${value}`.trim();
-    };
-
-    const cityField = document.getElementById('cityField');
-    const warehouseField = document.getElementById('warehouses');
-    const directionField = document.getElementById('directionField');
-    const cityDependentContainer = document.getElementById('cityDependentFields');
-
-    const resolveWarehouseValue = () => {
-        if (warehouseField && typeof warehouseField.value === 'string' && warehouseField.value.trim()) {
-            return warehouseField.value;
-        }
-        if (directionField && typeof directionField.value === 'string' && directionField.value.trim()) {
-            return directionField.value;
-        }
-        if (form.dataset?.scheduleWarehouse) {
-            return form.dataset.scheduleWarehouse;
-        }
-        if (form.dataset?.initialWarehouse) {
-            return form.dataset.initialWarehouse;
-        }
-        return '';
-    };
-
-    const resolvedCity = toTrimmedString(
-        (cityField && typeof cityField.value === 'string' && cityField.value)
-            ? cityField.value
-            : form.dataset?.scheduleCity || form.dataset?.initialCity || ''
-    );
-
-    const resolvedWarehouse = normalizeWarehouseValue(
-        toTrimmedString(resolveWarehouseValue())
-    );
-
-    if (cityField) {
-        cityField.value = resolvedCity;
-    }
-    if (warehouseField) {
-        warehouseField.value = resolvedWarehouse;
-    }
-    if (directionField) {
-        directionField.value = resolvedWarehouse;
-    }
-
-    updateDirectionSummary(resolvedCity, resolvedWarehouse);
-
-    if (cityDependentContainer) {
-        showRequestFormElement(cityDependentContainer);
-        cityDependentContainer.removeAttribute('aria-hidden');
-
-        const interactiveElements = cityDependentContainer.querySelectorAll('input, select, textarea, button');
-        interactiveElements.forEach((element) => {
-            if (!element) {
-                return;
-            }
-            if (element.type === 'hidden' || element.dataset?.cityLockIgnore === 'true') {
-                return;
-            }
-
-            const shouldRemainDisabled = element.dataset?.cityLockWasDisabled === 'true';
-            element.disabled = shouldRemainDisabled;
-            if (!shouldRemainDisabled) {
-                element.removeAttribute('disabled');
-            }
-            delete element.dataset.cityLockWasDisabled;
-        });
-    }
+    form.dataset.initialized = 'pending';
 
     try {
-        await updateTariffFor(resolvedCity, resolvedWarehouse);
-    } catch (err) {
-        console.warn('Не удалось применить тариф после инициализации формы:', err);
-    }
+        // 1) Предзаполнение и настройка переключателей
+        preloadUserDataIntoForm();
+        setupPackagingToggle();
+        setupPalletFieldsTrigger();
+        setupBoxFieldsTrigger();
 
-    // 4) Обработка отправки формы
-    let isSubmitting = false;
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (isSubmitting) {
-            return;
-        }
-        isSubmitting = true;
-
-        const status = document.getElementById('status');
-        const btn = form.querySelector('button[type="submit"]');
-
-        // Проверка координат, если выбран забор груза
-        const pickCb   = document.getElementById('pickupCheckbox');
-        const latInput = document.getElementById('pickupLat');
-        const lngInput = document.getElementById('pickupLng');
-
-        try {
-            if (pickCb && pickCb.checked) {
-                if (!window.__pickupMapInited) {
-                    try {
-                        await initPickupMap();
-                    } catch (err) {
-                        console.warn('Не удалось инициализировать карту перед проверкой координат:', err);
-                    }
-                }
-                const lat = latInput ? latInput.value.trim() : '';
-                const lng = lngInput ? lngInput.value.trim() : '';
-                if (!lat || !lng) {
-                    if (status) {
-                        status.textContent = 'Пожалуйста, выберите точку на карте';
-                        status.style.color = 'red';
-                    }
-                    return;
-                }
+        const toTrimmedString = (value) => {
+            if (value === null || value === undefined) {
+                return '';
             }
-
-            if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
-            try {
-                const submitUrl = resolveFormPath('log_data.php');
-                const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
-                const result = await res.json();
-                if (result && result.status === 'success') {
-                    const pay = document.getElementById('payment');
-                    showSuccessModal(result.qr_code, pay ? pay.value : '');
-                } else {
-                    if (status) {
-                        status.textContent = `⚠️ Ошибка: ${result && result.message ? result.message : 'Неизвестная ошибка'}`;
-                        status.style.color = 'red';
-                    }
-                }
-            } catch (err) {
-                if (status) {
-                    status.textContent = 'Ошибка подключения: ' + err.message;
-                    status.style.color = 'red';
-                }
-            }
-        } finally {
-            if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
-            isSubmitting = false;
-        }
-    });
-
-    // 5) Логика «Забрать груз» (карта + номер телефона)
-    const pickupCheckbox = document.getElementById('pickupCheckbox');
-    const addressFields  = document.getElementById('pickupAddressFields');
-    const phoneInput     = document.getElementById('clientPhone');
-    const latInput       = document.getElementById('pickupLat');
-    const lngInput       = document.getElementById('pickupLng');
-    if (phoneInput) phoneInput.required = pickupCheckbox && pickupCheckbox.checked;
-
-    // безопасный сброс полей карты
-    const resetMapFields = () => {
-        if (latInput) latInput.value = '';
-        if (lngInput) lngInput.value = '';
-        // routeBlock просто скрываем — ссылки пересчитаются при следующем клике по карте
-        const rb = document.getElementById('routeBlock');
-        if (rb) hideRequestFormElement(rb);
-    };
-
-    if (pickupCheckbox) {
-        const ensurePickupMapReady = () => {
-            return initPickupMap()
-                .then(() => {
-                    setTimeout(() => {
-                        if (pickupMapInstance && pickupMapInstance.container) {
-                            pickupMapInstance.container.fitToViewport();
-                        }
-                    }, 0);
-                })
-                .catch((err) => {
-                    console.warn('Не удалось инициализировать карту забора:', err);
-                });
+            return `${value}`.trim();
         };
 
-        pickupCheckbox.addEventListener('change', () => {
+        const cityField = document.getElementById('cityField');
+        const warehouseField = document.getElementById('warehouses');
+        const directionField = document.getElementById('directionField');
+        const cityDependentContainer = document.getElementById('cityDependentFields');
+
+        const resolveWarehouseValue = () => {
+            if (warehouseField && typeof warehouseField.value === 'string' && warehouseField.value.trim()) {
+                return warehouseField.value;
+            }
+            if (directionField && typeof directionField.value === 'string' && directionField.value.trim()) {
+                return directionField.value;
+            }
+            if (form.dataset?.scheduleWarehouse) {
+                return form.dataset.scheduleWarehouse;
+            }
+            if (form.dataset?.initialWarehouse) {
+                return form.dataset.initialWarehouse;
+            }
+            return '';
+        };
+
+        const resolvedCity = toTrimmedString(
+            (cityField && typeof cityField.value === 'string' && cityField.value)
+                ? cityField.value
+                : form.dataset?.scheduleCity || form.dataset?.initialCity || ''
+        );
+
+        const resolvedWarehouse = normalizeWarehouseValue(
+            toTrimmedString(resolveWarehouseValue())
+        );
+
+        if (cityField) {
+            cityField.value = resolvedCity;
+        }
+        if (warehouseField) {
+            warehouseField.value = resolvedWarehouse;
+        }
+        if (directionField) {
+            directionField.value = resolvedWarehouse;
+        }
+
+        updateDirectionSummary(resolvedCity, resolvedWarehouse);
+
+        if (cityDependentContainer) {
+            showRequestFormElement(cityDependentContainer);
+            cityDependentContainer.removeAttribute('aria-hidden');
+
+            const interactiveElements = cityDependentContainer.querySelectorAll('input, select, textarea, button');
+            interactiveElements.forEach((element) => {
+                if (!element) {
+                    return;
+                }
+                if (element.type === 'hidden' || element.dataset?.cityLockIgnore === 'true') {
+                    return;
+                }
+
+                const shouldRemainDisabled = element.dataset?.cityLockWasDisabled === 'true';
+                element.disabled = shouldRemainDisabled;
+                if (!shouldRemainDisabled) {
+                    element.removeAttribute('disabled');
+                }
+                delete element.dataset.cityLockWasDisabled;
+            });
+        }
+
+        try {
+            await updateTariffFor(resolvedCity, resolvedWarehouse);
+        } catch (err) {
+            console.warn('Не удалось применить тариф после инициализации формы:', err);
+        }
+
+        // 4) Обработка отправки формы
+        let isSubmitting = false;
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (isSubmitting) {
+                return;
+            }
+            isSubmitting = true;
+
+            const status = document.getElementById('status');
+            const btn = form.querySelector('button[type="submit"]');
+
+            // Проверка координат, если выбран забор груза
+            const pickCb   = document.getElementById('pickupCheckbox');
+            const latInput = document.getElementById('pickupLat');
+            const lngInput = document.getElementById('pickupLng');
+
+            try {
+                if (pickCb && pickCb.checked) {
+                    if (!window.__pickupMapInited) {
+                        try {
+                            await initPickupMap();
+                        } catch (err) {
+                            console.warn('Не удалось инициализировать карту перед проверкой координат:', err);
+                        }
+                    }
+                    const lat = latInput ? latInput.value.trim() : '';
+                    const lng = lngInput ? lngInput.value.trim() : '';
+                    if (!lat || !lng) {
+                        if (status) {
+                            status.textContent = 'Пожалуйста, выберите точку на карте';
+                            status.style.color = 'red';
+                        }
+                        return;
+                    }
+                }
+
+                if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
+                try {
+                    const submitUrl = resolveFormPath('log_data.php');
+                    const res    = await fetch(submitUrl, { method: 'POST', body: new FormData(form) });
+                    const result = await res.json();
+                    if (result && result.status === 'success') {
+                        const pay = document.getElementById('payment');
+                        showSuccessModal(result.qr_code, pay ? pay.value : '');
+                    } else {
+                        if (status) {
+                            status.textContent = `⚠️ Ошибка: ${result && result.message ? result.message : 'Неизвестная ошибка'}`;
+                            status.style.color = 'red';
+                        }
+                    }
+                } catch (err) {
+                    if (status) {
+                        status.textContent = 'Ошибка подключения: ' + err.message;
+                        status.style.color = 'red';
+                    }
+                }
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Отправить'; }
+                isSubmitting = false;
+            }
+        });
+
+        // 5) Логика «Забрать груз» (карта + номер телефона)
+        const pickupCheckbox = document.getElementById('pickupCheckbox');
+        const addressFields  = document.getElementById('pickupAddressFields');
+        const phoneInput     = document.getElementById('clientPhone');
+        const latInput       = document.getElementById('pickupLat');
+        const lngInput       = document.getElementById('pickupLng');
+        if (phoneInput) phoneInput.required = pickupCheckbox && pickupCheckbox.checked;
+
+        // безопасный сброс полей карты
+        const resetMapFields = () => {
+            if (latInput) latInput.value = '';
+            if (lngInput) lngInput.value = '';
+            // routeBlock просто скрываем — ссылки пересчитаются при следующем клике по карте
+            const rb = document.getElementById('routeBlock');
+            if (rb) hideRequestFormElement(rb);
+        };
+
+        if (pickupCheckbox) {
+            const ensurePickupMapReady = () => {
+                return initPickupMap()
+                    .then(() => {
+                        setTimeout(() => {
+                            if (pickupMapInstance && pickupMapInstance.container) {
+                                pickupMapInstance.container.fitToViewport();
+                            }
+                        }, 0);
+                    })
+                    .catch((err) => {
+                        console.warn('Не удалось инициализировать карту забора:', err);
+                    });
+            };
+
+            pickupCheckbox.addEventListener('change', () => {
+                if (pickupCheckbox.checked) {
+                    if (addressFields) showRequestFormElement(addressFields);
+                    if (phoneInput) phoneInput.required = true;
+                    ensurePickupMapReady();
+                } else {
+                    if (addressFields) hideRequestFormElement(addressFields);
+                    if (phoneInput) phoneInput.required = false;
+                    resetMapFields();
+                }
+            });
+
+            // если галочка уже была выставлена при рендере — сразу покажем блок и инициализируем карту
             if (pickupCheckbox.checked) {
                 if (addressFields) showRequestFormElement(addressFields);
                 if (phoneInput) phoneInput.required = true;
                 ensurePickupMapReady();
-            } else {
-                if (addressFields) hideRequestFormElement(addressFields);
-                if (phoneInput) phoneInput.required = false;
-                resetMapFields();
             }
-        });
-
-        // если галочка уже была выставлена при рендере — сразу покажем блок и инициализируем карту
-        if (pickupCheckbox.checked) {
-            if (addressFields) showRequestFormElement(addressFields);
-            if (phoneInput) phoneInput.required = true;
-            ensurePickupMapReady();
         }
-    }
 
-    form.dataset.initialized = 'true';
+        form.dataset.initialized = 'true';
+    } catch (err) {
+        delete form.dataset.initialized;
+        throw err;
+    }
 }
 
 
