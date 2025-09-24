@@ -23,6 +23,10 @@ FONT_PATH = os.environ.get("PRINT_FONT_PATH", r"C:\Windows\Fonts\arial.ttf")
 DEFAULT_TEXT_ENCODING = os.environ.get("PRINT_TEXT_ENCODING", "utf-8")
 
 PRINT_SERVER_TOKEN = os.environ.get("PRINT_SERVER_TOKEN", "9f1e3c4a-6b2d-4a5e-b3c2-1d7f9a8b0c2d")
+PRINTER_STATUS_MESSAGE = os.environ.get(
+    "PRINT_STATUS_MESSAGE",
+    "Соединение с принтером установлено.",
+)
 
 logging.basicConfig(
     filename="log.txt",
@@ -156,6 +160,29 @@ def print_text():
         return jsonify({'success': False, 'message': 'Не удалось отправить текст на печать'}), 500
 
     return jsonify({'success': True, 'message': 'Печать начата'})
+
+
+@app.route('/status', methods=['GET'])
+def status():
+    """Возвращает текущий статус сервера печати и выбранного принтера."""
+    token = request.headers.get('X-Auth-Token')
+    if token != PRINT_SERVER_TOKEN:
+        return jsonify({'success': False, 'message': 'Недопустимый токен'}), 403
+
+    ready = bool(selected_printer)
+    orientation_label = 'Альбомная' if selected_orientation == 2 else 'Книжная'
+
+    payload = {
+        'success': True,
+        'ready': ready,
+        'message': PRINTER_STATUS_MESSAGE if ready else 'Принтер не выбран',
+        'details': {
+            'printer': selected_printer,
+            'orientation': orientation_label,
+        }
+    }
+
+    return jsonify(payload)
 
 
 def start_server():

@@ -8,7 +8,7 @@ requireRole(['admin', 'manager']);
 header('Content-Type: application/json; charset=utf-8');
 
 $serviceUrl = rtrim(PRINT_SERVICE_URL, '/');
-$type = $_POST['type'] ?? '';
+$type = $_POST['type'] ?? $_GET['type'] ?? '';
 
 try {
     if ($type === 'file') {
@@ -36,6 +36,9 @@ try {
         $ch = curl_init($serviceUrl . '/print/text');
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    } elseif ($type === 'status') {
+        $ch = curl_init($serviceUrl . '/status');
+        curl_setopt($ch, CURLOPT_HTTPGET, true);
     } else {
         throw new Exception('Некорректный тип запроса');
     }
@@ -66,10 +69,20 @@ try {
         throw new Exception('Некорректный ответ сервера печати');
     }
 
-    echo json_encode([
+    $result = [
         'success' => !empty($data['success']),
         'message' => $data['message'] ?? ''
-    ]);
+    ];
+
+    if (array_key_exists('ready', $data)) {
+        $result['ready'] = (bool)$data['ready'];
+    }
+
+    if (isset($data['details']) && is_array($data['details'])) {
+        $result['details'] = $data['details'];
+    }
+
+    echo json_encode($result);
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode([
