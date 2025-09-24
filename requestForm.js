@@ -82,6 +82,50 @@ const LEGACY_TEMPLATE_PATHS = [
 let legacyFormScriptPromise = null;
 let yandexMapsPromise = null;
 
+const requestModalInitializedForms = new WeakSet();
+const requestModalInitializedTokens = new Set();
+
+function ensureRequestFormToken(form) {
+    if (!form) return '';
+    const dataset = form.dataset || {};
+    if (dataset.formInstanceToken) {
+        return dataset.formInstanceToken;
+    }
+    const token = `request-form-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+    try {
+        if (dataset) {
+            dataset.formInstanceToken = token;
+        } else {
+            form.setAttribute('data-form-instance-token', token);
+        }
+    } catch (err) {
+        form.setAttribute('data-form-instance-token', token);
+    }
+    return token;
+}
+
+function isRequestFormInitialized(form) {
+    if (!form) return false;
+    if (requestModalInitializedForms.has(form)) {
+        return true;
+    }
+    const token = form.dataset?.formInstanceToken;
+    if (token && requestModalInitializedTokens.has(token)) {
+        requestModalInitializedForms.add(form);
+        return true;
+    }
+    return false;
+}
+
+function markRequestFormInitialized(form) {
+    if (!form) return;
+    requestModalInitializedForms.add(form);
+    const token = ensureRequestFormToken(form);
+    if (token) {
+        requestModalInitializedTokens.add(token);
+    }
+}
+
 function ensureLegacyFormScript() {
     if (typeof window.initializeForm === 'function') {
         return Promise.resolve();
@@ -484,6 +528,13 @@ async function openRequestFormModal(
     fillLegacyFormFields(contentHost, scheduleData);
     setupGlobalLoadOrdersFallback();
 
+    const formElement = contentHost.querySelector('form#dataForm');
+    let shouldInitializeForm = false;
+    if (formElement) {
+        ensureRequestFormToken(formElement);
+        shouldInitializeForm = !isRequestFormInitialized(formElement);
+    }
+
     const changeContextButton = contentHost.querySelector('[data-action="change-marketplace"]');
 
     let closed = false;
@@ -659,7 +710,16 @@ async function openRequestFormModal(
             console.warn('Глобальный объект ymaps так и не появился после загрузки скрипта.');
         }
         if (typeof window.initializeForm === 'function') {
-            window.initializeForm();
+            if (formElement) {
+                if (shouldInitializeForm) {
+                    await window.initializeForm(formElement);
+                    markRequestFormInitialized(formElement);
+                } else {
+                    await window.initializeForm(formElement);
+                }
+            } else {
+                await window.initializeForm();
+            }
             safeCall(onAfterOpen, modal, contentHost, scheduleData);
         } else {
             throw new Error('Функция инициализации формы недоступна');
