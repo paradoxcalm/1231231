@@ -8,7 +8,33 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
-$assetVersion = filemtime(__FILE__) ?: time();
+function asset_version(string $relativePath): int
+{
+    $relativePath = ltrim($relativePath, '/\\');
+    $fullPath = __DIR__ . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $relativePath);
+
+    $resolvedPath = realpath($fullPath);
+    if ($resolvedPath !== false && file_exists($resolvedPath)) {
+        $timestamp = filemtime($resolvedPath);
+        if ($timestamp !== false) {
+            return $timestamp;
+        }
+    }
+
+    if (file_exists($fullPath)) {
+        $timestamp = filemtime($fullPath);
+        if ($timestamp !== false) {
+            return $timestamp;
+        }
+    }
+
+    return time();
+}
+
+$scheduleAssetsVersion = max(
+    asset_version('js/schedule.js'),
+    asset_version('js/filterOptions.js')
+);
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -18,9 +44,9 @@ $assetVersion = filemtime(__FILE__) ?: time();
     <title>IDEAL TranSport - Клиентская панель</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../styles/components.css?v=<?php echo $assetVersion; ?>">
-    <link rel="stylesheet" href="styles/main.css?v=<?php echo $assetVersion; ?>">
-    <link rel="stylesheet" href="styles/request-modal.css?v=<?php echo $assetVersion; ?>">
+    <link rel="stylesheet" href="../styles/components.css?v=<?php echo asset_version('../styles/components.css'); ?>">
+    <link rel="stylesheet" href="styles/main.css?v=<?php echo asset_version('styles/main.css'); ?>">
+    <link rel="stylesheet" href="styles/request-modal.css?v=<?php echo asset_version('styles/request-modal.css'); ?>">
 </head>
 <body>
     <!-- Верхняя навигация для десктопа -->
@@ -330,14 +356,14 @@ $assetVersion = filemtime(__FILE__) ?: time();
     </div>
 
     <script>
-        window.assetVersion = <?php echo json_encode($assetVersion); ?>;
+        window.assetVersion = <?php echo json_encode($scheduleAssetsVersion); ?>;
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../requestForm.js?v=<?php echo $assetVersion; ?>"></script>
-    <script src="js/app.js?v=<?php echo $assetVersion; ?>"></script>
-    <script type="module" src="js/schedule/index.js?v=<?php echo $assetVersion; ?>"></script>
-    <script src="js/tariffs.js?v=<?php echo $assetVersion; ?>"></script>
-    <script src="js/orders.js?v=<?php echo $assetVersion; ?>"></script>
-    <script src="js/profile.js?v=<?php echo $assetVersion; ?>"></script>
+    <script src="../requestForm.js?v=<?php echo asset_version('../requestForm.js'); ?>"></script>
+    <script src="js/app.js?v=<?php echo asset_version('js/app.js'); ?>"></script>
+    <script type="module" src="js/schedule/index.js?v=<?php echo asset_version('js/schedule/index.js'); ?>"></script>
+    <script src="js/tariffs.js?v=<?php echo asset_version('js/tariffs.js'); ?>"></script>
+    <script src="js/orders.js?v=<?php echo asset_version('js/orders.js'); ?>"></script>
+    <script src="js/profile.js?v=<?php echo asset_version('js/profile.js'); ?>"></script>
 </body>
 </html>
