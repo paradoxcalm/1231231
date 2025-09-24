@@ -178,6 +178,131 @@ function toggleMobileProfileMenu() {
   menu.classList.toggle("visible");
   menu.classList.toggle("hidden");
 }
+
+function formatPrinterError(message) {
+  if (typeof normalizePrinterError === 'function') {
+    return normalizePrinterError(message);
+  }
+  if (!message) {
+    return 'Не удалось связаться с сервером печати.';
+  }
+  return String(message);
+}
+
+function setPrinterBannerState(state) {
+  const banner = document.getElementById('printerConnectionBanner');
+  const iconEl = document.getElementById('printerConnectionIcon');
+  const textEl = document.getElementById('printerConnectionText');
+  if (!banner || !iconEl || !textEl) {
+    return;
+  }
+
+  banner.style.backgroundColor = state.background;
+  banner.style.borderColor = state.border;
+  banner.dataset.state = state.id;
+
+  iconEl.textContent = state.icon;
+  iconEl.style.color = state.color;
+
+  textEl.textContent = state.text;
+  textEl.style.color = state.color;
+}
+
+async function updatePrinterConnectionStatus(options = {}) {
+  const { silent = false } = options;
+  const banner = document.getElementById('printerConnectionBanner');
+  const refreshBtn = document.getElementById('printerConnectionRefreshBtn');
+  if (!banner) {
+    return;
+  }
+
+  if (!silent) {
+    setPrinterBannerState({
+      id: 'loading',
+      icon: '🔄',
+      text: 'Проверяем соединение с принтером…',
+      background: '#e8f0fe',
+      border: '#1a73e8',
+      color: '#1a73e8'
+    });
+  }
+
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    if (!silent) {
+      refreshBtn.textContent = 'Обновляем…';
+    }
+  }
+
+  try {
+    const response = await fetch('printer.php?type=status', {
+      credentials: 'include'
+    });
+    const data = await response.json().catch(() => null);
+
+    if (response.ok && data && data.success) {
+      const ready = data.ready !== undefined ? Boolean(data.ready) : Boolean(data.success);
+      const serverMessage = data.message || 'Связь с сервером печати установлена.';
+
+      const details = [];
+      if (data.details && typeof data.details === 'object') {
+        if (data.details.printer) {
+          details.push(`принтер: ${data.details.printer}`);
+        }
+        if (data.details.orientation) {
+          details.push(`ориентация: ${data.details.orientation}`);
+        }
+      }
+
+      const formattedMessage = details.length ? `${serverMessage} — ${details.join(', ')}` : serverMessage;
+
+      if (ready) {
+        setPrinterBannerState({
+          id: 'success',
+          icon: '🟢',
+          text: formattedMessage,
+          background: '#e6f4ea',
+          border: '#34a853',
+          color: '#1e8e3e'
+        });
+      } else {
+        setPrinterBannerState({
+          id: 'warning',
+          icon: '🟠',
+          text: formattedMessage,
+          background: '#fff4e5',
+          border: '#fbbc04',
+          color: '#c25e00'
+        });
+      }
+    } else {
+      const errorText = formatPrinterError(data && data.message ? data.message : response.statusText || 'Сервер печати недоступен');
+      setPrinterBannerState({
+        id: 'error',
+        icon: '🔴',
+        text: `Нет связи с принтером: ${errorText}`,
+        background: '#fce8e6',
+        border: '#d93025',
+        color: '#a50e0e'
+      });
+    }
+  } catch (error) {
+    const errorText = formatPrinterError(error && error.message ? error.message : 'Не удалось подключиться к серверу печати');
+    setPrinterBannerState({
+      id: 'error',
+      icon: '🔴',
+      text: `Нет связи с принтером: ${errorText}`,
+      background: '#fce8e6',
+      border: '#d93025',
+      color: '#a50e0e'
+    });
+  } finally {
+    if (refreshBtn) {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = 'Обновить статус';
+    }
+  }
+}
 /**
  * Загружает старую форму приёмки во вторую вкладку.
  * Форма берётся из старого проекта (OLDWORL) и отправляет данные на log_data.php.
@@ -192,6 +317,11 @@ function loadOldReception() {
   container.innerHTML = `
     <h3>Ручная приёмка</h3>
     <div id="statusOld"></div>
+    <div id="printerConnectionBanner" style="display: flex; align-items: center; gap: 8px; border: 1px solid #d0d7de; border-radius: 8px; padding: 10px 12px; background: #f6f8fa; margin: 12px 0; flex-wrap: wrap;">
+      <span id="printerConnectionIcon" aria-hidden="true">🕑</span>
+      <span id="printerConnectionText" aria-live="polite" style="font-weight: 500;">Статус принтера не проверен.</span>
+      <button type="button" id="printerConnectionRefreshBtn" class="icon-button" style="margin-left: auto;">Обновить статус</button>
+    </div>
     <form id="manualReceptionForm" enctype="multipart/form-data">
       <div class="form-group">
         <label for="citySelect">Город отправления:</label>
@@ -279,6 +409,13 @@ function loadOldReception() {
       <button type="submit">Отправить заявку</button>
     </form>
   `;
+
+  const refreshBtn = document.getElementById('printerConnectionRefreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => updatePrinterConnectionStatus({ silent: false }));
+  }
+
+  updatePrinterConnectionStatus({ silent: false });
 
   // --- Тарифы ---
   let tariffsData = {};
@@ -571,6 +708,9 @@ function loadOldReception() {
         submitBtn.style.backgroundColor = '';
         submitBtn.textContent = 'Отправить заявку';
 
+        await attemptReceptionPrint(statusEl);
+
+        ensureReceptionPrintControls(statusEl);
         if (typeof printReceptionPdf === 'function') {
           try {
             const { success, message } = await printReceptionPdf({ downloadOnFail: true });
@@ -621,6 +761,104 @@ function loadOldReception() {
       submitBtn.textContent = 'Отправить заявку';
     }
   });
+}
+
+async function attemptReceptionPrint(statusEl) {
+  if (typeof printReceptionPdf !== 'function') {
+    console.error('printReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+    return;
+  }
+
+  statusEl.textContent = '🖨 Отправляем акт на печать…';
+  statusEl.style.color = '#1a73e8';
+
+  try {
+    const { success, message } = await printReceptionPdf({ downloadOnFail: true });
+    if (success) {
+      statusEl.textContent = '✅ Заявка успешно создана и отправлена на печать.';
+      statusEl.style.color = 'green';
+    } else {
+      const reason = message || 'неизвестная ошибка';
+      statusEl.textContent = `⚠️ Заявка создана, но не удалось отправить на печать: ${reason}. PDF сохранён.`;
+      statusEl.style.color = '#d98c00';
+    }
+  } catch (error) {
+    statusEl.textContent = '⚠️ Заявка создана, но произошла ошибка при подготовке печати. PDF сохранён.';
+    statusEl.style.color = '#d98c00';
+    console.error('Ошибка печати акта приёмки:', error);
+  } finally {
+    updatePrinterConnectionStatus({ silent: true });
+  }
+}
+
+function ensureReceptionPrintControls(statusEl) {
+  let reprintBtn = document.getElementById('receptionReprintBtn');
+  if (!reprintBtn) {
+    reprintBtn = document.createElement('button');
+    reprintBtn.id = 'receptionReprintBtn';
+    reprintBtn.type = 'button';
+    reprintBtn.textContent = '🖨 Отправить на печать ещё раз';
+    reprintBtn.style.marginLeft = '10px';
+    reprintBtn.addEventListener('click', async () => {
+      await handleManualReceptionPrint(statusEl, reprintBtn);
+    });
+    statusEl.after(reprintBtn);
+  }
+
+  let downloadBtn = document.getElementById('receptionPrintBtn');
+  if (!downloadBtn) {
+    downloadBtn = document.createElement('button');
+    downloadBtn.id = 'receptionPrintBtn';
+    downloadBtn.type = 'button';
+    downloadBtn.textContent = '📄 Скачать акт приёмки (PDF)';
+    downloadBtn.style.marginLeft = '10px';
+    downloadBtn.addEventListener('click', () => {
+      if (typeof downloadReceptionPdf === 'function') {
+        downloadReceptionPdf();
+      } else {
+        console.error('downloadReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+      }
+    });
+    const anchor = document.getElementById('receptionReprintBtn') || statusEl;
+    anchor.after(downloadBtn);
+  }
+}
+
+async function handleManualReceptionPrint(statusEl, triggerBtn) {
+  if (typeof printReceptionPdf !== 'function') {
+    console.error('printReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+    return;
+  }
+
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.textContent = '🖨 Отправка…';
+  }
+
+  statusEl.textContent = '🖨 Повторная отправка акта на печать…';
+  statusEl.style.color = '#1a73e8';
+
+  try {
+    const { success, message } = await printReceptionPdf({ downloadOnFail: true });
+    if (success) {
+      statusEl.textContent = '✅ Акт повторно отправлен на печать.';
+      statusEl.style.color = 'green';
+    } else {
+      const reason = message || 'неизвестная ошибка';
+      statusEl.textContent = `⚠️ Не удалось повторно отправить на печать: ${reason}. PDF сохранён.`;
+      statusEl.style.color = '#d98c00';
+    }
+  } catch (error) {
+    statusEl.textContent = '⚠️ Произошла ошибка при повторной отправке печати. PDF сохранён.';
+    statusEl.style.color = '#d98c00';
+    console.error('Ошибка повторной печати акта приёмки:', error);
+  } finally {
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.textContent = '🖨 Отправить на печать ещё раз';
+    }
+    updatePrinterConnectionStatus({ silent: true });
+  }
 }
 
  

@@ -106,11 +106,27 @@
     try {
       const response = await fetch('printer.php', {
         method: 'POST',
+        body: formData,
+        credentials: 'include'
         body: formData
       });
       const data = await response.json().catch(() => null);
 
       const success = response.ok && data && data.success;
+      let message = '';
+
+      if (!success) {
+        const rawMessage = data && data.message
+          ? data.message
+          : (!response.ok ? (response.status === 401 ? 'Не авторизован' : response.statusText || 'Сервер печати недоступен') : '');
+        message = normalizePrinterError(rawMessage);
+      }
+
+      if (!success && downloadOnFail) {
+        downloadBlob(blob, fileName);
+      }
+
+      return { success, message };
       const message = data && data.message ? data.message : (response.ok ? '' : 'Сервер печати недоступен');
 
       if (!success && downloadOnFail) {
@@ -122,6 +138,8 @@
       if (downloadOnFail) {
         downloadBlob(blob, fileName);
       }
+      const errMessage = error && error.message ? error.message : 'Не удалось подключиться к серверу печати';
+      return { success: false, message: normalizePrinterError(errMessage) };
       return { success: false, message: error && error.message ? error.message : 'Не удалось подключиться к серверу печати' };
     }
   }
@@ -129,4 +147,27 @@
   window.downloadReceptionPdf = downloadReceptionPdf;
   window.printReceptionPdf = printReceptionPdf;
 })();
+
+function normalizePrinterError(message) {
+  if (!message) {
+    return '';
+  }
+
+  const trimmed = String(message).trim();
+  const lower = trimmed.toLowerCase();
+
+  if (lower.includes('не авторизован') || lower.includes('доступ запрещ')) {
+    return 'Недостаточно прав для печати. Обратитесь к администратору.';
+  }
+
+  if (lower.includes('could not resolve host') || lower.includes('printer-host')) {
+    return 'Сервер печати не настроен: указан недоступный адрес. Проверьте print_config.php.';
+  }
+
+  if (lower.includes('failed to connect') || lower.includes('connection refused') || lower.includes('timed out')) {
+    return 'Не удалось связаться с сервером печати. Убедитесь, что запущен printer_server.py и открыт нужный порт.';
+  }
+
+  return trimmed;
+}
 
