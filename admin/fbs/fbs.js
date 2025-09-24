@@ -675,17 +675,13 @@ function saveFBSRecord() {
             const actionsDiv = document.querySelector('#fbs-modal .fbs-actions');
             if (actionsDiv) {
                 const saveBtn = actionsDiv.querySelector('.confirm-btn');
-                if (saveBtn) saveBtn.style.display = 'none';
-
-                // Добавляем кнопку "Скачать PDF", если её ещё нет
-                if (!document.getElementById('downloadPdfBtn')) {
-                    const pdfBtn = document.createElement('button');
-                    pdfBtn.id = 'downloadPdfBtn';
-                    pdfBtn.type = 'button';
-                    pdfBtn.className = 'confirm-btn';
-                    pdfBtn.textContent = 'Скачать PDF';
-                    pdfBtn.onclick = generateFbsPdf;
-                    actionsDiv.appendChild(pdfBtn);
+                if (saveBtn) {
+                    saveBtn.textContent = 'Отправить на печать';
+                    saveBtn.style.display = '';
+                    saveBtn.onclick = (event) => {
+                        event.preventDefault();
+                        printFbsPdf();
+                    };
                 }
             }
 
@@ -710,13 +706,13 @@ function saveFBSRecord() {
 }
 
 
-// Новая функция для генерации и скачивания PDF-метки 120×75 мм
-function generateFbsPdf() {
+// Формирует docDefinition для PDF-метки 120×75 мм
+function buildFbsPdfDefinition() {
     const company  = document.getElementById('companyInput').value.trim();
     const phone    = document.getElementById('phoneInput').value.trim();
     const city     = document.getElementById('cityInput').value.trim();
     const quantity = parseInt(document.getElementById('qtyInput').value, 10) || 1;
-    
+
     const content = [];
     for (let i = 1; i <= quantity; i++) {
         // Блок информации для одной этикетки:
@@ -732,7 +728,7 @@ function generateFbsPdf() {
         }
     }
     
-    const docDefinition = {
+    return {
         pageSize: { width: 340, height: 212 },      // размер страницы ~120×75 мм (в пунктах)
         pageMargins: [15, 15, 15, 20],              // отступы (снизу больше для футера)
         defaultStyle: { font: 'Roboto' },
@@ -747,9 +743,44 @@ function generateFbsPdf() {
             };
         }
     };
-    
-    // Генерация и скачивание PDF файла (имя включает город и текущий timestamp)
-    pdfMake.createPdf(docDefinition).download(`FBS_${city}_${Date.now()}.pdf`);
+
+}
+
+// Отправка PDF-метки напрямую на удалённую печать
+function printFbsPdf() {
+    const city = document.getElementById('cityInput').value.trim() || 'FBS';
+    const docDefinition = buildFbsPdfDefinition();
+
+    pdfMake.createPdf(docDefinition).getBlob(async (blob) => {
+        try {
+            const formData = new FormData();
+            formData.append('type', 'file');
+            formData.append('file', blob, `FBS_${city}_${Date.now()}.pdf`);
+
+            const response = await fetch('/printer.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (err) {
+                throw new Error(`Неверный ответ сервера: ${text}`);
+            }
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || `HTTP ${response.status}`);
+            }
+
+            alert('Задание на печать отправлено.');
+        } catch (err) {
+            console.error('printFbsPdf error', err);
+            alert(`Ошибка печати: ${err.message}`);
+        }
+    });
 }
 
 
