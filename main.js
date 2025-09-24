@@ -548,7 +548,7 @@ function loadOldReception() {
       const result = await res.json();
 
       if (result.status === 'success') {
-        statusEl.textContent = '✅ Заявка успешно создана';
+        statusEl.textContent = '✅ Заявка успешно создана. Готовим печать…';
         statusEl.style.color = 'green';
 
         window.lastReceptionData = {
@@ -571,22 +571,9 @@ function loadOldReception() {
         submitBtn.style.backgroundColor = '';
         submitBtn.textContent = 'Отправить заявку';
 
-        let printBtn = document.getElementById('receptionPrintBtn');
-        if (!printBtn) {
-          printBtn = document.createElement('button');
-          printBtn.id = 'receptionPrintBtn';
-          printBtn.type = 'button';
-          printBtn.textContent = '📄 Скачать акт приёмки';
-          printBtn.style.marginLeft = '10px';
-          printBtn.addEventListener('click', () => {
-            if (typeof downloadReceptionPdf === 'function') {
-              downloadReceptionPdf();
-            } else {
-              console.error('downloadReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
-            }
-          });
-          statusEl.after(printBtn);
-        }
+        await attemptReceptionPrint(statusEl);
+
+        ensureReceptionPrintControls(statusEl);
       } else {
         statusEl.textContent = `Ошибка: ${result.message}`;
         statusEl.style.color = 'red';
@@ -602,6 +589,101 @@ function loadOldReception() {
       submitBtn.textContent = 'Отправить заявку';
     }
   });
+}
+
+async function attemptReceptionPrint(statusEl) {
+  if (typeof printReceptionPdf !== 'function') {
+    console.error('printReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+    return;
+  }
+
+  statusEl.textContent = '🖨 Отправляем акт на печать…';
+  statusEl.style.color = '#1a73e8';
+
+  try {
+    const { success, message } = await printReceptionPdf({ downloadOnFail: true });
+    if (success) {
+      statusEl.textContent = '✅ Заявка успешно создана и отправлена на печать.';
+      statusEl.style.color = 'green';
+    } else {
+      const reason = message || 'неизвестная ошибка';
+      statusEl.textContent = `⚠️ Заявка создана, но не удалось отправить на печать: ${reason}. PDF сохранён.`;
+      statusEl.style.color = '#d98c00';
+    }
+  } catch (error) {
+    statusEl.textContent = '⚠️ Заявка создана, но произошла ошибка при подготовке печати. PDF сохранён.';
+    statusEl.style.color = '#d98c00';
+    console.error('Ошибка печати акта приёмки:', error);
+  }
+}
+
+function ensureReceptionPrintControls(statusEl) {
+  let reprintBtn = document.getElementById('receptionReprintBtn');
+  if (!reprintBtn) {
+    reprintBtn = document.createElement('button');
+    reprintBtn.id = 'receptionReprintBtn';
+    reprintBtn.type = 'button';
+    reprintBtn.textContent = '🖨 Отправить на печать ещё раз';
+    reprintBtn.style.marginLeft = '10px';
+    reprintBtn.addEventListener('click', async () => {
+      await handleManualReceptionPrint(statusEl, reprintBtn);
+    });
+    statusEl.after(reprintBtn);
+  }
+
+  let downloadBtn = document.getElementById('receptionPrintBtn');
+  if (!downloadBtn) {
+    downloadBtn = document.createElement('button');
+    downloadBtn.id = 'receptionPrintBtn';
+    downloadBtn.type = 'button';
+    downloadBtn.textContent = '📄 Скачать акт приёмки (PDF)';
+    downloadBtn.style.marginLeft = '10px';
+    downloadBtn.addEventListener('click', () => {
+      if (typeof downloadReceptionPdf === 'function') {
+        downloadReceptionPdf();
+      } else {
+        console.error('downloadReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+      }
+    });
+    const anchor = document.getElementById('receptionReprintBtn') || statusEl;
+    anchor.after(downloadBtn);
+  }
+}
+
+async function handleManualReceptionPrint(statusEl, triggerBtn) {
+  if (typeof printReceptionPdf !== 'function') {
+    console.error('printReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+    return;
+  }
+
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.textContent = '🖨 Отправка…';
+  }
+
+  statusEl.textContent = '🖨 Повторная отправка акта на печать…';
+  statusEl.style.color = '#1a73e8';
+
+  try {
+    const { success, message } = await printReceptionPdf({ downloadOnFail: true });
+    if (success) {
+      statusEl.textContent = '✅ Акт повторно отправлен на печать.';
+      statusEl.style.color = 'green';
+    } else {
+      const reason = message || 'неизвестная ошибка';
+      statusEl.textContent = `⚠️ Не удалось повторно отправить на печать: ${reason}. PDF сохранён.`;
+      statusEl.style.color = '#d98c00';
+    }
+  } catch (error) {
+    statusEl.textContent = '⚠️ Произошла ошибка при повторной отправке печати. PDF сохранён.';
+    statusEl.style.color = '#d98c00';
+    console.error('Ошибка повторной печати акта приёмки:', error);
+  } finally {
+    if (triggerBtn) {
+      triggerBtn.disabled = false;
+      triggerBtn.textContent = '🖨 Отправить на печать ещё раз';
+    }
+  }
 }
 
  
