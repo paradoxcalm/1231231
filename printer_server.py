@@ -3,13 +3,24 @@
 import os
 import logging
 import subprocess
+import tempfile
+import threading
+from typing import Optional
+
 from flask import Flask, request, jsonify
 from PyPDF2 import PdfReader, PdfWriter
-from fpdf import FPDF
-import threading
 
-ADOBE_READER_PATH = r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
-FONT_PATH = r"C:\Windows\Fonts\arial.ttf"
+try:
+    import win32print
+except ImportError:  # pragma: no cover - модуль доступен только под Windows
+    win32print = None
+
+ADOBE_READER_PATH = os.environ.get(
+    "PRINT_ADOBE_READER",
+    r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe",
+)
+FONT_PATH = os.environ.get("PRINT_FONT_PATH", r"C:\Windows\Fonts\arial.ttf")
+DEFAULT_TEXT_ENCODING = os.environ.get("PRINT_TEXT_ENCODING", "utf-8")
 
 PRINT_SERVER_TOKEN = os.environ.get("PRINT_SERVER_TOKEN", "changeme")
 
@@ -55,6 +66,39 @@ def print_pdf_via_acrobat(file_path, printer_name):
         logging.error(f"Ошибка при печати через Acrobat: {e}")
 
 
+def str_to_bool(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def print_raw_text(text: str, printer_name: str, encoding: str, auto_cut: bool = False):
+    if not win32print:
+        raise RuntimeError("Библиотека win32print недоступна. Запустите сервер под Windows.")
+    try:
+        data = text.encode(encoding or DEFAULT_TEXT_ENCODING)
+    except LookupError:
+        logging.warning("Неизвестная кодировка '%s', используется UTF-8", encoding)
+        data = text.encode("utf-8")
+
+    if auto_cut:
+        # Команда полного отреза для ESC/POS-принтеров
+        data += b"\x1d\x56\x42\x00"
+
+    hPrinter = win32print.OpenPrinter(printer_name)
+    try:
+        hJob = win32print.StartDocPrinter(hPrinter, 1, ("Remote text job", None, "RAW"))
+        try:
+            win32print.StartPagePrinter(hPrinter)
+            win32print.WritePrinter(hPrinter, data)
+            win32print.EndPagePrinter(hPrinter)
+            logging.info("Отправлен текст на принтер '%s' (%d байт)", printer_name, len(data))
+        finally:
+            win32print.EndDocPrinter(hPrinter)
+    finally:
+        win32print.ClosePrinter(hPrinter)
+
+
 @app.route('/print/file', methods=['POST'])
 def print_file():
     global selected_printer, selected_orientation
@@ -68,21 +112,22 @@ def print_file():
     f = request.files['file']
     if f.filename == '' or not f.filename.lower().endswith('.pdf'):
         return jsonify({'success': False, 'message': 'Требуется PDF-файл'}), 400
-    save_path = os.path.join(os.getcwd(), f.filename)
     rotated = None
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
     try:
-        f.save(save_path)
-        file_to_print = save_path
+        f.save(temp_file.name)
+        file_to_print = temp_file.name
         if selected_orientation == 2:
-            rotated = save_path.replace('.pdf', '_landscape.pdf')
-            if rotate_pdf(save_path, rotated, degrees=90):
+            rotated = temp_file.name.replace('.pdf', '_landscape.pdf')
+            if rotate_pdf(temp_file.name, rotated, degrees=90):
                 file_to_print = rotated
             else:
                 return jsonify({'success': False, 'message': 'Не удалось повернуть PDF'}), 500
         print_pdf_via_acrobat(file_to_print, selected_printer)
         return jsonify({'success': True, 'message': 'Печать начата'})
     finally:
-        for path in filter(None, [save_path, rotated]):
+        temp_file.close()
+        for path in filter(None, [temp_file.name, rotated]):
             try:
                 if os.path.exists(path):
                     os.remove(path)
@@ -101,36 +146,16 @@ def print_text():
     text = request.form.get('text', '').strip()
     if not text:
         return jsonify({'success': False, 'message': 'Текст пустой'}), 400
-    pdf_path = os.path.join(os.getcwd(), 'text_print.pdf')
-    rotated = None
+    encoding = request.form.get('encoding', DEFAULT_TEXT_ENCODING)
+    need_cut = str_to_bool(request.form.get('cut'))
+
     try:
-        try:
-            pdf = FPDF()
-            pdf.add_font('Arial', '', FONT_PATH, uni=True)
-            pdf.set_font('Arial', size=12)
-            pdf.add_page()
-            for line in text.splitlines():
-                pdf.multi_cell(0, 10, line)
-            pdf.output(pdf_path)
-        except Exception as e:
-            logging.error(f"Ошибка при создании PDF: {e}")
-            return jsonify({'success': False, 'message': 'Не удалось сформировать PDF'}), 500
-        file_to_print = pdf_path
-        if selected_orientation == 2:
-            rotated = pdf_path.replace('.pdf', '_landscape.pdf')
-            if rotate_pdf(pdf_path, rotated, degrees=90):
-                file_to_print = rotated
-            else:
-                return jsonify({'success': False, 'message': 'Не удалось повернуть PDF'}), 500
-        print_pdf_via_acrobat(file_to_print, selected_printer)
-        return jsonify({'success': True, 'message': 'Печать начата'})
-    finally:
-        for path in filter(None, [pdf_path, rotated]):
-            try:
-                if os.path.exists(path):
-                    os.remove(path)
-            except Exception as e:
-                logging.warning(f"Не удалось удалить временный файл {path}: {e}")
+        print_raw_text(text, selected_printer, encoding=encoding, auto_cut=need_cut)
+    except Exception as e:
+        logging.error("Ошибка при печати текста: %s", e)
+        return jsonify({'success': False, 'message': 'Не удалось отправить текст на печать'}), 500
+
+    return jsonify({'success': True, 'message': 'Печать начата'})
 
 
 def start_server():
@@ -140,7 +165,6 @@ def start_server():
 if __name__ == '__main__':
     import tkinter as tk
     from tkinter import ttk, messagebox
-    import win32print
 
     def on_start_server():
         global selected_printer, selected_orientation
@@ -161,9 +185,16 @@ if __name__ == '__main__':
     root.resizable(False, False)
 
     tk.Label(root, text='Принтер:').pack(pady=(10, 0))
-    printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
-    names = [p[2] for p in printers]
-    default = win32print.GetDefaultPrinter()
+    printers = []
+    names = []
+    default = None
+    if win32print:
+        printers = win32print.EnumPrinters(win32print.PRINTER_ENUM_LOCAL | win32print.PRINTER_ENUM_CONNECTIONS)
+        names = [p[2] for p in printers]
+        try:
+            default = win32print.GetDefaultPrinter()
+        except Exception:
+            default = None
     if default and default not in names:
         names.insert(0, default)
     printer_combo = ttk.Combobox(root, values=names, state='readonly')
