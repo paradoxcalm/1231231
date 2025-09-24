@@ -22,7 +22,7 @@ ADOBE_READER_PATH = os.environ.get(
 FONT_PATH = os.environ.get("PRINT_FONT_PATH", r"C:\Windows\Fonts\arial.ttf")
 DEFAULT_TEXT_ENCODING = os.environ.get("PRINT_TEXT_ENCODING", "utf-8")
 
-PRINT_SERVER_TOKEN = os.environ.get("PRINT_SERVER_TOKEN", "changeme")
+PRINT_SERVER_TOKEN = os.environ.get("PRINT_SERVER_TOKEN", "9f1e3c4a-6b2d-4a5e-b3c2-1d7f9a8b0c2d")
 
 logging.basicConfig(
     filename="log.txt",
