@@ -711,6 +711,41 @@ function loadOldReception() {
         await attemptReceptionPrint(statusEl);
 
         ensureReceptionPrintControls(statusEl);
+        if (typeof printReceptionPdf === 'function') {
+          try {
+            const { success, message } = await printReceptionPdf({ downloadOnFail: true });
+            if (success) {
+              statusEl.textContent = '✅ Заявка успешно создана и отправлена на печать.';
+              statusEl.style.color = 'green';
+            } else {
+              statusEl.textContent = `⚠️ Заявка создана, но не удалось отправить на печать: ${message || 'неизвестная ошибка'}. PDF сохранён.`;
+              statusEl.style.color = '#d98c00';
+            }
+          } catch (error) {
+            statusEl.textContent = '⚠️ Заявка создана, но произошла ошибка при подготовке печати.';
+            statusEl.style.color = '#d98c00';
+            console.error('Ошибка печати акта приёмки:', error);
+          }
+        } else {
+          console.error('printReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+        }
+
+        let printBtn = document.getElementById('receptionPrintBtn');
+        if (!printBtn) {
+          printBtn = document.createElement('button');
+          printBtn.id = 'receptionPrintBtn';
+          printBtn.type = 'button';
+          printBtn.textContent = '📄 Скачать акт приёмки (PDF)';
+          printBtn.style.marginLeft = '10px';
+          printBtn.addEventListener('click', () => {
+            if (typeof downloadReceptionPdf === 'function') {
+              downloadReceptionPdf();
+            } else {
+              console.error('downloadReceptionPdf не найден. Проверьте, что подключили reception_pdf.js.');
+            }
+          });
+          statusEl.after(printBtn);
+        }
       } else {
         statusEl.textContent = `Ошибка: ${result.message}`;
         statusEl.style.color = 'red';

@@ -108,6 +108,7 @@
         method: 'POST',
         body: formData,
         credentials: 'include'
+        body: formData
       });
       const data = await response.json().catch(() => null);
 
@@ -126,12 +127,20 @@
       }
 
       return { success, message };
+      const message = data && data.message ? data.message : (response.ok ? '' : 'Сервер печати недоступен');
+
+      if (!success && downloadOnFail) {
+        downloadBlob(blob, fileName);
+      }
+
+      return { success, message: message || '' };
     } catch (error) {
       if (downloadOnFail) {
         downloadBlob(blob, fileName);
       }
       const errMessage = error && error.message ? error.message : 'Не удалось подключиться к серверу печати';
       return { success: false, message: normalizePrinterError(errMessage) };
+      return { success: false, message: error && error.message ? error.message : 'Не удалось подключиться к серверу печати' };
     }
   }
 
