@@ -35,6 +35,7 @@ $scheduleAssetsVersion = max(
     asset_version('js/schedule.js'),
     asset_version('js/filterOptions.js')
 );
+$requestFormTemplateVersion = asset_version('templates/customOrderModal.html');
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -357,6 +358,7 @@ $scheduleAssetsVersion = max(
 
     <script>
         window.assetVersion = <?php echo json_encode($scheduleAssetsVersion); ?>;
+        window.requestFormTemplateVersion = <?php echo json_encode($requestFormTemplateVersion); ?>;
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="../requestForm.js?v=<?php echo asset_version('../requestForm.js'); ?>"></script>

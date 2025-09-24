@@ -73,6 +73,54 @@ function resolveTemplateUrl(relativePath) {
     return relativePath;
 }
 
+let requestFormTemplateVersionCache = null;
+
+function getRequestFormTemplateVersion() {
+    if (requestFormTemplateVersionCache !== null) {
+        return requestFormTemplateVersionCache;
+    }
+
+    if (typeof window !== 'undefined' && window.requestFormTemplateVersion) {
+        requestFormTemplateVersionCache = window.requestFormTemplateVersion;
+    } else {
+        requestFormTemplateVersionCache = Date.now();
+    }
+
+    return requestFormTemplateVersionCache;
+}
+
+function withRequestFormTemplateVersion(originalUrl) {
+    if (typeof originalUrl !== 'string' || !originalUrl) {
+        return originalUrl;
+    }
+
+    const version = getRequestFormTemplateVersion();
+
+    if (typeof URL === 'function') {
+        try {
+            const base = typeof window !== 'undefined' && window.location ? window.location.href : undefined;
+            const parsed = base ? new URL(originalUrl, base) : new URL(originalUrl);
+            parsed.searchParams.set('v', version);
+            return parsed.toString();
+        } catch (err) {
+            console.warn('Не удалось применить версию к URL через URL API, будет использован ручной метод:', err);
+        }
+    }
+
+    const hashIndex = originalUrl.indexOf('#');
+    const hashPart = hashIndex >= 0 ? originalUrl.slice(hashIndex) : '';
+    const urlWithoutHash = hashIndex >= 0 ? originalUrl.slice(0, hashIndex) : originalUrl;
+
+    const versionlessUrl = urlWithoutHash
+        .replace(/([?&])v=[^&]*/i, '$1')
+        .replace(/[?&]$/, '')
+        .replace(/\?[&]+/, '?')
+        .replace(/&&+/, '&');
+
+    const separator = versionlessUrl.includes('?') ? '&' : '?';
+    return `${versionlessUrl}${separator}v=${encodeURIComponent(version)}${hashPart}`;
+}
+
 const LEGACY_TEMPLATE_PATHS = [
     '/client/templates/customOrderModal.html',
     'client/templates/customOrderModal.html',
@@ -416,7 +464,8 @@ async function openRequestFormModal(
     let templateUrlUsed = '';
 
     for (const path of LEGACY_TEMPLATE_PATHS) {
-        const url = resolveTemplateUrl(path);
+        const resolvedUrl = resolveTemplateUrl(path);
+        const url = withRequestFormTemplateVersion(resolvedUrl);
         try {
             const response = await fetch(url, { credentials: 'include' });
             if (!response.ok) {
