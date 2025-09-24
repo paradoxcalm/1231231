@@ -13,6 +13,18 @@ async function loadPrinter() {
             </form>
             <form id="printTextForm" style="margin-top:20px;">
                 <textarea id="printTextInput" rows="6" placeholder="Введите текст для печати..."></textarea>
+                <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                    <label for="printTextEncoding">Кодировка:</label>
+                    <select id="printTextEncoding">
+                        <option value="utf-8">UTF-8</option>
+                        <option value="cp1251">Windows-1251</option>
+                        <option value="cp866">CP866 (DOS)</option>
+                    </select>
+                    <label style="display:flex; align-items:center; gap:5px;">
+                        <input type="checkbox" id="printTextCut">
+                        Отрезать чек
+                    </label>
+                </div>
                 <button type="submit" class="icon-button" style="margin-top:10px;"><i class="fas fa-print"></i> Распечатать текст</button>
             </form>
             <div id="printStatus" style="margin-top:15px;"></div>
@@ -46,6 +58,8 @@ async function loadPrinter() {
     textForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const text = document.getElementById('printTextInput').value;
+        const encoding = document.getElementById('printTextEncoding').value;
+        const needCut = document.getElementById('printTextCut').checked;
         if (!text.trim()) {
             status.textContent = 'Введите текст для печати.';
             return;
@@ -54,6 +68,8 @@ async function loadPrinter() {
         const formData = new FormData();
         formData.append('type', 'text');
         formData.append('text', text);
+        formData.append('encoding', encoding);
+        formData.append('cut', needCut ? '1' : '0');
         try {
             const resp = await fetch('printer.php', { method: 'POST', body: formData });
             const data = await resp.json();
