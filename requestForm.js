@@ -73,6 +73,41 @@ function resolveTemplateUrl(relativePath) {
     return relativePath;
 }
 
+function withRequestFormScriptVersion(originalUrl) {
+    if (typeof originalUrl !== 'string' || !originalUrl) {
+        return originalUrl;
+    }
+
+    let version = typeof window !== 'undefined' ? window.requestFormScriptVersion : undefined;
+
+    if (typeof version === 'string') {
+        version = version.trim();
+    }
+
+    if (version === undefined || version === null || version === '') {
+        version = Date.now();
+    }
+
+    const versionString = String(version);
+
+    try {
+        const base = typeof window !== 'undefined' && window.location ? window.location.href : undefined;
+        const url = new URL(originalUrl, base);
+        url.searchParams.set('v', versionString);
+        return url.toString();
+    } catch (err) {
+        let baseUrl = originalUrl;
+        let hash = '';
+        const hashIndex = originalUrl.indexOf('#');
+        if (hashIndex !== -1) {
+            baseUrl = originalUrl.slice(0, hashIndex);
+            hash = originalUrl.slice(hashIndex);
+        }
+        const separator = baseUrl.includes('?') ? '&' : '?';
+        return `${baseUrl}${separator}v=${encodeURIComponent(versionString)}${hash}`;
+    }
+}
+
 const LEGACY_TEMPLATE_PATHS = [
     '/client/templates/customOrderModal.html',
     'client/templates/customOrderModal.html',
@@ -90,12 +125,13 @@ function ensureLegacyFormScript() {
         return legacyFormScriptPromise;
     }
     const scriptUrl = resolveTemplateUrl('/form.js');
+    const versionedScriptUrl = withRequestFormScriptVersion(scriptUrl);
     legacyFormScriptPromise = new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = scriptUrl;
+        script.src = versionedScriptUrl;
         script.async = true;
         script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Не удалось загрузить скрипт формы (${scriptUrl})`));
+        script.onerror = () => reject(new Error(`Не удалось загрузить скрипт формы (${versionedScriptUrl})`));
         document.head.appendChild(script);
     });
     return legacyFormScriptPromise;
