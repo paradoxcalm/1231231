@@ -49,6 +49,10 @@ $assetVersion = filemtime(__FILE__) ?: time();
                 </button>
             </div>
             <div class="nav-actions">
+                <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Переключить тему">
+                    <i class="fas fa-moon theme-toggle-icon" aria-hidden="true"></i>
+                    <span class="theme-toggle-label" data-theme-toggle-label>Тёмная тема</span>
+                </button>
                 <button class="notification-btn" id="notificationBtn">
                     <i class="fas fa-bell"></i>
                     <span class="notification-badge" id="notificationBadge">3</span>
@@ -256,6 +260,10 @@ $assetVersion = filemtime(__FILE__) ?: time();
         <button class="mobile-nav-item" data-section="profile">
             <i class="fas fa-user"></i>
             <span>Профиль</span>
+        </button>
+        <button class="mobile-nav-item" type="button" data-action="toggle-theme" data-theme-toggle aria-pressed="false" aria-label="Переключить тему">
+            <i class="fas fa-moon theme-toggle-icon" aria-hidden="true"></i>
+            <span data-theme-toggle-label>Тёмная</span>
         </button>
         <button class="mobile-nav-item" data-action="logout">
             <i class="fas fa-sign-out-alt"></i>
